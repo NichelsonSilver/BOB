@@ -1,5 +1,8 @@
 # BOB — Grid Trading Bot para GRVT
 
+> Contexto estratégico del ecosistema (memoria de LUPE):
+> @../lupe/contexto/MEMORIA.md
+
 ## IDENTIDAD DEL PROYECTO
 
 BOB (**B**ot **O**perador **B**ursátil) es un sistema de **grid trading sobre perpetuos** que opera en **GRVT** (Gravity Markets), clon funcional del Futures Grid de Pionex pero adaptado a GRVT y optimizado para dos objetivos simultáneos: **generar profit del grid + farmear puntos del airdrop GRVT** (TGE confirmado para fines de junio 2026).
