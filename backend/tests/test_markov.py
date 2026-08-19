@@ -6,12 +6,12 @@ from decimal import Decimal
 
 import pytest
 
-from bob.grid.markov import (
+from bob.models.markov import (
     MarketRegime,
     MarkovRegimeDetector,
     RegimeState,
     _DEFAULT_TRANSITIONS,
-    grid_action_for_regime,
+    expected_regime_duration,
 )
 
 
@@ -190,35 +190,33 @@ class TestCurrentRegime:
 
 
 # ---------------------------------------------------------------------------
-# grid_action_for_regime()
+# expected_regime_duration() — KPI 3
 # ---------------------------------------------------------------------------
 
-class TestGridActionForRegime:
-    @pytest.mark.parametrize("direction", ["long", "short", "neutral"])
-    def test_ranging_always_run(self, direction):
-        assert grid_action_for_regime(MarketRegime.RANGING, direction) == "run"
+class TestExpectedRegimeDuration:
+    def _state(self, p_stay: str) -> RegimeState:
+        return RegimeState(
+            regime=MarketRegime.RANGING,
+            confidence=Decimal(p_stay),
+            transition_probs=_DEFAULT_TRANSITIONS[MarketRegime.RANGING],
+        )
 
-    @pytest.mark.parametrize("direction", ["long", "short", "neutral"])
-    def test_volatile_always_pause(self, direction):
-        assert grid_action_for_regime(MarketRegime.VOLATILE, direction) == "pause"
+    def test_geometric_mean(self):
+        # p_stay = 0.60 → E[duración] = 1 / 0.4 = 2.5 barras
+        assert expected_regime_duration(self._state("0.60")) == Decimal("2.5")
 
-    def test_trending_up_long_runs(self):
-        assert grid_action_for_regime(MarketRegime.TRENDING_UP, "long") == "run"
+    def test_low_persistence_short_duration(self):
+        # p_stay = 0.20 → 1.25 barras
+        assert expected_regime_duration(self._state("0.20")) == Decimal("1.25")
 
-    def test_trending_up_neutral_pauses(self):
-        assert grid_action_for_regime(MarketRegime.TRENDING_UP, "neutral") == "pause"
+    def test_degenerate_matrix_returns_none(self):
+        assert expected_regime_duration(self._state("1")) is None
 
-    def test_trending_up_short_pauses(self):
-        assert grid_action_for_regime(MarketRegime.TRENDING_UP, "short") == "pause"
-
-    def test_trending_down_short_runs(self):
-        assert grid_action_for_regime(MarketRegime.TRENDING_DOWN, "short") == "run"
-
-    def test_trending_down_neutral_pauses(self):
-        assert grid_action_for_regime(MarketRegime.TRENDING_DOWN, "neutral") == "pause"
-
-    def test_trending_down_long_pauses(self):
-        assert grid_action_for_regime(MarketRegime.TRENDING_DOWN, "long") == "pause"
+    def test_higher_persistence_longer_duration(self):
+        d_low = expected_regime_duration(self._state("0.50"))
+        d_high = expected_regime_duration(self._state("0.90"))
+        assert d_low is not None and d_high is not None
+        assert d_high > d_low
 
 
 # ---------------------------------------------------------------------------

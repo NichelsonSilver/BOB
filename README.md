@@ -1,46 +1,50 @@
-# BOB — Bot Operador Bursatil
+# BOB — Bot Operador Bursátil
 
-Grid trading bot para perpetuos en [GRVT](https://grvt.io) (Gravity Markets).
+Asistente de decisión para **trading intradía de futuros perpetuos** en
+Binance. BOB observa el mercado en vivo, computa un estado estadístico
+avanzado y muestra tres KPIs — **Seguridad (probabilidad calibrada)**,
+proyección de profit (EV) y duración estimada de la tendencia — para que el
+usuario decida si entrar o no. **BOB nunca ejecuta órdenes.**
 
-Objetivo dual: generar profit del grid + farmear puntos del airdrop GRVT.
+Par inicial: `ETHUSDT` perp. El modelo es agnóstico del símbolo (watchlist
+configurable).
+
+> El build anterior (grid trading bot para GRVT) vive congelado en el branch
+> `legacy/grvt-grid`.
 
 ## Requisitos
 
-- Python 3.11+
-- Node.js 18+ con pnpm
-- [uv](https://docs.astral.sh/uv/) (gestor de paquetes Python)
+- Python 3.11+ y [uv](https://docs.astral.sh/uv/)
+- Node.js 18+ con npm
 
 ## Setup
 
 ```bash
-# 1. Clonar y configurar environment
-cp .env.example .env
-# Editar .env con tus credenciales de GRVT
+# 1. (Opcional) configurar environment — el backend bootea sin .env
+cp .env.example backend/.env
 
 # 2. Backend
 cd backend
-uv sync
+uv sync --extra dev
 uv run uvicorn bob.main:app --reload
+# → http://localhost:8000/api/health
 
 # 3. Frontend (otra terminal)
 cd frontend
-pnpm install
-pnpm dev
+npm install
+npm run dev
+# → http://localhost:5173
 ```
 
-## Uso
+## Tests
 
-Abrir `http://localhost:5173` para el dashboard.
+```bash
+cd backend
+uv run python -m pytest      # NO usar `uv run pytest` en Windows (bug del trampoline)
+```
 
-1. **Settings** — configurar API keys y ambiente
-2. **Trading** — crear y configurar bots de grid
-3. **Bots** — monitorear bots activos
-4. **History** — ver PnL, trades, fees
-5. **Points** — tracker del airdrop GRVT
+## Documentación
 
-## Ambientes
-
-- **testnet**: desarrollo y testing (default)
-- **prod**: operacion real (requiere validacion completa)
-
-No usar prod hasta completar la validacion end-to-end de 72h en testnet.
+- `CLAUDE.md` — identidad, arquitectura, KPIs, fases y reglas del proyecto
+- `docs/DATA_SOURCES.md` — endpoints de Binance/CoinGecko/etc. y sus trampas
+- `docs/HANDOFF_FASE1.md` — estado al cierre de Fase 0 y qué sigue

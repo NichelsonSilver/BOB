@@ -1,18 +1,20 @@
 import { useEffect } from "react";
 
-import type { BotStatus } from "../lib/api";
-import { useBotsStore } from "../stores/botsStore";
+import { useAppStore } from "../stores/appStore";
 
 type Frame = { event: string; data: unknown };
 
 /**
  * Opens a single WebSocket to /api/ws and routes frames into the global
  * store. Reconnects with a simple backoff; the server is the source of
- * truth, so on reconnect we just start receiving fresh snapshots again.
+ * truth, so on reconnect we just start receiving fresh events again.
+ *
+ * Eventos del backend (ver backend/src/bob/api/ws.py): "signal.new",
+ * "signal.update", "market.tick", "paper.outcome", "conn.status".
+ * El routing por evento se implementa en Fase 6.
  */
-export function useBotsWebSocket() {
-  const setSnapshot = useBotsStore((s) => s.setSnapshot);
-  const setConnected = useBotsStore((s) => s.setConnected);
+export function useAppWebSocket() {
+  const setConnected = useAppStore((s) => s.setConnected);
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -35,9 +37,7 @@ export function useBotsWebSocket() {
       ws.onmessage = (ev) => {
         try {
           const frame = JSON.parse(ev.data) as Frame;
-          if (frame.event === "bots.snapshot") {
-            setSnapshot(frame.data as BotStatus[]);
-          }
+          void frame; // Fase 6: routear por frame.event a los stores
         } catch {
           // ignore malformed frames
         }
@@ -62,5 +62,5 @@ export function useBotsWebSocket() {
       if (retryTimer) clearTimeout(retryTimer);
       ws?.close();
     };
-  }, [setSnapshot, setConnected]);
+  }, [setConnected]);
 }

@@ -1,7 +1,7 @@
 [project]
 name = "bob"
 version = "0.1.0"
-description = "BOB — Grid Trading Bot para GRVT"
+description = "BOB — Asistente de decisión para trading intradía (Binance perps)"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
@@ -12,7 +12,9 @@ dependencies = [
     "websockets>=13.0",
     "httpx>=0.27",
     "loguru>=0.7",
-    "grvt-pysdk",
+    "numpy>=2.0",
+    "apscheduler>=3.10",
+    # Fase 3 agrega: hmmlearn (HMM gaussiano) + scikit-learn (calibración isotónica)
 ]
 
 [project.optional-dependencies]

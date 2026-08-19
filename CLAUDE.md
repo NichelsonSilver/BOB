@@ -296,13 +296,11 @@ amarillo alerts `#f5b731`.
 
 Ejecutar en orden. Al final de cada una, resumir y esperar confirmación.
 
-### Fase 0 — Migración del esqueleto
-1. Limpiar main: retirar `grvt/`, `grid/` (engine, bot, manager, spacing),
-   rutas y páginas del mundo grid (todo vive en `legacy/grvt-grid`)
-2. Migrar lo heredable a la nueva estructura: `markov.py` → `models/`,
-   `range_suggestion.py` → `signals/indicators.py`, infra intacta
-3. Nuevo `.env.example`, README, y modelos de DB nuevos
-4. Tests heredados de markov/indicators en verde
+### Fase 0 — Migración del esqueleto ✅ (2026-08-19)
+Completada. Main limpio de grid/GRVT, módulos heredados migrados, esquema
+de DB definido, backend booteable sin `.env`, frontend compilando con las
+5 páginas placeholder, 35 tests en verde. Estado detallado y gotchas de
+entorno: `docs/HANDOFF_FASE1.md`.
 
 ### Fase 1 — Pipeline de datos Binance
 1. `data/binance_ws.py`: klines + aggTrades + depth + markPrice, multiplexado,
