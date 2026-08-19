@@ -1,29 +1,26 @@
 import { NavLink, Outlet } from "react-router-dom";
 
-import { useBotsWebSocket } from "../../hooks/useWebSocket";
-import { useBotsStore } from "../../stores/botsStore";
-import { KillSwitchButton } from "../kill-switch/KillSwitchButton";
+import { useAppWebSocket } from "../../hooks/useWebSocket";
+import { useAppStore } from "../../stores/appStore";
 
 const navItems = [
-  { to: "/", label: "Dashboard" },
+  { to: "/", label: "Signal" },
+  { to: "/analysis", label: "Analysis" },
+  { to: "/backtest", label: "Backtest" },
   { to: "/history", label: "History" },
-  { to: "/points", label: "Points" },
   { to: "/settings", label: "Settings" },
 ];
 
 export function Layout() {
-  useBotsWebSocket();
-  const wsConnected = useBotsStore((s) => s.wsConnected);
-  const activeBots = useBotsStore(
-    (s) => s.bots.filter((b) => b.state === "running").length,
-  );
+  useAppWebSocket();
+  const wsConnected = useAppStore((s) => s.wsConnected);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-surface">
       <aside className="w-56 border-r border-neutral-800 bg-neutral-900 p-4">
         <div className="mb-8 flex items-baseline gap-2">
           <span className="text-xl font-bold text-accent">BOB</span>
-          <span className="text-xs text-neutral-500">grid trading</span>
+          <span className="text-xs text-neutral-500">asistente intradía</span>
         </div>
         <nav className="flex flex-col gap-1">
           {navItems.map((item) => (
@@ -57,12 +54,10 @@ export function Layout() {
             <span className="text-neutral-400">
               {wsConnected ? "ws: live" : "ws: disconnected"}
             </span>
-            <span className="text-neutral-500">|</span>
-            <span className="text-neutral-400">
-              active bots: <span className="text-neutral-100">{activeBots}</span>
-            </span>
           </div>
-          <KillSwitchButton />
+          <span className="text-xs text-neutral-500">
+            solo análisis — BOB nunca ejecuta órdenes
+          </span>
         </header>
         <main className="flex-1 overflow-auto p-6">
           <Outlet />

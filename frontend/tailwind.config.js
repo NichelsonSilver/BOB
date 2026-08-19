@@ -4,9 +4,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        accent: "#22d3ee",
-        danger: "#ef4444",
-        success: "#10b981",
+        // Paleta de CLAUDE.md — dark minimalista
+        surface: "#0e0f0f",
+        accent: "#3cd9a8", // verde long / positivo
+        danger: "#f07045", // rojo short / negativo
+        warn: "#f5b731", // amarillo alerts
+        success: "#3cd9a8",
       },
       fontFamily: {
         mono: ["JetBrains Mono", "Consolas", "monospace"],

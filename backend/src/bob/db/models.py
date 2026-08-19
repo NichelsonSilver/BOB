@@ -1,109 +1,126 @@
-"""SQLModel models for BOB persistence."""
+"""SQLModel models — persistencia del asistente.
+
+Convención heredada del build anterior: los valores monetarios/precios se
+guardan como `str` para no perder precisión Decimal en SQLite. Convertir a
+Decimal en los bordes (API / servicios), nunca operar con float sobre precios.
+"""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from decimal import Decimal
-from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
 
-class Bot(SQLModel, table=True):
-    """A grid bot configuration + runtime state."""
-
-    id: int | None = Field(default=None, primary_key=True)
-    bot_id: str = Field(index=True, unique=True)  # human-readable, e.g. "btc-long-01"
-    symbol: str
-    direction: str  # "long" | "short" | "neutral"
-    mode: str = "paper"  # "paper" | "live"
-    state: str = "idle"  # matches BotState enum values
-
-    # Grid config
-    price_low: str  # stored as string for Decimal precision
-    price_high: str
-    n_grids: int
-    investment_usdt: str
-    leverage: int = 3
-    spacing: str = "arithmetic"
-    stop_loss_pct: str | None = None
-    take_profit_pct: str | None = None
-    out_of_range_action: str = "pause"
-    tick_size: str = "0.1"
-    lot_size: str = "0.001"
-    maker_fee: str = "0.0002"
-
-    # Runtime stats
-    entry_price: str | None = None
-    realized_pnl: str = "0"
-    grid_trades_count: int = 0
-    total_volume: str = "0"
-
-    # Grid runtime snapshot (JSON). Enables process-restart recovery without
-    # losing filled levels or live-order mappings.
-    filled_buys_json: str = "{}"
-    filled_sells_json: str = "{}"
-    live_orders_json: str = "{}"
-    exchange_ids_json: str = "{}"
-
-    # Timestamps
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    started_at: datetime | None = None
-    stopped_at: datetime | None = None
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
-class Order(SQLModel, table=True):
-    """An order placed (or simulated) by a bot."""
+class CandleRecord(SQLModel, table=True):
+    """Kline persistida para replay offline del backtest (data/store.py).
 
-    id: int | None = Field(default=None, primary_key=True)
-    bot_id: str = Field(index=True)
-    client_order_id: str = Field(index=True, unique=True)
-    level_index: int
-    side: str  # "buy" | "sell"
-    price: str
-    quantity: str
-    status: str = "open"  # "open" | "filled" | "cancelled"
-    mode: str = "paper"  # "paper" | "live"
-    exchange_order_id: str | None = None  # only for live orders
-
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    filled_at: datetime | None = None
-    cancelled_at: datetime | None = None
-
-
-class BotPreset(SQLModel, table=True):
-    """Named bot configuration template.
-
-    Stores the CreateBotRequest payload as JSON so the UI can offer
-    "load preset" / "save preset" flows. The config_json is the source of
-    truth — field-level columns are redundant metadata for filtering.
+    Única por (symbol, timeframe, open_time). open_time/close_time en epoch ms
+    UTC, igual que Binance — evita ambigüedades de zona horaria.
     """
 
     id: int | None = Field(default=None, primary_key=True)
-    name: str = Field(index=True, unique=True)
-    symbol: str
-    direction: str
-    mode: str = "paper"
-    config_json: str  # full CreateBotRequest payload
-    source: str = "manual"  # "manual" | "auto-create" | "clone"
-    notes: str | None = None
+    symbol: str = Field(index=True)
+    timeframe: str = Field(index=True)  # "5m" | "15m" | "1h" | ...
+    open_time: int = Field(index=True)  # epoch ms UTC
+    close_time: int
+    open: str
+    high: str
+    low: str
+    close: str
+    volume: str
+    quote_volume: str = "0"
+    taker_buy_volume: str = "0"  # feature de microestructura, viene en la kline
+    n_trades: int = 0
 
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class Signal(SQLModel, table=True):
+    """Una señal emitida por el asistente (en vivo o en backtest).
 
-class FillRecord(SQLModel, table=True):
-    """A fill event — either real or simulated."""
+    Regla 10 de CLAUDE.md: features_json guarda el feature vector COMPLETO
+    con el que se computó la señal — sin eso no hay post-mortem posible.
+    """
 
     id: int | None = Field(default=None, primary_key=True)
-    bot_id: str = Field(index=True)
-    client_order_id: str
-    level_index: int
-    side: str
-    price: str
-    quantity: str
-    fee: str = "0"
-    pnl: str = "0"  # PnL from this grid cycle (if completing one)
-    mode: str = "paper"
+    signal_id: str = Field(index=True, unique=True)  # ej: "ETHUSDT-15m-1755600000"
+    source: str = "live"  # "live" | "backtest"
+    symbol: str = Field(index=True)
+    timeframe: str
+    direction: str  # "long" | "short"
 
-    filled_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # KPI 1 — Seguridad
+    probability: str  # P(TP antes que SL), calibrada, "0".."1"
+    calibrated: bool = False  # False => se muestra como "experimental"
+    regime: str = ""  # régimen Markov/HMM al momento de la señal
+
+    # KPI 2 — Proyección
+    entry_price: str
+    take_profit: str
+    stop_loss: str
+    expected_value_pct: str = "0"  # EV neto de fees+funding, sin leverage
+    horizon_bars: int = 0  # H del triple-barrier, en barras del timeframe
+
+    # KPI 3 — Duración estimada de régimen (en barras; None si indefinida)
+    expected_regime_bars: str | None = None
+
+    features_json: str = "{}"  # feature vector completo
+    model_version: str = ""  # para saber qué modelo/calibración la produjo
+
+    emitted_at: datetime = Field(default_factory=_utcnow, index=True)
+
+
+class PaperTrade(SQLModel, table=True):
+    """Outcome simulado de una señal emitida en vivo (paper/tracker.py).
+
+    BOB nunca ejecuta: esto es el seguimiento forward que valida el KPI.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    signal_id: str = Field(index=True, unique=True)
+    status: str = "open"  # "open" | "tp_hit" | "sl_hit" | "expired"
+    exit_price: str | None = None
+    pnl_pct: str | None = None  # neto de fees estimados, sin leverage
+    bars_held: int = 0
+
+    opened_at: datetime = Field(default_factory=_utcnow)
+    closed_at: datetime | None = None
+
+
+class BacktestRun(SQLModel, table=True):
+    """Un run de backtest walk-forward con sus métricas agregadas."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    run_id: str = Field(index=True, unique=True)
+    symbol: str
+    timeframe: str
+    date_from: str  # ISO date
+    date_to: str
+    config_json: str = "{}"  # TP/SL/H, umbral, params del modelo
+
+    # Métricas agregadas (metrics.py)
+    n_signals: int = 0
+    win_rate: str | None = None
+    profit_factor: str | None = None
+    max_drawdown_pct: str | None = None
+    expectancy_pct: str | None = None
+    calibration_error_pp: str | None = None  # error medio por bucket, en puntos %
+    buckets_json: str = "{}"  # curva de fiabilidad: predicho vs observado por bucket
+
+    status: str = "pending"  # "pending" | "running" | "done" | "failed"
+    created_at: datetime = Field(default_factory=_utcnow)
+    finished_at: datetime | None = None
+
+
+class SentimentSnapshot(SQLModel, table=True):
+    """Snapshot periódico de sentimiento/contexto (APScheduler, Fase 7)."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    source: str = Field(index=True)  # "fear_greed" | "coingecko" | "outliers"
+    metric: str = Field(index=True)  # "fear_greed_index" | "btc_dominance" | ...
+    value: str
+    raw_json: str = "{}"
+    captured_at: datetime = Field(default_factory=_utcnow, index=True)
