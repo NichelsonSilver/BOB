@@ -7,9 +7,10 @@ aquí EMA, RSI, VWAP y estructura de máximos/mínimos.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Literal, Sequence
+from typing import Literal
 
 Mode = Literal["percentile", "minmax", "atr"]
 
@@ -135,7 +136,7 @@ def volatility_pct(candles: Sequence[Candle]) -> Decimal:
     return ((hi - lo) / mid) * Decimal(100)
 
 
-def parse_candle(raw: dict) -> Candle | None:
+def parse_candle(raw: dict[str, object]) -> Candle | None:
     """Best-effort parser for a kline dict with open/high/low/close keys.
 
     Nota Fase 1: las klines REST de Binance llegan como arrays posicionales

@@ -16,8 +16,8 @@ from bob.signals.indicators import (
 )
 
 
-def _c(o: str, h: str, l: str, cl: str) -> Candle:
-    return Candle(Decimal(o), Decimal(h), Decimal(l), Decimal(cl))
+def _c(o: str, h: str, lo: str, cl: str) -> Candle:
+    return Candle(Decimal(o), Decimal(h), Decimal(lo), Decimal(cl))
 
 
 def test_percentile_basic():

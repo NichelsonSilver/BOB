@@ -31,6 +31,10 @@ Thumbs.db
 *.db
 *.db-journal
 
+# Cobertura de tests
+.coverage
+htmlcov/
+
 # Logs
 logs/
 *.log
