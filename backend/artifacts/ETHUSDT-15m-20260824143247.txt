@@ -1,0 +1,164 @@
+==============================================================================
+  BOB — EXPERIMENTO DE FORECASTING WALK-FORWARD
+==============================================================================
+  símbolo         : ETHUSDT 15m
+  periodo         : 2024-08-31 .. 2026-08-21  (69,119 velas)
+  features        : 55
+  setup           : TP 0.5σ / SL 0.5σ / H 16 barras
+  costos          : 0.1400% round-trip (fees+slippage) + funding 0.0100%/8h
+  validación      : walk-forward purgado, 6 folds, embargo 1.0%
+  modelo          : gbm + calibración isotónica OOF
+  runtime         : 266.2s
+
+==============================================================================
+  TARGET 1 — P(TP antes que SL)   [KPI 1: Seguridad]
+==============================================================================
+
+  ── LONG ── (44,293 predicciones out-of-sample)
+
+  Resolución de los setups: TP 44.6% | SL 46.1% | vertical 9.2%
+  Muestras efectivas tras ponderar por unicidad: 16,146 (de 68,813 labels — se solapan)
+  Probabilidad de equilibrio (EV=0): 61.6%   tasa base: 44.0%   → el modelo debe levantar +17.6pp
+
+  métrica                          modelo   sin calibrar     baseline
+  -------------------------- ------------ -------------- ------------
+  Brier (menor mejor)              0.2471         0.2492       0.2476
+  Brier skill score               -0.0028        -0.0116      -0.0049
+  Log loss                         0.6873         0.6919       0.6883
+  AUC                               0.519          0.529        0.500
+  Error calibración                 4.0pp          9.9pp        3.4pp
+  Tasa base observada               44.0%
+
+  Curva de fiabilidad (lo prometido vs lo cumplido):
+        bucket       n   predicho   observado     error
+  ------------ ------- ---------- ----------- ---------
+    10%-20%         1      17.4%        0.0%    17.4pp  (n bajo)
+    20%-30%         1      29.1%        0.0%    29.1pp  (n bajo)
+    30%-40%        40      32.7%       37.5%     4.8pp
+    40%-50%    40,461      46.7%       43.7%     3.0pp
+    50%-60%     3,775      51.0%       46.8%     4.2pp
+    60%-70%        12      60.4%       41.7%    18.8pp  (n bajo)
+    80%-90%         1      81.8%      100.0%    18.2pp  (n bajo)
+    90%-100%        2     100.0%      100.0%     0.0pp  (n bajo)
+
+  Diebold-Mariano vs baseline: gana el modelo de forma significativa (p=0.0080)
+
+  Consecuencia operativa con umbral 70% (equilibrio en 62%, retornos NETOS):
+    señales=3 (0.0% de las barras)   win rate=100.0%
+    expectancy=+0.3936%/trade   profit factor=n/d
+    retorno acumulado=+1.18%   max drawdown=0.00%
+
+
+  ── SHORT ── (44,293 predicciones out-of-sample)
+
+  Resolución de los setups: TP 45.8% | SL 45.0% | vertical 9.2%
+  Muestras efectivas tras ponderar por unicidad: 16,146 (de 68,813 labels — se solapan)
+  Probabilidad de equilibrio (EV=0): 61.6%   tasa base: 45.5%   → el modelo debe levantar +16.1pp
+
+  métrica                          modelo   sin calibrar     baseline
+  -------------------------- ------------ -------------- ------------
+  Brier (menor mejor)              0.2479         0.2500       0.2489
+  Brier skill score               +0.0005        -0.0082      -0.0036
+  Log loss                         0.6888         0.6935       0.6909
+  AUC                               0.533          0.536        0.500
+  Error calibración                 5.1pp         14.0pp        3.0pp
+  Tasa base observada               45.5%
+
+  Curva de fiabilidad (lo prometido vs lo cumplido):
+        bucket       n   predicho   observado     error
+  ------------ ------- ---------- ----------- ---------
+    20%-30%         5      28.6%       40.0%    11.4pp  (n bajo)
+    30%-40%       134      36.9%       43.3%     6.4pp
+    40%-50%    34,561      46.9%       44.3%     2.6pp
+    50%-60%     9,566      51.4%       50.0%     1.4pp
+    60%-70%        27      61.8%       51.9%    10.0pp
+
+  Diebold-Mariano vs baseline: gana el modelo de forma significativa (p=0.0000)
+
+  Consecuencia operativa con umbral 70% (equilibrio en 62%, retornos NETOS):
+    ninguna señal supera el umbral — el modelo no encuentra setups de esa calidad
+
+==============================================================================
+  TARGET 2 — Volatilidad realizada futura
+==============================================================================
+  44,419 predicciones out-of-sample
+
+  modelo                       RMSE   R² vs media   R² vs EWMA      QLIKE
+  ---------------------- ---------- ------------- ------------ ----------
+  GBM (features)            0.00559        +0.400       +0.374     0.3963
+  EWMA RiskMetrics          0.00706        +0.042          n/d     0.6708
+  GARCH(1,1)                0.00760        -0.111       -0.159     0.5319
+  HAR-RV                    0.00617        +0.269       +0.237     0.5069
+
+  Mincer-Zarnowitz del modelo: alpha=+0.00041 (0 = insesgado), beta=0.962 (1 = eficiente)
+  DM vs EWMA  : gana el modelo de forma significativa (p=0.0000)
+  DM vs HAR-RV: gana el modelo de forma significativa (p=0.0000)
+
+==============================================================================
+  TARGET 3 — Cono de precio (intervalos conformales)
+==============================================================================
+    nominal método           cobertura    desvío   ancho medio    Winkler
+  --------- -------------- ----------- --------- ------------- ----------
+       95% CQR + ACI           94.8%     -0.2pp       0.04838    0.05799
+       95% gaussiano ±zσ       91.0%     -4.0pp       0.04688    0.08513
+       80% CQR + ACI           79.9%     -0.1pp       0.03032    0.04537
+       80% gaussiano ±zσ       80.9%     +0.9pp       0.03065    0.04918
+
+==============================================================================
+  IMPORTANCIA DE FEATURES (permutación sobre test, Δ Brier)
+==============================================================================
+  Por familia:
+    volatilidad         +0.00190  ███████
+    momentum            +0.00069  ██
+    estacionalidad      +0.00049  █
+    osciladores         +0.00035  █
+    estructura          +0.00033  █
+    microestructura     +0.00018  
+
+  Top 15 individuales:
+    rv_24h_rank                   +0.00060
+    rv_24h                        +0.00049
+    rsi_48                        +0.00031
+    donchian_pos_72h              +0.00030
+    vol_of_vol                    +0.00028
+    hour_cos                      +0.00023
+    dow_sin                       +0.00023
+    ema_dist_72h                  +0.00022
+    macd_hist                     +0.00018
+    dow_cos                       +0.00015
+    vol_term_structure            +0.00014
+    mom_4h                        +0.00013
+    bar_body_ratio                +0.00010
+    atr_pct_rank                  +0.00009
+    mom_1h_vol_adj                +0.00009
+
+==============================================================================
+  GATE DE LA FASE 4
+==============================================================================
+  Criterio 1 — CALIBRACIÓN (umbral 10pp por bucket)
+    long     error de calibración = 4.0pp → PASA
+    short    error de calibración = 5.1pp → PASA
+
+  Criterio 2 — DISCRIMINACIÓN (AUC ≥ 0.55 y BSS > 0)
+    long     AUC = 0.519  BSS = -0.0028 → NO PASA
+    short    AUC = 0.533  BSS = +0.0005 → NO PASA
+
+  Por qué hacen falta los dos:
+    Un modelo que predice SIEMPRE la tasa base está perfectamente
+    calibrado por construcción y es inútil — no distingue nada. La
+    calibración dice 'cuando digo 70%, acierto 70%'; la discriminación
+    dice 'sé cuáles son los casos de 70%'. Pasar solo la primera no
+    habilita operar.
+
+  ✗ NO habilitado: calibra pero NO discrimina.
+    El modelo reproduce la tasa base sin distinguir setups. Es el
+    resultado esperable si el mercado es eficiente en este
+    horizonte: la dirección del precio no es predecible con estas
+    features. NO es un bug — es el hallazgo.
+    El dashboard muestra el KPI en gris, etiquetado 'experimental'.
+
+  Nota: el target de volatilidad (TARGET 2) se evalúa aparte y puede
+  ser útil aunque el de dirección no lo sea — de hecho es el orden
+  esperado. Dimensionar TP/SL con una volatilidad bien pronosticada
+  ya es valor operativo, sin necesidad de predecir la dirección.
+==============================================================================
