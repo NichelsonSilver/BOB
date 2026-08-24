@@ -1,19 +1,26 @@
-"""Fuente de datos en vivo por REST — plan B cuando el WS no entrega.
+"""Fuente de datos en vivo por REST — tapa los agujeros que deje el WS.
 
-Existe por un hallazgo de campo (2026-08-24): desde la red del usuario, el WS
-de USDⓈ-M Futures (`fstream.binance.com`) **acepta la conexión, confirma la
-suscripción vía `LIST_SUBSCRIPTIONS` y no manda un solo frame de mercado**. El
-REST (`fapi.binance.com`) funciona perfecto, y el WS de spot y el de futuros
-testnet también: el filtro es del lado de Binance para el feed de derivados de
-esa IP/región, no un bug del cliente.
+Existe por un hallazgo de campo del 2026-08-24, cuyo diagnóstico se corrigió el
+mismo día al medirlo bien (evidencia completa en docs/DATA_SOURCES.md):
+`fstream.binance.com` **entrega unos streams y calla otros sobre la misma
+conexión TLS**. Vivos: `@trade`, `@bookTicker`, `@depth*`. Mudos: `@aggTrade`,
+`@kline_*`, `@markPrice`, `@ticker`, `@miniTicker`, `@forceOrder`. Como un
+middlebox no puede descartar mensajes selectivos dentro de un TLS ya
+establecido, la causa es Binance a nivel de aplicación —no la red del usuario,
+como se creyó primero— y no distingue mainnet de derivados: distingue evento
+crudo del motor de matching (llega) de evento derivado o agregado (no llega).
 
-Un asistente que no puede ver el mercado en vivo no sirve para nada, así que
-este módulo emite **los mismos eventos** que `binance_ws.py` pidiéndolos por
-REST. Latencia del orden de segundos en vez de <100ms — peor, y honesto: el
-dashboard reporta qué fuente está activa (`conn.status.source`).
+Consecuencia para este módulo: dejó de ser el "plan B que reemplaza al WS" y
+pasó a ser **el relleno de lo que el WS no da**. Los flags `klines` y
+`mark_price` permiten pedirle solo una parte, que es como lo usa el hub: el
+flujo taker sigue viniendo del WS por `@trade` (latencia <100ms, verificado
+idéntico al oficial) y por acá entran nada más las velas y el mark price /
+funding, que son magnitudes lentas y no pierden nada a cadencia de segundos.
+Sigue sirviendo como fuente completa si el WS no entrega absolutamente nada.
 
-Presupuesto de peso: klines(limit=2) + premiumIndex = 2 por símbolo por ciclo.
-A 3s son 40/min por símbolo contra un techo de 2400 (regla 7, con holgura).
+Presupuesto de peso: klines(limit=2) = 2 y premiumIndex = 1 por símbolo por
+ciclo. A 3s, los dos juntos son 60/min por símbolo contra un techo de 2400
+(regla 7, con holgura de sobra).
 """
 
 from __future__ import annotations
@@ -46,6 +53,11 @@ class BinancePollSource:
     Interfaz idéntica a `BinanceMarketStream` (`add_listener`, `start`, `stop`,
     `status`), así que el hub y el dashboard no saben cuál de las dos fuentes
     los está alimentando — salvo por el nombre que se reporta.
+
+    `klines` y `mark_price` acotan qué emite. Apagar lo que el WS ya entrega
+    evita el peor error posible de un feed híbrido: dos fuentes publicando el
+    mismo símbolo y el dashboard alternando entre un precio fresco y uno de
+    hace tres segundos.
     """
 
     source_name = "binance_rest_poll"
@@ -57,12 +69,18 @@ class BinancePollSource:
         *,
         client: BinanceRestClient | None = None,
         interval_s: float = DEFAULT_POLL_S,
+        klines: bool = True,
+        mark_price: bool = True,
     ) -> None:
+        if not (klines or mark_price):
+            raise ValueError("la fuente REST no tendría nada que emitir")
         self._symbols = [s.upper() for s in symbols]
         self._timeframe = timeframe
         self._owns_client = client is None
         self._client = client or BinanceRestClient()
         self._interval_s = interval_s
+        self._want_klines = klines
+        self._want_mark_price = mark_price
         self._listeners: list[Listener] = []
         self._status = ConnectionStatus()
         self._last_closed: dict[str, int] = {}
@@ -97,10 +115,15 @@ class BinancePollSource:
 
     async def run(self) -> None:
         logger.info(
-            "poll: fuente REST activa — {} {} cada {:.0f}s",
+            "poll: fuente REST activa — {} {} cada {:.0f}s ({})",
             ", ".join(self._symbols),
             self._timeframe,
             self._interval_s,
+            "+".join(
+                k
+                for k, on in (("klines", self._want_klines), ("markPrice", self._want_mark_price))
+                if on
+            ),
         )
         while not self._stopping.is_set():
             for symbol in self._symbols:
@@ -119,8 +142,12 @@ class BinancePollSource:
             # limit=2: la penúltima es la última CERRADA, la última es la que
             # está en curso. `only_closed=False` es correcto acá porque el
             # evento lleva el flag y quien lo consume decide.
-            rows = await self._client.klines_page(symbol, self._timeframe, limit=2)
-            premium = await self._client.mark_price(symbol)
+            rows = (
+                await self._client.klines_page(symbol, self._timeframe, limit=2)
+                if self._want_klines
+                else []
+            )
+            premium = await self._client.mark_price(symbol) if self._want_mark_price else None
         except Exception as exc:
             self._status.connected = False
             self._status.last_error = f"{type(exc).__name__}: {exc}"

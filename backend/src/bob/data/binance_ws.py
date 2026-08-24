@@ -3,7 +3,7 @@
 Junto a `binance_rest.py`, el único lugar con I/O de mercado (regla 3 de
 CLAUDE.md). Market data público: sin API key, sin credenciales, sin órdenes.
 
-Dos decisiones gobiernan el diseño:
+Tres decisiones gobiernan el diseño:
 
 1. **La reconexión es el caso normal, no el edge case.** Binance corta cada
    conexión a las 24h por diseño (docs/DATA_SOURCES.md). El loop reconecta
@@ -12,6 +12,13 @@ Dos decisiones gobiernan el diseño:
 2. **La vela en curso no es una vela.** Solo se persiste una kline con
    `k.x == true`. Computar features sobre la vela abierta es lookahead en
    producción que el backtest jamás vería (regla 5).
+3. **Un stream mudo no es una conexión caída.** Medición de campo del
+   2026-08-24 (evidencia en docs/DATA_SOURCES.md): desde la red del usuario,
+   `fstream.binance.com` entrega `@trade`, `@bookTicker` y `@depth*` con
+   normalidad, y calla `@aggTrade`, `@kline_*`, `@markPrice`, `@ticker`,
+   `@miniTicker` y `@forceOrder` — todo sobre la MISMA conexión TLS, así que
+   no es la red: es Binance a nivel de aplicación. Por eso la salud se lleva
+   **por stream** y no por socket, y lo que falta se rellena por REST.
 
 El parseo es puro y está separado del transporte: `parse_frame` se testea sin
 red, y el loop se testea con una fábrica de conexión falsa.
@@ -26,7 +33,7 @@ import random
 import time
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from contextlib import AbstractAsyncContextManager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Final, Protocol
 
 from loguru import logger
@@ -40,7 +47,9 @@ FSTREAM_BASE: Final = "wss://fstream.binance.com/stream"
 CONNECTION_TTL_S: Final = 23 * 3600.0
 
 #: Si no llega ningún frame en este lapso, la conexión se da por muerta. Con
-#: markPrice@1s y aggTrade activos, 60s de silencio es anomalía, no calma.
+#: `@trade` activo (decenas de frames por segundo en ETHUSDT) 60s de silencio
+#: es anomalía, no calma. Ojo: mide el socket completo, no cada stream — un
+#: stream mudo con otros vivos NO se detecta acá sino en `mute_streams()`.
 RECV_TIMEOUT_S: Final = 60.0
 
 #: Techo del backoff entre reintentos.
@@ -88,8 +97,16 @@ class MarkPriceEvent:
 
 @dataclass(frozen=True)
 class AggTradeEvent:
-    """Trade agregado. `is_buyer_maker=True` ⇒ el agresor fue el vendedor: así
-    se separa el volumen taker comprador del vendedor."""
+    """Un trade taker. `is_buyer_maker=True` ⇒ el agresor fue el vendedor: así
+    se separa el volumen taker comprador del vendedor.
+
+    `aggregated` dice de qué stream vino: `@aggTrade` (True, varios fills de
+    una misma orden agresora colapsados en uno) o `@trade` (False, fill por
+    fill). Para volumen y delta ambos suman idéntico — verificado contra
+    `/fapi/v1/aggTrades` sobre la misma ventana, diferencia 0.000% — pero el
+    hub necesita el flag para no contar dos veces si los dos streams reviven
+    a la vez.
+    """
 
     symbol: str
     price: str
@@ -97,6 +114,7 @@ class AggTradeEvent:
     is_buyer_maker: bool
     trade_time: int
     event_time: int
+    aggregated: bool = True
 
 
 MarketEvent = KlineEvent | MarkPriceEvent | AggTradeEvent
@@ -104,7 +122,13 @@ MarketEvent = KlineEvent | MarkPriceEvent | AggTradeEvent
 
 @dataclass
 class ConnectionStatus:
-    """Estado de la conexión, para el evento `conn.status` del dashboard."""
+    """Estado de la conexión, para el evento `conn.status` del dashboard.
+
+    `subscribed` + `stream_messages` son lo que permite distinguir "el socket
+    está caído" de "el socket está vivo pero este stream no llega nunca".
+    Sin esa distinción el dashboard mostraría un feed en verde mientras el
+    precio que exhibe es de hace media hora.
+    """
 
     connected: bool = False
     connected_since_ms: int | None = None
@@ -112,6 +136,19 @@ class ConnectionStatus:
     reconnects: int = 0
     messages: int = 0
     last_error: str | None = None
+    #: Streams pedidos en el handshake.
+    subscribed: list[str] = field(default_factory=list)
+    #: Frames recibidos por stream, acumulado entre reconexiones.
+    stream_messages: dict[str, int] = field(default_factory=dict)
+
+    @property
+    def mute_streams(self) -> list[str]:
+        """Suscritos que no entregaron ni un frame. Solo es concluyente si la
+        conexión ya lleva un rato arriba — de ahí el `ws_probe_s` del hub."""
+        return [name for name in self.subscribed if not self.stream_messages.get(name)]
+
+    def record_stream(self, name: str) -> None:
+        self.stream_messages[name] = self.stream_messages.get(name, 0) + 1
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -121,12 +158,25 @@ class ConnectionStatus:
             "reconnects": self.reconnects,
             "messages": self.messages,
             "last_error": self.last_error,
+            "subscribed": list(self.subscribed),
+            "stream_messages": dict(self.stream_messages),
+            "mute_streams": self.mute_streams,
         }
 
 
 # --------------------------------------------------------------------- #
 # Armado de la URL y parseo (puros)
 # --------------------------------------------------------------------- #
+
+
+def stream_kind(name: str) -> str:
+    """Familia de un stream (`ethusdt@kline_15m` → `kline`).
+
+    El hub decide qué rellenar por REST a partir de la familia, no del nombre
+    completo: así da igual el símbolo y el timeframe.
+    """
+    tail = name.split("@", 1)[1] if "@" in name else name
+    return tail.split("@", 1)[0].split("_", 1)[0]
 
 
 def stream_names(
@@ -136,11 +186,26 @@ def stream_names(
     klines: bool = True,
     mark_price: bool = True,
     agg_trades: bool = True,
+    trades: bool = True,
+    book_ticker: bool = False,
+    depth: str | None = None,
 ) -> list[str]:
     """Nombres de stream combinados para la watchlist.
 
     Los símbolos van en minúscula: con mayúscula Binance acepta el handshake
     y después no manda nada, así que el bug parece de red y no lo es.
+
+    Se piden `@aggTrade` **y** `@trade` a propósito. Son redundantes por
+    diseño: donde Binance entrega los dos, el hub se queda con el agregado y
+    descarta el crudo; donde `@aggTrade` está mudo (ver el docstring del
+    módulo), `@trade` sostiene el flujo taker sin pedirle nada al usuario. Un
+    stream de sobra cuesta un nombre en la URL; quedarse sin flujo cuesta el
+    KPI de microestructura entero.
+
+    `book_ticker` y `depth` (p. ej. `depth="depth20@100ms"`) quedan apagados:
+    entregan bien desde esta red y son el enganche de Fase 2b, pero hoy no
+    tienen consumidor y `@bookTicker` solo son ~425 frames/s por símbolo que
+    nadie lee.
     """
     if timeframe not in INTERVAL_MS:
         raise ValueError(f"timeframe no soportado: {timeframe}")
@@ -155,6 +220,12 @@ def stream_names(
             names.append(f"{sym}@markPrice@1s")
         if agg_trades:
             names.append(f"{sym}@aggTrade")
+        if trades:
+            names.append(f"{sym}@trade")
+        if book_ticker:
+            names.append(f"{sym}@bookTicker")
+        if depth:
+            names.append(f"{sym}@{depth}")
     return names
 
 
@@ -192,21 +263,46 @@ def _kline_from_payload(k: dict[str, Any]) -> Kline:
     )
 
 
-def parse_frame(raw: str | bytes) -> MarketEvent | None:
-    """Convierte un frame en evento tipado. `None` si no interesa o no parsea.
+#: Binance intercala en `@trade` frames de relleno con `p=q=0` y `X="NA"`
+#: (~0,6% de los frames). No son trades: sumarlos no cambia el volumen pero
+#: sí ensucia el conteo. Se filtran por tamaño, no por `X`: que el precio y la
+#: cantidad sean positivos es una invariante de lo que es un trade, mientras
+#: que `X` es un enum sin documentar que Binance puede ampliar cuando quiera.
+#: Medido: los dos filtros seleccionan exactamente el mismo conjunto y su
+#: volumen coincide al decimal con `/fapi/v1/aggTrades`.
 
-    Acepta el formato combinado (`{"stream": ..., "data": {...}}`) y el crudo
-    de un stream único. Un frame malformado NO puede tumbar el loop: se loguea
-    y se descarta.
-    """
+
+def load_frame(raw: str | bytes) -> dict[str, Any] | None:
+    """`json.loads` tolerante. Un frame malformado NO puede tumbar el loop."""
     try:
         msg = json.loads(raw)
     except (ValueError, TypeError):
         logger.warning("ws: frame no-JSON descartado ({} bytes)", len(raw))
         return None
-    if not isinstance(msg, dict):
-        return None
+    return msg if isinstance(msg, dict) else None
 
+
+def frame_stream(msg: dict[str, Any]) -> str | None:
+    """Nombre del stream que originó el frame, para la contabilidad de salud.
+
+    El endpoint combinado lo trae en `stream`. En el crudo (un solo stream por
+    conexión) no viene, así que se reconstruye desde el tipo de evento — basta
+    para no perder la cuenta cuando alguien conecta a `/ws/<stream>`.
+    """
+    name = msg.get("stream")
+    if isinstance(name, str) and name:
+        return name
+    data = msg.get("data", msg)
+    if not isinstance(data, dict):
+        return None
+    event, symbol = data.get("e"), data.get("s")
+    if isinstance(event, str) and isinstance(symbol, str):
+        return f"{symbol.lower()}@{event}"
+    return None
+
+
+def event_from_message(msg: dict[str, Any]) -> MarketEvent | None:
+    """Mapea un frame ya parseado a evento tipado. `None` si no interesa."""
     data = msg.get("data", msg)
     if not isinstance(data, dict):
         return None
@@ -239,12 +335,38 @@ def parse_frame(raw: str | bytes) -> MarketEvent | None:
                 is_buyer_maker=bool(data["m"]),
                 trade_time=int(data.get("T", 0)),
                 event_time=int(data.get("E", 0)),
+                aggregated=True,
+            )
+        if event == "trade":
+            price, qty = str(data["p"]), str(data["q"])
+            if float(price) <= 0.0 or float(qty) <= 0.0:
+                return None  # frame de relleno, ver la nota sobre `X="NA"`
+            return AggTradeEvent(
+                symbol=str(data["s"]).upper(),
+                price=price,
+                quantity=qty,
+                is_buyer_maker=bool(data["m"]),
+                trade_time=int(data.get("T", 0)),
+                event_time=int(data.get("E", 0)),
+                aggregated=False,
             )
     except (KeyError, TypeError, ValueError) as exc:
         logger.warning("ws: evento {} malformado ({}) — descartado", event, exc)
         return None
 
     return None  # pong, respuestas de suscripción, streams no cableados
+
+
+def parse_frame(raw: str | bytes) -> MarketEvent | None:
+    """Convierte un frame crudo en evento tipado. `None` si no interesa.
+
+    Acepta el formato combinado (`{"stream": ..., "data": {...}}`) y el crudo
+    de un stream único. El loop de recepción no la usa —parsea una sola vez
+    con `load_frame` para poder contabilizar el stream—, pero es la puerta
+    limpia para testear el mapeo sin red.
+    """
+    msg = load_frame(raw)
+    return None if msg is None else event_from_message(msg)
 
 
 def backoff_delay(
@@ -320,12 +442,22 @@ class BinanceMarketStream:
         klines: bool = True,
         mark_price: bool = True,
         agg_trades: bool = True,
+        trades: bool = True,
+        book_ticker: bool = False,
+        depth: str | None = None,
         recv_timeout: float = RECV_TIMEOUT_S,
         connection_ttl: float = CONNECTION_TTL_S,
         rng: random.Random | None = None,
     ) -> None:
         self._streams = stream_names(
-            symbols, timeframe, klines=klines, mark_price=mark_price, agg_trades=agg_trades
+            symbols,
+            timeframe,
+            klines=klines,
+            mark_price=mark_price,
+            agg_trades=agg_trades,
+            trades=trades,
+            book_ticker=book_ticker,
+            depth=depth,
         )
         self._url = combined_url(self._streams, base_url)
         self._connect = connect or _default_connect
@@ -333,7 +465,7 @@ class BinanceMarketStream:
         self._connection_ttl = connection_ttl
         self._rng = rng
         self._listeners: list[Listener] = []
-        self._status = ConnectionStatus()
+        self._status = ConnectionStatus(subscribed=list(self._streams))
         self._stopping = asyncio.Event()
         self._task: asyncio.Task[None] | None = None
 
@@ -350,6 +482,14 @@ class BinanceMarketStream:
     @property
     def status(self) -> ConnectionStatus:
         return self._status
+
+    def mute_streams(self) -> list[str]:
+        """Streams suscritos que nunca entregaron un frame.
+
+        Solo tiene sentido consultarlo después de un rato de conexión: antes,
+        todo está mudo simplemente porque no ha pasado nada.
+        """
+        return self._status.mute_streams
 
     def add_listener(self, listener: Listener) -> None:
         self._listeners.append(listener)
@@ -421,7 +561,13 @@ class BinanceMarketStream:
                 self._status.last_message_ms = _now_ms()
                 # Un frame bueno = la conexión sirve: se olvida el error viejo.
                 self._status.last_error = None
-                event = parse_frame(raw)
+                msg = load_frame(raw)
+                if msg is None:
+                    continue
+                name = frame_stream(msg)
+                if name is not None:
+                    self._status.record_stream(name)
+                event = event_from_message(msg)
                 if event is not None:
                     await self._dispatch(event)
 
@@ -489,11 +635,22 @@ class MarketDataHub:
     `mode` elige la fuente:
       "ws"   — solo WebSocket (lo correcto donde Binance sí entrega el feed)
       "rest" — solo polling REST
-      "auto" — arranca con el WS y, si en `ws_probe_s` no llegó ni un frame,
-               cae al REST y lo dice. Nace de un hallazgo real: hay redes donde
-               el WS de futuros acepta la suscripción y no manda nada nunca
-               (ver el docstring de `binance_poll.py`). Un feed mudo sin aviso
-               es la peor falla posible en un asistente de trading.
+      "auto" — arranca con el WS y, pasado `ws_probe_s`, mira **stream por
+               stream** qué llegó:
+                 · nada de nada           → cae entero al polling REST
+                 · faltan kline/markPrice → los rellena por REST y deja el WS
+                   sirviendo lo que sí entrega (el flujo taker, que es lo que
+                   de verdad necesita latencia)
+                 · todo llega             → no hace nada
+               Nace de un hallazgo real: Binance calla ciertos streams por
+               IP/PoP mientras entrega otros sobre el mismo socket (ver el
+               docstring del módulo). Un feed mudo sin aviso es la peor falla
+               posible en un asistente de trading; uno que se degrada a medias
+               y lo declara es aceptable.
+
+    Si los streams estándar reviven —el hallazgo parece un servicio caído del
+    lado de Binance, no una política— basta reiniciar el backend para volver al
+    camino de baja latencia: `stream_names` los sigue pidiendo siempre.
     """
 
     def __init__(
@@ -505,6 +662,7 @@ class MarketDataHub:
         stream: MarketSource | None = None,
         mode: str = "auto",
         ws_probe_s: float = 25.0,
+        fill_interval_s: float = 3.0,
     ) -> None:
         if mode not in ("auto", "ws", "rest"):
             raise ValueError(f"modo de feed desconocido: {mode}")
@@ -513,8 +671,15 @@ class MarketDataHub:
         self.persist = persist
         self.mode = mode
         self._ws_probe_s = ws_probe_s
+        self._fill_interval_s = fill_interval_s
         self._listeners: list[Listener] = []
         self._watchdog: asyncio.Task[None] | None = None
+        #: Fuente REST que cubre los streams mudos, en paralelo al WS.
+        self._fill: MarketSource | None = None
+        self._fill_label: str = ""
+        #: ¿Llegó alguna vez un `@aggTrade`? Si sí, los `@trade` crudos se
+        #: descartan: sumar los dos contaría cada fill dos veces.
+        self._agg_seen = False
         self.state: dict[str, SymbolState] = {s: SymbolState() for s in self.symbols}
         self.stream: MarketSource = stream or self._build_source(mode)
         self.stream.add_listener(self._on_event)
@@ -528,7 +693,13 @@ class MarketDataHub:
 
     @property
     def source_name(self) -> str:
-        return self.stream.source_name
+        """Qué está alimentando al hub. Viaja tal cual al `conn.status` del
+        dashboard, así que describe el híbrido y no solo la fuente principal:
+        `binance_ws+rest_fill(kline,markPrice)` es información operativa, no un
+        detalle interno."""
+        if self._fill is None:
+            return self.stream.source_name
+        return f"{self.stream.source_name}+{self._fill_label}"
 
     def add_listener(self, listener: Listener) -> None:
         """Engancha un consumidor externo (broadcast al dashboard, analista…).
@@ -541,7 +712,7 @@ class MarketDataHub:
     async def start(self) -> None:
         await self.stream.start()
         if self.mode == "auto" and isinstance(self.stream, BinanceMarketStream):
-            self._watchdog = asyncio.create_task(self._watch_ws(), name="feed-watchdog")
+            self._watchdog = asyncio.create_task(self._watch_streams(), name="feed-watchdog")
 
     async def stop(self) -> None:
         if self._watchdog is not None:
@@ -549,13 +720,34 @@ class MarketDataHub:
             with contextlib.suppress(asyncio.CancelledError):
                 await self._watchdog
             self._watchdog = None
+        if self._fill is not None:
+            await self._fill.stop()
+            self._fill = None
         await self.stream.stop()
 
-    async def _watch_ws(self) -> None:
-        """Cae al REST si el WS conecta pero no entrega."""
+    async def _watch_streams(self) -> None:
+        """Diagnostica el WS pasado el periodo de prueba y decide qué hacer.
+
+        Corre una sola vez. Si el WS se cae después, de eso se encarga la
+        reconexión; y si un stream mudo revive, el conteo de salud lo refleja
+        aunque el relleno ya esté puesto — el relleno de más no corrompe nada,
+        solo gasta peso de REST.
+        """
         await asyncio.sleep(self._ws_probe_s)
-        if self.stream.status.messages > 0:
+        stream = self.stream
+        if not isinstance(stream, BinanceMarketStream):
             return
+
+        if stream.status.messages == 0:
+            await self._fallback_to_rest()
+            return
+
+        mute = stream.mute_streams()
+        if mute:
+            await self._fill_mute_streams(mute)
+
+    async def _fallback_to_rest(self) -> None:
+        """El WS conecta y no entrega NADA: se reemplaza entero."""
         logger.warning(
             "feed: el WS no entregó un solo frame en {:.0f}s — se cambia a polling REST "
             "(latencia de segundos en vez de <100ms; el dashboard lo reporta)",
@@ -570,11 +762,61 @@ class MarketDataHub:
         self.stream = source
         await source.start()
 
+    async def _fill_mute_streams(self, mute: Sequence[str]) -> None:
+        """El WS entrega algunos streams y calla otros: se rellena por REST.
+
+        Solo se rellena lo que el REST sabe dar (velas y mark price/funding).
+        Si lo mudo es el flujo taker no hay relleno posible a esta cadencia
+        —el volumen taker por barra igual viaja dentro de la vela cerrada— y lo
+        único honesto es decirlo fuerte.
+        """
+        kinds = {stream_kind(name) for name in mute}
+        need_klines = "kline" in kinds
+        need_mark = "markPrice" in kinds
+        logger.warning(
+            "feed: el WS está mudo en {} — {}",
+            ", ".join(sorted(mute)),
+            "se rellena por REST" if (need_klines or need_mark) else "sin relleno posible",
+        )
+        if kinds >= {"aggTrade", "trade"}:
+            logger.error(
+                "feed: sin flujo taker en vivo (aggTrade y trade mudos) — la "
+                "microestructura intrabarra queda ciega; solo queda el volumen "
+                "taker que trae cada vela cerrada"
+            )
+        if not (need_klines or need_mark):
+            return
+
+        from bob.data.binance_poll import BinancePollSource
+
+        filled = sorted(k for k in ("kline", "markPrice") if k in kinds)
+        fill = BinancePollSource(
+            self.symbols,
+            self.timeframe,
+            klines=need_klines,
+            mark_price=need_mark,
+            interval_s=self._fill_interval_s,
+        )
+        fill.add_listener(self._on_event)
+        self._fill = fill
+        self._fill_label = "rest_fill(" + ",".join(filled) + ")"
+        await fill.start()
+        logger.info("feed: relleno REST activo para {}", ", ".join(filled))
+
     @property
     def status(self) -> ConnectionStatus:
         return self.stream.status
 
     async def _on_event(self, event: MarketEvent) -> None:
+        if isinstance(event, AggTradeEvent):
+            if event.aggregated:
+                self._agg_seen = True
+            elif self._agg_seen:
+                # `@aggTrade` está vivo: el `@trade` crudo es exactamente el
+                # mismo flujo contado fill por fill. Dejar pasar los dos
+                # duplicaría el volumen taker y con él todo lo que dependa del
+                # delta comprador/vendedor.
+                return
         await self._update_state(event)
         for listener in self._listeners:
             try:

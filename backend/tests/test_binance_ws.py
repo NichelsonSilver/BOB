@@ -24,7 +24,9 @@ from bob.data.binance_ws import (
     MarkPriceEvent,
     backoff_delay,
     combined_url,
+    frame_stream,
     parse_frame,
+    stream_kind,
     stream_names,
 )
 
@@ -101,6 +103,35 @@ def _agg_trade_frame(*, qty: str = "1.5", is_buyer_maker: bool = False) -> str:
     )
 
 
+def _trade_frame(
+    *,
+    qty: str = "1.5",
+    price: str = "2500.30",
+    is_buyer_maker: bool = False,
+    order_type: str = "MARKET",
+) -> str:
+    """Frame de `<sym>@trade`: el fill crudo, sin agregar.
+
+    Es el stream que sostiene el flujo taker donde `@aggTrade` está mudo.
+    """
+    return json.dumps(
+        {
+            "stream": "ethusdt@trade",
+            "data": {
+                "e": "trade",
+                "E": 1_700_000_000_700,
+                "T": 1_700_000_000_690,
+                "s": "ETHUSDT",
+                "t": 8_625_057_383,
+                "p": price,
+                "q": qty,
+                "X": order_type,
+                "m": is_buyer_maker,
+            },
+        }
+    )
+
+
 class FakeSocket:
     """Conexión falsa: entrega frames y después hace lo que le pidan.
 
@@ -157,16 +188,37 @@ class ZeroJitter(random.Random):
 class TestStreamNames:
     def test_baja_los_simbolos_a_minuscula(self) -> None:
         names = stream_names(["ETHUSDT"], TF)
-        assert names == ["ethusdt@kline_15m", "ethusdt@markPrice@1s", "ethusdt@aggTrade"]
+        assert names == [
+            "ethusdt@kline_15m",
+            "ethusdt@markPrice@1s",
+            "ethusdt@aggTrade",
+            "ethusdt@trade",
+        ]
+
+    def test_pide_aggtrade_y_trade_a_la_vez(self) -> None:
+        """Redundancia deliberada: donde Binance calla `@aggTrade`, `@trade`
+        sostiene el flujo taker sin que el usuario toque nada."""
+        names = stream_names(["ETHUSDT"], TF)
+        assert "ethusdt@aggTrade" in names and "ethusdt@trade" in names
 
     def test_multiplexa_toda_la_watchlist(self) -> None:
         names = stream_names(["ETHUSDT", "BTCUSDT"], TF)
-        assert len(names) == 6
+        assert len(names) == 8
         assert any(n.startswith("btcusdt@") for n in names)
 
     def test_permite_apagar_streams(self) -> None:
-        names = stream_names(["ETHUSDT"], TF, mark_price=False, agg_trades=False)
+        names = stream_names(["ETHUSDT"], TF, mark_price=False, agg_trades=False, trades=False)
         assert names == ["ethusdt@kline_15m"]
+
+    def test_book_ticker_y_depth_estan_apagados_por_defecto(self) -> None:
+        """Entregan bien desde esta red, pero son el enganche de Fase 2b: hoy
+        no tienen consumidor y `@bookTicker` son ~425 frames/s por símbolo."""
+        assert not [n for n in stream_names(["ETHUSDT"], TF) if "bookTicker" in n or "depth" in n]
+
+    def test_engancha_book_ticker_y_depth_cuando_se_piden(self) -> None:
+        names = stream_names(["ETHUSDT"], TF, book_ticker=True, depth="depth20@100ms")
+        assert "ethusdt@bookTicker" in names
+        assert "ethusdt@depth20@100ms" in names
 
     def test_ignora_entradas_vacias(self) -> None:
         assert stream_names(["", "  "], TF) == []
@@ -174,6 +226,41 @@ class TestStreamNames:
     def test_rechaza_timeframe_desconocido(self) -> None:
         with pytest.raises(ValueError, match="timeframe"):
             stream_names(["ETHUSDT"], "7m")
+
+
+class TestStreamKind:
+    """La familia es lo que decide qué se rellena por REST: tiene que salir
+    igual para cualquier símbolo y cualquier timeframe."""
+
+    @pytest.mark.parametrize(
+        ("name", "kind"),
+        [
+            ("ethusdt@kline_15m", "kline"),
+            ("btcusdt@kline_1m", "kline"),
+            ("ethusdt@markPrice@1s", "markPrice"),
+            ("ethusdt@markPrice", "markPrice"),
+            ("ethusdt@aggTrade", "aggTrade"),
+            ("ethusdt@trade", "trade"),
+            ("ethusdt@depth20@100ms", "depth20"),
+            ("ethusdt@bookTicker", "bookTicker"),
+        ],
+    )
+    def test_extrae_la_familia(self, name: str, kind: str) -> None:
+        assert stream_kind(name) == kind
+
+
+class TestFrameStream:
+    def test_usa_el_nombre_del_formato_combinado(self) -> None:
+        assert frame_stream(json.loads(_kline_frame())) == "ethusdt@kline_15m"
+
+    def test_lo_reconstruye_en_el_formato_crudo(self) -> None:
+        """En `/ws/<stream>` no viene el nombre: sin esto, la contabilidad de
+        salud quedaría en cero y el hub creería que todo está mudo."""
+        raw = json.loads(_mark_price_frame())["data"]
+        assert frame_stream(raw) == "ethusdt@markPriceUpdate"
+
+    def test_devuelve_none_si_no_hay_de_donde_sacarlo(self) -> None:
+        assert frame_stream({"result": None, "id": 1}) is None
 
 
 class TestCombinedUrl:
@@ -220,6 +307,30 @@ class TestParseFrame:
         assert isinstance(event, AggTradeEvent)
         assert event.is_buyer_maker is True
         assert event.quantity == "1.5"
+
+    def test_parsea_trade_crudo(self) -> None:
+        event = parse_frame(_trade_frame(qty="0.75", is_buyer_maker=True))
+        assert isinstance(event, AggTradeEvent)
+        assert event.aggregated is False
+        assert event.quantity == "0.75"
+        assert event.is_buyer_maker is True
+
+    def test_agg_trade_queda_marcado_como_agregado(self) -> None:
+        event = parse_frame(_agg_trade_frame())
+        assert isinstance(event, AggTradeEvent)
+        assert event.aggregated is True
+
+    def test_descarta_el_relleno_de_precio_cero_de_trade(self) -> None:
+        """Binance intercala en `@trade` frames con `p=q=0` y `X="NA"` (~0,6%).
+        No son trades: contarlos ensucia el conteo de agresiones."""
+        assert parse_frame(_trade_frame(qty="0", price="0", order_type="NA")) is None
+
+    def test_no_filtra_por_el_enum_de_tipo_sino_por_el_tamano(self) -> None:
+        """`X` es un enum sin documentar que Binance puede ampliar; que precio
+        y cantidad sean positivos sí es una invariante de lo que es un trade."""
+        event = parse_frame(_trade_frame(qty="2.0", order_type="LIMIT"))
+        assert isinstance(event, AggTradeEvent)
+        assert event.quantity == "2.0"
 
     def test_acepta_formato_crudo_sin_envoltorio(self) -> None:
         raw = json.loads(_mark_price_frame())["data"]

@@ -33,8 +33,10 @@ class Settings(BaseSettings):
     # arrancan con el backend. Apagarlos (BOB_LIVE_DATA=false) deja el backend
     # 100% offline: útil para trabajar el backtest sin tocar la red.
     bob_live_data: bool = True
-    #: "auto" | "ws" | "rest". En "auto" arranca por WebSocket y cae a polling
-    #: REST si el WS conecta pero no entrega frames (ver data/binance_poll.py).
+    #: "auto" | "ws" | "rest". En "auto" arranca por WebSocket y, según qué
+    #: streams entreguen, cae entero a polling REST o rellena por REST solo lo
+    #: mudo dejando el WS con el resto (ver data/binance_poll.py). "ws" fuerza
+    #: el camino de baja latencia; "rest", el de polling.
     bob_feed_mode: str = "auto"
     #: Granularidad de los snapshots de OI / ratios (ventana ~30 días).
     bob_snapshot_period: str = "15m"
