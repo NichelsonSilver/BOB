@@ -349,7 +349,13 @@ entorno: `docs/HANDOFF_FASE1.md`.
    **adimensionalidad** (escalar el precio ×10 no cambia la matriz)
 
 ### Fase 3 — Modelos (PUROS) ✅
-1. ⬜ HMM gaussiano con BIC — pendiente; el markov heredado sigue de baseline
+1. ✅ HMM gaussiano (`models/hmm.py`): Baum-Welch propio en numpy, filtrado
+   causal separado del suavizado (el `predict` de las librerías es lookahead),
+   n elegido por BIC **o ICL**, duraciones de régimen para el KPI 3. Hallazgo
+   registrado: sobre 69k barras el BIC decrece monótonamente y elige el borde
+   —el HMM tesela el eje de volatilidad—, así que el selector reporta ambos
+   criterios, una regla de parsimonia explícita y sus advertencias. El markov
+   heredado sigue de baseline. Detalle en `docs/PROBABILITY_MODEL.md` §9-bis
 2. ✅ Triple-barrier + probabilidad calibrada (isotónica sobre OOF purgado)
 3. ✅ Dos targets más: volatilidad realizada (HAR/GARCH/EWMA de baseline) y
    cono de precio conformal (CQR + ACI)
