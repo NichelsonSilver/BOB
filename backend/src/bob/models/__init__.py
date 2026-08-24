@@ -1,8 +1,14 @@
 """Modelos probabilísticos — PUROS, sin I/O. Cobertura objetivo >= 90%.
 
-  markov.py       — detector de régimen (heredado; baseline y fallback del HMM)
-Fase 3 (pendiente):
-  probability.py  — P(TP antes que SL) via triple-barrier + regresión logística
-  calibration.py  — calibración isotónica + curvas de fiabilidad
-  projection.py   — EV, TP/SL por ATR, duración de régimen, precio de liquidación
+  markov.py      — detector de régimen (heredado; baseline y fallback del HMM)
+  labeling.py    — triple-barrier, targets y pesos por unicidad
+  validation.py  — walk-forward purgado con embargo
+  forecast.py    — P(TP antes que SL) calibrada, volatilidad, cono conformal
+  baselines.py   — RandomWalk, EWMA, GARCH(1,1), HAR-RV
+  metrics.py     — Brier, ECE, AUC, QLIKE, Winkler, Diebold-Mariano
+  experiment.py  — orquesta el walk-forward completo
+  report.py      — renderiza el reporte a texto
+  projection.py  — KPI 2: TP/SL por sigma, EV neto, leverage y liquidación
+Pendiente:
+  hmm.py         — HMM gaussiano con n estados elegido por BIC (Fase 3.1)
 """

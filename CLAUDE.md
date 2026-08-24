@@ -353,7 +353,10 @@ entorno: `docs/HANDOFF_FASE1.md`.
 2. ✅ Triple-barrier + probabilidad calibrada (isotónica sobre OOF purgado)
 3. ✅ Dos targets más: volatilidad realizada (HAR/GARCH/EWMA de baseline) y
    cono de precio conformal (CQR + ACI)
-4. ⬜ `projection.py`: EV con leverage, precio de liquidación
+4. ✅ `projection.py`: TP/SL dimensionados por la sigma pronosticada, EV neto
+   (fees + slippage + funding), ROE por leverage, **precio de liquidación**,
+   distancia en sigmas y leverage máximo seguro. Se apoya en el target de
+   volatilidad —que sí pasó el gate— y no en el de dirección
 5. ✅ Cobertura ≥ 94% en todo `models/`
 
 ### Fase 4 — Backtesting engine — EL GATE ✅ (corrido)
