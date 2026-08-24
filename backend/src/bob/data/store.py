@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 from loguru import logger
@@ -17,8 +18,11 @@ from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from bob.data.binance_rest import INTERVAL_MS, Kline
-from bob.db.models import CandleRecord
+from bob.db.models import CandleRecord, DerivativeSnapshot
 from bob.db.session import get_session, init_db
+
+if TYPE_CHECKING:  # solo para tipos: snapshots.py importa store, no al reves
+    from bob.data.snapshots import DerivativePoint
 
 
 @dataclass(frozen=True)
@@ -266,6 +270,97 @@ def coverage(symbol: str, timeframe: str, session: Session | None = None) -> dic
             "n_candles": int(count or 0),
             "first_open_time": int(first or 0),
             "last_open_time": int(last or 0),
+        }
+    finally:
+        if owns:
+            session.close()
+
+
+def upsert_derivatives(
+    symbol: str,
+    period: str,
+    points: Iterable[DerivativePoint],
+    session: Session | None = None,
+) -> int:
+    """Inserta o actualiza puntos de derivados. Único por (symbol, period, timestamp).
+
+    Mismo contrato que `upsert_klines`: idempotente, devuelve filas escritas.
+    El solape entre snapshots consecutivos es deliberado (ver snapshots.py), y
+    es justamente lo que exige que esto sea un upsert y no un insert.
+    """
+    owns = session is None
+    if owns:
+        init_db()
+        session = get_session()
+    assert session is not None
+
+    try:
+        rows = list(points)
+        if not rows:
+            return 0
+
+        existing = {
+            record.timestamp: record
+            for record in session.exec(
+                select(DerivativeSnapshot).where(
+                    DerivativeSnapshot.symbol == symbol,
+                    DerivativeSnapshot.period == period,
+                    DerivativeSnapshot.timestamp >= min(p.timestamp for p in rows),
+                    DerivativeSnapshot.timestamp <= max(p.timestamp for p in rows),
+                )
+            ).all()
+        }
+
+        written = 0
+        for point in rows:
+            record = existing.get(point.timestamp)
+            if record is None:
+                record = DerivativeSnapshot(
+                    symbol=symbol, period=period, timestamp=point.timestamp
+                )
+            # Solo se pisa lo que el snapshot trae: un ciclo donde falló un
+            # endpoint no debe borrar el dato que ya había de los otros.
+            if point.open_interest is not None:
+                record.open_interest = point.open_interest
+            if point.open_interest_value is not None:
+                record.open_interest_value = point.open_interest_value
+            if point.long_short_ratio is not None:
+                record.long_short_ratio = point.long_short_ratio
+            if point.long_account_pct is not None:
+                record.long_account_pct = point.long_account_pct
+            if point.short_account_pct is not None:
+                record.short_account_pct = point.short_account_pct
+            if point.taker_buy_sell_ratio is not None:
+                record.taker_buy_sell_ratio = point.taker_buy_sell_ratio
+            session.add(record)
+            written += 1
+
+        session.commit()
+        return written
+    finally:
+        if owns:
+            session.close()
+
+
+def derivatives_coverage(
+    symbol: str, period: str, session: Session | None = None
+) -> dict[str, int]:
+    """Resumen de derivados persistidos: n puntos, primer y último timestamp."""
+    owns = session is None
+    if owns:
+        init_db()
+        session = get_session()
+    assert session is not None
+    try:
+        ts_col = col(DerivativeSnapshot.timestamp)
+        stmt = select(func.count(ts_col), func.min(ts_col), func.max(ts_col)).where(
+            DerivativeSnapshot.symbol == symbol, DerivativeSnapshot.period == period
+        )
+        count, first, last = session.exec(stmt).one()
+        return {
+            "n_points": int(count or 0),
+            "first_timestamp": int(first or 0),
+            "last_timestamp": int(last or 0),
         }
     finally:
         if owns:

@@ -314,6 +314,15 @@ class BinanceRestClient:
             out = [k for k in out if k.close_time < wall_now]
         return out
 
+    async def mark_price(self, symbol: str) -> dict[str, Any]:
+        """Mark price + funding corriente + próximo cobro (`/premiumIndex`).
+
+        Es el equivalente REST del stream `<sym>@markPrice@1s`: lo usa la
+        fuente de polling cuando el WS no está disponible.
+        """
+        data = await self._get("/fapi/v1/premiumIndex", {"symbol": symbol.upper()})
+        return dict(data)
+
     async def funding_history(
         self, symbol: str, start_time: int | None = None, limit: int = 1000
     ) -> list[dict[str, Any]]:

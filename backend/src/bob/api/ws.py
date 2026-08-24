@@ -7,7 +7,8 @@ clients filter on `event`.
 Eventos previstos (los productores llegan en fases posteriores):
   "signal.new"      — nueva señal emitida (live/analyst.py, Fase 5)
   "signal.update"   — KPI Seguridad recalculado in-live para el trade abierto
-  "market.tick"     — precio/candle update del símbolo activo (Fase 1/6)
+  "market.tick"     — precio en curso / mark price del símbolo (live/feed.py)
+  "market.candle"   — vela CERRADA: la única que el modelo puede mirar
   "paper.outcome"   — outcome de una señal en paper tracking (Fase 5)
   "conn.status"     — estado de las conexiones a fuentes de datos
 """

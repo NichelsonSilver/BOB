@@ -12,6 +12,7 @@ from bob.api.ws import broadcast_hub
 from bob.api.ws import router as ws_router
 from bob.config import settings
 from bob.db.session import init_db
+from bob.live.feed import LiveDataService
 
 
 @asynccontextmanager
@@ -24,12 +25,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
     init_db()
 
-    # Fase 1: aquí arranca el MarketDataHub de Binance (data/binance_ws.py)
+    feed: LiveDataService | None = None
+    if settings.bob_live_data:
+        feed = LiveDataService(
+            settings.watchlist,
+            settings.bob_default_timeframe,
+            publish=broadcast_hub.publish,
+            feed_mode=settings.bob_feed_mode,
+            snapshot_period=settings.bob_snapshot_period,
+            snapshot_interval_s=settings.bob_snapshot_interval_min * 60,
+        )
+        app.state.feed = feed
+        await feed.start()
+    else:
+        logger.warning("BOB_LIVE_DATA=false — backend sin feed de Binance (modo offline)")
+
     # Fase 5: aquí arranca el LiveAnalyst y el PaperTracker
     # Fase 7: aquí arranca APScheduler (snapshots de sentimiento)
 
     yield
 
+    if feed is not None:
+        await feed.stop()
     await broadcast_hub.stop()
     logger.info("BOB shutting down")
 
@@ -80,7 +97,8 @@ app.include_router(ws_router)
 
 
 @app.get("/api/health")
-async def health() -> dict[str, Any]:
+async def health(request: Request) -> dict[str, Any]:
+    feed: LiveDataService | None = getattr(request.app.state, "feed", None)
     return {
         "status": "ok",
         "service": "bob",
@@ -88,4 +106,11 @@ async def health() -> dict[str, Any]:
         "watchlist": settings.watchlist,
         "default_timeframe": settings.bob_default_timeframe,
         "signal_threshold": settings.bob_signal_threshold,
+        # Regla 8: el estado del feed es parte de lo que el usuario debe ver.
+        "live_data": settings.bob_live_data,
+        "feed": (
+            {"source": feed.hub.source_name, **feed.hub.status.as_dict()}
+            if feed is not None
+            else None
+        ),
     }
