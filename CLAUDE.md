@@ -158,19 +158,23 @@ bob/
 │   │   │   ├── outliers.py         # Fase 8 — Outliers Club
 │   │   │   └── store.py            # Persistencia de klines para backtest offline
 │   │   ├── signals/                # Feature engine (PURO, sin I/O)
-│   │   │   ├── indicators.py       # ATR, EMA, RSI, VWAP (hereda range_suggestion)
-│   │   │   ├── microstructure.py   # Orderbook imbalance, volume delta, taker ratio
-│   │   │   ├── derivatives.py      # Funding, OI deltas, long/short ratio
-│   │   │   └── features.py         # Ensambla el feature vector normalizado
+│   │   │   ├── indicators.py       # Decimal, pocas velas — camino de PRESENTACIÓN
+│   │   │   ├── numeric.py          # float64 vectorizado — camino de MODELADO
+│   │   │   ├── features.py         # Ensambla las 55 features adimensionales
+│   │   │   ├── microstructure.py   # (Fase 2b) orderbook imbalance desde WS
+│   │   │   └── derivatives.py      # (Fase 2b) funding, OI deltas, long/short
 │   │   ├── models/                 # Modelos probabilísticos (PUROS, sin I/O)
-│   │   │   ├── markov.py           # Hereda del build anterior → HMM gaussiano
-│   │   │   ├── probability.py      # P(TP antes que SL) — el corazón del KPI 1
-│   │   │   ├── calibration.py      # Calibración isotónica + curvas de fiabilidad
-│   │   │   └── projection.py       # EV, TP/SL sugeridos, duración de régimen, liq
-│   │   ├── backtest/               # Backtesting engine (event-driven, propio)
-│   │   │   ├── engine.py           # Replay de klines → señales → resultados
-│   │   │   ├── walkforward.py      # Train/test rolling, sin lookahead
-│   │   │   └── metrics.py          # Win rate, profit factor, max DD, calibración
+│   │   │   ├── markov.py           # Heredado — baseline de régimen
+│   │   │   ├── labeling.py         # Triple-barrier, targets, pesos por unicidad
+│   │   │   ├── validation.py       # Walk-forward purgado + embargo
+│   │   │   ├── forecast.py         # Probabilidad calibrada, volatilidad, conformal
+│   │   │   ├── baselines.py        # RandomWalk, EWMA, GARCH(1,1), HAR-RV
+│   │   │   ├── metrics.py          # Brier, ECE, QLIKE, Winkler, Diebold-Mariano
+│   │   │   ├── experiment.py       # Orquesta el walk-forward completo
+│   │   │   ├── report.py           # Renderiza el reporte a texto
+│   │   │   └── projection.py       # (pendiente) EV con leverage, precio de liq
+│   │   ├── backtest/               # Capa de I/O del experimento
+│   │   │   └── runner.py           # DB → experiment → reporte + BacktestRun
 │   │   ├── paper/
 │   │   │   └── tracker.py          # Simula forward cada señal emitida, registra outcome
 │   │   ├── live/
@@ -238,9 +242,18 @@ por bucket de probabilidad, profit factor, max drawdown, expectancy, y
 **error de calibración** (el KPI dice 75% → ¿acertó 75%?).
 
 **Ninguna señal se muestra como operable en el dashboard hasta que el
-backtest walk-forward demuestre calibración aceptable** (error medio de
-calibración < 10 puntos porcentuales por bucket). Antes de eso, todo se
-etiqueta "experimental".
+backtest walk-forward pase los DOS criterios del gate**. Antes de eso, todo
+se etiqueta "experimental".
+
+1. **Calibración**: error medio de calibración < 10 puntos porcentuales
+   por bucket.
+2. **Discriminación**: AUC > 0.55 y Brier Skill Score > 0 contra la tasa
+   base, out-of-sample.
+
+Los dos, no uno. Un modelo que predice SIEMPRE la tasa base está
+perfectamente calibrado por construcción y es inútil: no distingue nada.
+La calibración dice "cuando digo 70%, acierto 70%"; la discriminación dice
+"sé cuáles son los casos de 70%". Pasar solo la primera no habilita operar.
 
 ### Paper tracking (validación forward continua)
 
@@ -302,29 +315,41 @@ de DB definido, backend booteable sin `.env`, frontend compilando con las
 5 páginas placeholder, 35 tests en verde. Estado detallado y gotchas de
 entorno: `docs/HANDOFF_FASE1.md`.
 
-### Fase 1 — Pipeline de datos Binance
-1. `data/binance_ws.py`: klines + aggTrades + depth + markPrice, multiplexado,
-   reconexión con backoff+jitter
-2. `data/binance_rest.py`: histórico de klines (para backtest), OI, funding,
-   ratios; token bucket para rate limits
-3. `data/store.py`: persistir klines en SQLite para replay offline
-4. Test: descargar 90 días de ETHUSDT 15m + recibir stream en vivo
+### Fase 1 — Pipeline de datos Binance (REST ✅ / WS pendiente)
+1. ⬜ `data/binance_ws.py`: klines + aggTrades + depth + markPrice, multiplexado,
+   reconexión con backoff+jitter — **lo único que falta de la fase**
+2. ✅ `data/binance_rest.py`: histórico de klines, OI, funding, ratios; limiter
+   autorregulado por el header `X-MBX-USED-WEIGHT-1M`
+3. ✅ `data/store.py`: klines en SQLite + `OHLCVSeries` (frontera de pureza:
+   de acá para arriba solo numpy). Huecos se reportan, nunca se rellenan
+4. ✅ `data/download.py`: CLI idempotente. **69.119 velas de ETHUSDT 15m
+   persistidas (720 días, 100% de completitud, 0 huecos)** — superado el
+   objetivo de 90 días
 
-### Fase 2 — Feature engine (PURO)
-1. `signals/indicators.py`, `microstructure.py`, `derivatives.py`, `features.py`
-2. Cobertura ≥ 90% — cada feature validado contra valores conocidos
+### Fase 2 — Feature engine (PURO) ✅
+1. ✅ `signals/numeric.py` (primitivas causales) + `features.py` (55 features
+   en 6 familias). `microstructure.py`/`derivatives.py` quedan para Fase 2b:
+   necesitan el WS y el histórico de OI que Binance solo guarda 30 días
+2. ✅ Cobertura 100% en features.py, 91% en numeric.py. Dos invariantes con
+   test propio: **sin lookahead** (mutar el futuro no altera el pasado) y
+   **adimensionalidad** (escalar el precio ×10 no cambia la matriz)
 
-### Fase 3 — Modelos (PUROS)
-1. HMM gaussiano con selección de n por BIC + fallback al markov heredado
-2. Triple-barrier labeling + modelo de probabilidad + calibración isotónica
-3. `projection.py`: EV, TP/SL por ATR, duración de régimen, liquidación
-4. Cobertura ≥ 90%
+### Fase 3 — Modelos (PUROS) ✅
+1. ⬜ HMM gaussiano con BIC — pendiente; el markov heredado sigue de baseline
+2. ✅ Triple-barrier + probabilidad calibrada (isotónica sobre OOF purgado)
+3. ✅ Dos targets más: volatilidad realizada (HAR/GARCH/EWMA de baseline) y
+   cono de precio conformal (CQR + ACI)
+4. ⬜ `projection.py`: EV con leverage, precio de liquidación
+5. ✅ Cobertura ≥ 94% en todo `models/`
 
-### Fase 4 — Backtesting engine — EL GATE
-1. Replay event-driven + walk-forward + métricas + curva de calibración
-2. Correr sobre ≥ 12 meses de ETHUSDT 15m
-3. **Criterio de salida**: error de calibración < 10pp por bucket. Si no se
-   cumple, se itera en features/modelo — no se avanza a señales en vivo.
+### Fase 4 — Backtesting engine — EL GATE ✅ (corrido)
+1. ✅ Walk-forward purgado con embargo + métricas + curva de calibración +
+   test de Diebold-Mariano contra baselines
+2. ✅ Corrido sobre 24 meses de ETHUSDT 15m
+3. **Criterio de salida (los dos, en TODAS las direcciones)**: error de
+   calibración < 10pp por bucket **y** AUC > 0.55 con BSS > 0. Ver el
+   veredicto en el último `backend/artifacts/*.txt`. Método completo y
+   límites conocidos: `docs/PROBABILITY_MODEL.md`
 
 ### Fase 5 — Señales en vivo + paper tracking
 1. `live/analyst.py`: loop data → features → modelo → señal
@@ -346,8 +371,8 @@ entorno: `docs/HANDOFF_FASE1.md`.
 
 1. **BOB nunca ejecuta órdenes.** No hay código de ejecución en main. Punto.
 2. **Ningún KPI probabilístico se muestra como operable sin calibración
-   demostrada** (backtest walk-forward + paper tracking). "Experimental" en
-   gris hasta entonces.
+   Y discriminación demostradas** (backtest walk-forward + paper tracking).
+   "Experimental" en gris hasta entonces.
 3. **Pureza por capas**: `signals/`, `models/`, `backtest/` no hacen I/O.
    Todo I/O de mercado vive en `data/`. Es lo que hace el motor testeable
    y agnóstico del símbolo.
