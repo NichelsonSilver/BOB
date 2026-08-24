@@ -479,6 +479,107 @@ precio en el que confiar es útil aunque nadie sepa hacia dónde va el precio.
 
 ---
 
+## 9-bis. Detector de régimen: HMM gaussiano (`models/hmm.py`)
+
+El `markov.py` heredado clasifica el régimen con umbrales fijos sobre retorno
+y volatilidad. Sirve de baseline, pero los umbrales son una decisión del
+programador, no de los datos. El HMM gaussiano los reemplaza por un modelo
+generativo: K estados ocultos, cada uno con su media y varianza sobre
+`(retorno log, log-volatilidad realizada por barra)`, y una matriz de
+transición estimada por Baum-Welch.
+
+### 9-bis.1 Filtrado, no suavizado — y por qué se escribió a mano
+
+Un HMM ofrece dos inferencias distintas sobre el estado de la barra *t*:
+
+| | qué condiciona | ¿sirve de feature? |
+|---|---|---|
+| **Filtrado** `P(s_t \| x_0..x_t)` | solo el pasado | **sí** |
+| **Suavizado** `P(s_t \| x_0..x_T)` | toda la serie | **no: es lookahead** |
+| Viterbi | toda la serie | **no: es lookahead** |
+
+Las APIs habituales (`predict`, `predict_proba` de `hmmlearn`) devuelven las
+dos últimas. Usarlas para alimentar el KPI 1 viola la regla 5, y el bug sería
+invisible: el backtest mejora y la señal en vivo no reproduce. Por eso el
+módulo implementa el forward-backward propio, expone `filtered_probs` como la
+única entrada válida al modelo, y deja `smoothed_probs` documentado como
+herramienta de análisis histórico.
+
+Hay un test que lo fija: mutar el futuro de la serie no cambia ni un dígito de
+las probabilidades filtradas del pasado, mientras que las suavizadas sí
+cambian. Es el mismo invariante que protege al feature engine.
+
+(Además, `hmmlearn` no publica wheel para Python 3.14 y exige compilar con
+MSVC. Lo que aportaba era el Baum-Welch, ~80 líneas de numpy.)
+
+### 9-bis.2 Elección de n estados: **BIC no encuentra óptimo interior**
+
+CLAUDE.md especifica elegir n por BIC sobre la ventana de entrenamiento. Se
+implementó, se corrió sobre las 69.023 observaciones usables de ETHUSDT 15m, y
+el resultado hay que decirlo tal cual es:
+
+| n | BIC | ICL | convergió |
+|---|---|---|---|
+| 2 | −576.375 | −571.765 | sí |
+| 3 | −630.994 | −626.516 | sí |
+| 4 | −671.952 | −667.233 | sí |
+| 5 | −703.539 | −698.385 | sí |
+| 6 | −724.761 | −718.574 | **no** |
+
+El BIC **decrece monótonamente**: el "óptimo" es siempre el candidato más
+grande que se pruebe. La causa es doble y ninguna es un bug:
+
+1. Con n = 69.023, la penalización `p·log n` (~700) es ruido frente a
+   ganancias de verosimilitud de decenas de miles.
+2. La densidad real de `(retorno, log-vol)` no es una mezcla de K gaussianas.
+   Agregar estados siempre ajusta mejor porque el modelo **tesela el eje de
+   volatilidad**: con n=6 salen cinco estados "lateral" que solo difieren en
+   sigma.
+
+Tres respuestas, todas en el código y en el dashboard:
+
+- **ICL** (Biernacki, Celeux & Govaert 2000) = BIC + 2·entropía de los
+  posteriores. Penaliza estados que se solapan en vez de premiar solo el
+  ajuste. Acá también resulta monótono, lo que refuerza el diagnóstico en vez
+  de taparlo.
+- **Regla de parsimonia declarada** (`knee_n`): primer n cuya mejora marginal
+  cae bajo la mitad de la primera. No es un óptimo, es un corte explícito.
+- **Advertencias en el resultado** (`StateSelection.warnings`): "el criterio
+  mejora en todo el rango probado", "el ganador está en el borde", "sin
+  converger en n=6". El selector nunca devuelve un número pelado.
+
+Los ajustes que no convergieron quedan fuera de la competencia: la
+verosimilitud de un EM interrumpido no es comparable con la de uno convergido.
+
+### 9-bis.3 Qué encuentra el modelo sobre ETHUSDT
+
+Ajuste parsimonioso con n=3 sobre los dos años completos:
+
+| estado | etiqueta | retorno/barra | vol/barra | permanencia | duración esperada | tiempo |
+|---|---|---|---|---|---|---|
+| 0 | ranging | +0,0008% | 0,313% | 0,989 | 23,1 h | 38% |
+| 1 | volatile | −0,0018% | 0,490% | 0,990 | 25,4 h | 27% |
+| 2 | ranging | +0,0004% | 0,187% | 0,994 | 38,5 h | 35% |
+
+Dos lecturas:
+
+1. **Los estados se separan por volatilidad, no por dirección.** Los retornos
+   medios son estadísticamente indistinguibles de cero en los tres. Es el
+   mismo veredicto que dio el gate de la Fase 4 desde otro ángulo: en 15m la
+   dirección no es predecible, la volatilidad sí tiene estructura.
+2. **Los regímenes son muy persistentes** (0,989-0,994 en la diagonal), o sea
+   duraciones esperadas de 23 a 38 horas. Eso es lo que alimenta el KPI 3 —
+   y por qué se muestra como rango: la duración de una geométrica tiene
+   varianza enorme, la media informa poco por sí sola.
+
+### 9-bis.4 Costo
+
+El ajuste sobre 69k observaciones toma ~40 s por modelo y ~150 s la búsqueda
+completa de n ∈ {2..6}. Es un reentrenamiento periódico (APScheduler, ventana
+rodante), nunca parte del hot path del tick.
+
+---
+
 ## 10. Reproducibilidad
 
 ```bash
@@ -541,3 +642,5 @@ Declarados acá para que nadie los descubra después leyendo el código:
 - Romano, Y., Patterson, E. & Candès, E. (2019). Conformalized Quantile Regression. *NeurIPS*.
 - Gibbs, I. & Candès, E. (2021). Adaptive Conformal Inference Under Distribution Shift. *NeurIPS*.
 - Parkinson, M. (1980); Garman, M. & Klass, M. (1980). Estimadores de volatilidad por rango.
+- Rabiner, L. (1989). A Tutorial on Hidden Markov Models. *Proceedings of the IEEE*. (Forward-backward con escalado.)
+- Biernacki, C., Celeux, G. & Govaert, G. (2000). Assessing a mixture model for clustering with the integrated completed likelihood. *IEEE TPAMI*.

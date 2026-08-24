@@ -9,6 +9,5 @@
   experiment.py  — orquesta el walk-forward completo
   report.py      — renderiza el reporte a texto
   projection.py  — KPI 2: TP/SL por sigma, EV neto, leverage y liquidación
-Pendiente:
-  hmm.py         — HMM gaussiano con n estados elegido por BIC (Fase 3.1)
+  hmm.py         — HMM gaussiano de regímenes, n por BIC/ICL, filtrado causal
 """
