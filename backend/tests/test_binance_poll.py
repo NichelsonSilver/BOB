@@ -1,9 +1,11 @@
-"""Tests de la fuente REST en vivo y del cambio automático de fuente.
+"""Tests de la fuente REST en vivo y de la degradación por stream.
 
-Existe porque en la red del usuario el WS de futuros acepta la suscripción y no
-manda un solo frame (ver `data/binance_poll.py`). Lo que se protege acá: que la
-misma vela cerrada no se emita dos veces, y que el hub se dé cuenta de que el
-WS está mudo y cambie de fuente sin perder consumidores.
+Existe porque desde la red del usuario `fstream.binance.com` entrega unos
+streams y calla otros sobre la misma conexión (ver `data/binance_poll.py`). Lo
+que se protege acá: que la misma vela cerrada no se emita dos veces, que el hub
+distinga "socket caído" de "stream mudo", que rellene por REST **solo** lo que
+el WS no da, y que no cuente el flujo taker dos veces cuando los dos streams de
+trades están vivos a la vez.
 """
 
 from __future__ import annotations
@@ -16,9 +18,23 @@ from httpx import AsyncClient, MockTransport, Request, Response
 
 from bob.data.binance_poll import BinancePollSource
 from bob.data.binance_rest import INTERVAL_MS, BinanceRestClient
-from bob.data.binance_ws import BinanceMarketStream, KlineEvent, MarketDataHub, MarkPriceEvent
+from bob.data.binance_ws import (
+    AggTradeEvent,
+    BinanceMarketStream,
+    ConnectionStatus,
+    KlineEvent,
+    MarketDataHub,
+    MarkPriceEvent,
+)
 
-from .test_binance_ws import FakeConnector, FakeSocket
+from .test_binance_ws import (
+    FakeConnector,
+    FakeSocket,
+    _agg_trade_frame,
+    _kline_frame,
+    _mark_price_frame,
+    _trade_frame,
+)
 
 TF = "15m"
 STEP = INTERVAL_MS[TF]
@@ -156,46 +172,66 @@ class TestPollSource:
         await source.stop()
 
 
-class TestFallbackAutomatico:
+class FakePoll:
+    """`BinancePollSource` de mentira: registra con qué la construyeron.
+
+    Lo que interesa afirmar es que el hub pide **solo** lo que falta: un
+    relleno que además trajera lo que el WS ya entrega haría que el dashboard
+    alternara entre un precio fresco y uno de hace segundos.
+    """
+
+    source_name = "binance_rest_poll"
+    creados: list[FakePoll] = []
+
+    def __init__(self, symbols: Any, timeframe: str, **kwargs: Any) -> None:
+        self.symbols = symbols
+        self.timeframe = timeframe
+        self.kwargs = kwargs
+        self.listeners: list[Any] = []
+        self.started = False
+        self.status_obj = ConnectionStatus()
+        FakePoll.creados.append(self)
+
+    @property
+    def status(self) -> Any:
+        return self.status_obj
+
+    def add_listener(self, listener: Any) -> None:
+        self.listeners.append(listener)
+
+    async def start(self) -> None:
+        self.started = True
+
+    async def stop(self) -> None:
+        self.started = False
+
+
+@pytest.fixture
+def sin_red(monkeypatch: pytest.MonkeyPatch) -> type[FakePoll]:
+    """Ningún test de este bloque puede salir a Binance de verdad."""
+    FakePoll.creados = []
+    monkeypatch.setattr("bob.data.binance_poll.BinancePollSource", FakePoll)
+    return FakePoll
+
+
+def _ws(frames: list[str]) -> BinanceMarketStream:
+    return BinanceMarketStream(
+        ["ETHUSDT"],
+        TF,
+        connect=FakeConnector([FakeSocket(frames, after="hang")]),
+        connection_ttl=1e9,
+        recv_timeout=5.0,
+    )
+
+
+class TestSocketMudo:
+    """El WS conecta y no entrega NADA: se reemplaza la fuente entera."""
+
     async def test_cambia_a_rest_cuando_el_ws_no_entrega(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, sin_red: type[FakePoll]
     ) -> None:
-        """El caso real: el WS conecta, confirma la suscripción y queda mudo."""
-        mudo = BinanceMarketStream(
-            ["ETHUSDT"],
-            TF,
-            connect=FakeConnector([FakeSocket([], after="hang")]),
-            connection_ttl=1e9,
-            recv_timeout=5.0,
-        )
-        creados: list[Any] = []
-
-        class FakePoll:
-            source_name = "binance_rest_poll"
-
-            def __init__(self, symbols: Any, timeframe: str) -> None:
-                self.listeners: list[Any] = []
-                self.started = False
-                self.status_obj = mudo.status
-                creados.append(self)
-
-            @property
-            def status(self) -> Any:
-                return self.status_obj
-
-            def add_listener(self, listener: Any) -> None:
-                self.listeners.append(listener)
-
-            async def start(self) -> None:
-                self.started = True
-
-            async def stop(self) -> None:
-                self.started = False
-
-        monkeypatch.setattr("bob.data.binance_poll.BinancePollSource", FakePoll)
-
         hub = MarketDataHub(
-            ["ETHUSDT"], TF, persist=False, stream=mudo, mode="auto", ws_probe_s=0.05
+            ["ETHUSDT"], TF, persist=False, stream=_ws([]), mode="auto", ws_probe_s=0.05
         )
         vistos: list[Any] = []
 
@@ -203,44 +239,155 @@ class TestFallbackAutomatico:
             vistos.append(event)
 
         hub.add_listener(consumidor)
-
         await hub.start()
         await asyncio.sleep(0.2)
 
-        assert creados, "no cayó a REST"
+        assert sin_red.creados, "no cayó a REST"
         assert hub.source_name == "binance_rest_poll"
-        assert creados[0].started is True
+        assert sin_red.creados[0].started is True
 
         # El consumidor sigue enganchado después del cambio de fuente.
-        await creados[0].listeners[0](
+        await sin_red.creados[0].listeners[0](
             KlineEvent(
-                symbol="ETHUSDT",
-                timeframe=TF,
-                kline=_fake_kline(),
-                is_closed=True,
-                event_time=1,
+                symbol="ETHUSDT", timeframe=TF, kline=_fake_kline(), is_closed=True, event_time=1
             )
         )
         assert len(vistos) == 1
         await hub.stop()
 
-    async def test_no_cambia_si_el_ws_entrega(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        vivo = BinanceMarketStream(
+
+class TestStreamsMudos:
+    """El caso real medido el 2026-08-24: el socket entrega `@trade` y calla
+    `@kline`, `@markPrice` y `@aggTrade`."""
+
+    async def test_rellena_por_rest_solo_lo_que_falta(self, sin_red: type[FakePoll]) -> None:
+        hub = MarketDataHub(
             ["ETHUSDT"],
             TF,
-            connect=FakeConnector([FakeSocket([_MARK_FRAME], after="hang")]),
-            connection_ttl=1e9,
-            recv_timeout=5.0,
-        )
-        hub = MarketDataHub(
-            ["ETHUSDT"], TF, persist=False, stream=vivo, mode="auto", ws_probe_s=0.05
+            persist=False,
+            stream=_ws([_trade_frame()]),
+            mode="auto",
+            ws_probe_s=0.05,
         )
         await hub.start()
         await asyncio.sleep(0.2)
 
+        assert len(sin_red.creados) == 1
+        assert sin_red.creados[0].kwargs["klines"] is True
+        assert sin_red.creados[0].kwargs["mark_price"] is True
+        # El WS NO se apaga: sigue sirviendo el flujo taker a <100ms.
+        assert isinstance(hub.stream, BinanceMarketStream)
+        assert hub.source_name == "binance_ws+rest_fill(kline,markPrice)"
+        await hub.stop()
+
+    async def test_no_rellena_si_todos_los_streams_entregan(
+        self, sin_red: type[FakePoll]
+    ) -> None:
+        hub = MarketDataHub(
+            ["ETHUSDT"],
+            TF,
+            persist=False,
+            stream=_ws([_kline_frame(), _mark_price_frame(), _agg_trade_frame(), _trade_frame()]),
+            mode="auto",
+            ws_probe_s=0.05,
+        )
+        await hub.start()
+        await asyncio.sleep(0.2)
+
+        assert sin_red.creados == []
         assert hub.source_name == "binance_ws"
         await hub.stop()
 
+    async def test_no_inventa_relleno_para_lo_que_el_rest_no_da(
+        self, sin_red: type[FakePoll]
+    ) -> None:
+        """Sin flujo taker en vivo no hay relleno posible a esta cadencia: se
+        reporta y se sigue con el volumen taker que trae la vela cerrada."""
+        hub = MarketDataHub(
+            ["ETHUSDT"],
+            TF,
+            persist=False,
+            stream=_ws([_kline_frame(), _mark_price_frame()]),
+            mode="auto",
+            ws_probe_s=0.05,
+        )
+        await hub.start()
+        await asyncio.sleep(0.2)
+
+        assert sin_red.creados == []
+        assert hub.source_name == "binance_ws"
+        await hub.stop()
+
+    async def test_reporta_los_mudos_en_el_estado_de_conexion(self) -> None:
+        """Regla 8: el dashboard tiene que poder decir qué stream no llega."""
+        stream = _ws([_trade_frame()])
+        await stream.start()
+        await asyncio.sleep(0.1)
+
+        estado = stream.status.as_dict()
+        assert estado["stream_messages"] == {"ethusdt@trade": 1}
+        assert set(estado["mute_streams"]) == {
+            "ethusdt@kline_15m",
+            "ethusdt@markPrice@1s",
+            "ethusdt@aggTrade",
+        }
+        await stream.stop()
+
+
+class TestDedupDeFlujoTaker:
+    """`@aggTrade` y `@trade` son el mismo flujo: uno agregado por orden
+    agresora y el otro fill por fill. Sumarlos duplicaría el volumen."""
+
+    async def test_descarta_el_crudo_cuando_el_agregado_esta_vivo(self) -> None:
+        hub = MarketDataHub(["ETHUSDT"], TF, persist=False, stream=_ws([]), mode="ws")
+
+        await hub._on_event(_trade("2.0", aggregated=True))
+        await hub._on_event(_trade("2.0", aggregated=False))
+
+        assert hub.state["ETHUSDT"].taker_buy_qty == 2.0
+
+    async def test_cuenta_el_crudo_mientras_el_agregado_no_aparezca(self) -> None:
+        hub = MarketDataHub(["ETHUSDT"], TF, persist=False, stream=_ws([]), mode="ws")
+
+        await hub._on_event(_trade("2.0", aggregated=False))
+        await hub._on_event(_trade("1.0", aggregated=False))
+
+        assert hub.state["ETHUSDT"].taker_buy_qty == 3.0
+
+
+def _trade(qty: str, *, aggregated: bool) -> AggTradeEvent:
+    return AggTradeEvent(
+        symbol="ETHUSDT",
+        price="2500.0",
+        quantity=qty,
+        is_buyer_maker=False,
+        trade_time=1,
+        event_time=1,
+        aggregated=aggregated,
+    )
+
+
+class TestRellenoSelectivo:
+    async def test_puede_traer_solo_el_mark_price(self) -> None:
+        source, recibidos = _source(Backend(), klines=False)
+        await source._poll_symbol("ETHUSDT")
+
+        assert all(isinstance(e, MarkPriceEvent) for e in recibidos)
+        assert recibidos, "no emitió el mark price"
+
+    async def test_puede_traer_solo_las_velas(self) -> None:
+        source, recibidos = _source(Backend(), mark_price=False)
+        await source._poll_symbol("ETHUSDT")
+
+        assert all(isinstance(e, KlineEvent) for e in recibidos)
+        assert recibidos, "no emitió velas"
+
+    async def test_rechaza_una_fuente_que_no_emitiria_nada(self) -> None:
+        with pytest.raises(ValueError, match="nada que emitir"):
+            BinancePollSource(["ETHUSDT"], TF, klines=False, mark_price=False)
+
+
+class TestModosDelHub:
     async def test_modo_rest_no_toca_el_websocket(self) -> None:
         hub = MarketDataHub(["ETHUSDT"], TF, persist=False, mode="rest")
         assert hub.source_name == "binance_rest_poll"
@@ -248,12 +395,6 @@ class TestFallbackAutomatico:
     async def test_modo_desconocido_falla_temprano(self) -> None:
         with pytest.raises(ValueError, match="modo de feed"):
             MarketDataHub(["ETHUSDT"], TF, mode="telepatia")
-
-
-_MARK_FRAME = (
-    '{"stream":"ethusdt@markPrice@1s","data":{"e":"markPriceUpdate","E":1,'
-    '"s":"ETHUSDT","p":"2500.0","i":"2499.0","r":"0.0001","T":2}}'
-)
 
 
 def _fake_kline() -> Any:

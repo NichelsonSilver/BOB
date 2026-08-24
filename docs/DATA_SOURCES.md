@@ -31,13 +31,18 @@ periódicos, no para el hot path).
 Formato: `wss://fstream.binance.com/stream?streams=ethusdt@kline_15m/ethusdt@aggTrade/...`
 (streams combinados; los nombres de símbolo van en minúscula).
 
-| Stream | Qué da | Uso en BOB |
-|---|---|---|
-| `<sym>@kline_<tf>` | vela en curso (update ~250ms) + flag de cierre `k.x` | chart + features al cierre de barra |
-| `<sym>@aggTrade` | trades agregados con flag `m` (maker side) | volume delta / taker ratio en tiempo real |
-| `<sym>@depth20@100ms` | top 20 niveles del book cada 100ms | orderbook imbalance |
-| `<sym>@markPrice@1s` | mark price + funding rate corriente | KPI in-live, distancia a liquidación |
-| `<sym>@forceOrder` | liquidaciones | feature de microestructura (⚠️ Binance lo limita a 1 evento/seg por símbolo — es muestra, no feed completo) |
+La columna "desde acá" es el resultado medido el 2026-08-24 desde la red del
+usuario; ver el hallazgo más abajo antes de asumir que un stream llega.
+
+| Stream | Qué da | Uso en BOB | Desde acá |
+|---|---|---|---|
+| `<sym>@kline_<tf>` | vela en curso (update ~250ms) + flag de cierre `k.x` | chart + features al cierre de barra | ❌ mudo |
+| `<sym>@aggTrade` | trades agregados con flag `m` (maker side) | volume delta / taker ratio en tiempo real | ❌ mudo |
+| `<sym>@trade` | fills individuales, mismos campos + `X` (tipo de orden) | **sustituto de `@aggTrade`** — mismo flujo sin agregar | ✅ |
+| `<sym>@depth20@100ms` | top 20 niveles del book cada 100ms | orderbook imbalance | ✅ |
+| `<sym>@bookTicker` | mejor bid/ask con tamaños, por update | spread, presión en el tope del book | ✅ |
+| `<sym>@markPrice@1s` | mark price + funding rate corriente | KPI in-live, distancia a liquidación | ❌ mudo |
+| `<sym>@forceOrder` | liquidaciones | feature de microestructura (⚠️ Binance lo limita a 1 evento/seg por símbolo — es muestra, no feed completo) | ❌ mudo |
 
 **Trampas**:
 - Binance **corta cada conexión WS a las 24h** por diseño. La reconexión con
@@ -66,37 +71,99 @@ Formato: `wss://fstream.binance.com/stream?streams=ethusdt@kline_15m/ethusdt@agg
 - Símbolos en minúscula: con mayúscula Binance acepta el handshake y no manda
   nada, así que el bug parece de red y no lo es.
 
-### ⚠️ Hallazgo de campo (2026-08-24): el WS de futuros está MUDO desde acá
+### ⚠️ Hallazgo de campo (2026-08-24): Binance calla ciertos streams, no el host
 
-Desde la red del usuario (Antofagasta, ISP residencial), `fstream.binance.com`:
+> **Este hallazgo se diagnosticó mal el primer día y se corrigió el mismo día
+> midiéndolo bien.** La versión anterior decía "el WS de futuros está mudo
+> desde acá, es filtrado por IP/región del feed de derivados". Es falso: el
+> host entrega con normalidad, lo que calla son streams concretos. Se deja
+> escrito el error porque la conclusión equivocada casi nos cuesta la
+> microestructura de Fase 2b entera.
 
-1. acepta la conexión TLS y el handshake WebSocket,
-2. responde `{"result":null,"id":1}` a un `SUBSCRIBE`,
-3. confirma con `LIST_SUBSCRIPTIONS` que la suscripción está registrada,
-4. **y no envía ni un solo frame de mercado** — probado 15+ min, con
-   `@aggTrade`, `@markPrice`, `@kline_1m`, combinado y simple, ETHUSDT y BTCUSDT.
+Desde la red del usuario (Antofagasta, ISP residencial, PoP `ap-northeast-1`),
+`fstream.binance.com` acepta la conexión, confirma la suscripción y entrega
+**unos streams sí y otros no**:
 
-Lo que SÍ funciona desde la misma máquina, mismo minuto:
-
-| Endpoint | Resultado |
+| Entrega ✅ | Mudo ❌ |
 |---|---|
-| `fapi.binance.com` REST (klines, OI, funding, ratios) | ✅ normal |
-| `stream.binance.com:9443` (spot WS) | ✅ entrega trades |
-| `data-stream.binance.vision` (spot WS) | ✅ entrega trades |
-| `stream.binancefuture.com` (**testnet** de futuros WS) | ✅ entrega todo |
-| `fstream.binance.com` (futuros mainnet WS) | ❌ mudo |
+| `@trade`, `@bookTicker`, `!bookTicker` | `@aggTrade`, `@kline_*` |
+| `@depth`, `@depth5`, `@depth20` (todas las cadencias) | `@markPrice`, `@markPrice@1s`, `!markPrice@arr` |
+| WS-API (`ws-fapi.binance.com`, request/response) | `@ticker`, `@miniTicker`, `@forceOrder` |
+| COIN-M (`dstream.binance.com`), spot, testnet | |
 
-Diagnóstico: filtrado del lado de Binance sobre el feed de derivados para esa
-IP/región. **No es un bug del cliente**: el mismo `BinanceMarketStream` corrió
-130s contra el host de testnet y recibió 592 mensajes, 3 velas cerradas y
-reconectó solo tras un corte forzado.
+**La medición decisiva**: sobre **una sola conexión TLS** con los 6 streams
+suscritos a la vez, 90 segundos seguidos:
 
-Consecuencia de diseño: `data/binance_poll.py` replica el feed por REST
-(`klines?limit=2` + `premiumIndex`, ~2 de peso por símbolo por ciclo) emitiendo
-**los mismos eventos**, y el hub arranca en modo `auto`: prueba el WS y, si en
-25s no llegó un frame, cambia a REST y lo anuncia por `conn.status`. Si el
-usuario opera desde otra red o con VPN, el WS vuelve solo — no hay que tocar
-código, y `BOB_FEED_MODE=ws` fuerza el camino de baja latencia.
+```
+ethusdt@bookTicker      38.322 frames     ethusdt@aggTrade       0 frames
+ethusdt@trade            4.169 frames     ethusdt@kline_1m       0 frames
+ethusdt@depth20@100ms      852 frames     ethusdt@markPrice@1s   0 frames
+```
+
+Un middlebox de ISP no puede descartar mensajes selectivos dentro de un TLS ya
+establecido. Por lo tanto **no es la red del usuario ni un bug del cliente: es
+Binance a nivel de aplicación**. El corte tampoco es "mainnet vs derivados":
+separa **evento crudo del motor de matching** (trades, book, mejor bid/ask →
+llega) de **evento derivado o agregado** (klines, tickers, mark price, aggTrade,
+liquidaciones → no llega). Eso apunta a un servicio de agregación caído para
+ese PoP, no a una política — o sea que **puede volver solo**, y por eso el
+cliente sigue pidiendo siempre los streams estándar.
+
+**Lo que NO se pierde.** `@trade` es el mismo flujo taker que `@aggTrade`,
+fill por fill en vez de agregado por orden agresora. Verificado contra
+`/fapi/v1/aggTrades` sobre la misma ventana de 60s:
+
+```
+WS @trade   : 2090 trades    buy=456.332  sell=388.171
+REST aggTrades: 496 agregados buy=456.332  sell=388.171   → 0.000% de diferencia
+```
+
+Trampa de `@trade`: ~0,6% de los frames son relleno con `p=q=0` y `X="NA"`. No
+son trades. Se filtran por `p>0 && q>0` y no por `X`, porque el tamaño positivo
+es una invariante de lo que es un trade mientras que `X` es un enum sin
+documentar. Medido: los dos filtros seleccionan exactamente el mismo conjunto.
+
+Lo único realmente perdido es `@forceOrder`, que igual era muestra incompleta
+(1 evento/seg) y no está entre las 55 features.
+
+**Cómo quedó el diseño** (`data/binance_ws.py` + `data/binance_poll.py`):
+
+- La suscripción pide `@kline_<tf>` + `@markPrice@1s` + `@aggTrade` + `@trade`.
+  Los dos streams de trades son redundantes a propósito: donde Binance entrega
+  los dos, el hub se queda con el agregado y **descarta el crudo** (contarlos
+  juntos duplicaría el volumen taker); donde `@aggTrade` calla, `@trade`
+  sostiene el flujo solo.
+- La salud se lleva **por stream**, no por socket (`ConnectionStatus.subscribed`
+  + `stream_messages` + `mute_streams`). Un socket vivo con un stream mudo es
+  invisible para un watchdog de conexión y es exactamente lo que pasó acá.
+- Pasado `ws_probe_s` (25s), el hub decide: si no llegó **nada**, cambia entero
+  a polling REST; si faltan `kline`/`markPrice`, los rellena por REST **en
+  paralelo** y deja el WS sirviendo el flujo taker a <100ms. `conn.status`
+  reporta el híbrido tal cual: `binance_ws+rest_fill(kline,markPrice)`.
+- `@bookTicker` y `@depth20` entregan bien y son el enganche de Fase 2b, pero
+  están **apagados por defecto** (`stream_names(book_ticker=…, depth=…)`): hoy
+  no tienen consumidor y `@bookTicker` solo son ~425 frames/s por símbolo.
+
+Verificado en vivo el 2026-08-24, hub en modo `auto`, 50s:
+
+```
+source_name -> binance_ws+rest_fill(kline,markPrice)
+por stream  -> {'ethusdt@trade': 1591}
+mudos       -> ['ethusdt@kline_15m', 'ethusdt@markPrice@1s', 'ethusdt@aggTrade']
+trade_crudo 1580 (1ro a los 1.7s) · kline_en_curso 10 · markPrice 10 · kline_cerrada 1
+```
+
+**Consecuencia para la regla 6 (<1s del tick al dashboard)**: se cumple. El
+precio y el flujo taker llegan por WS en el orden de 100ms. Lo que va por REST
+es mark price y funding, magnitudes lentas por naturaleza que no pierden nada a
+cadencia de 3s. Si el usuario opera desde otra red o con VPN, los streams
+estándar vuelven a usarse solos al reiniciar; `BOB_FEED_MODE=ws` fuerza el
+camino puro de WS y `=rest` el de polling.
+
+**Pendiente anotado**: el orderbook, igual que el OI, **no se puede recuperar
+hacia atrás**. Cada día sin persistir agregados de `@depth`/`@trade` por barra
+es historia que Fase 2b nunca va a tener para entrenar. Decisión de scope del
+2026-08-24: no se persiste todavía.
 
 ## Klines REST — formato posicional
 

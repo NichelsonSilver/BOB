@@ -333,12 +333,17 @@ entorno: `docs/HANDOFF_FASE1.md`.
 6. ✅ `live/feed.py`: puente feed → dashboard (`market.tick`, `market.candle`,
    `conn.status`), cableado en el `lifespan` de `main.py`. Se apaga con
    `BOB_LIVE_DATA=false` para trabajar offline
-7. ⚠️ **Hallazgo**: desde la red del usuario el WS de futuros mainnet acepta la
-   suscripción y **nunca manda un frame** (REST, spot WS y futuros testnet sí
-   funcionan → es filtrado de Binance por IP/región, no un bug). Por eso existe
-   `data/binance_poll.py`: misma interfaz de eventos vía REST, y el hub en modo
-   `auto` cambia de fuente solo y lo reporta en `conn.status`. Detalle y
-   evidencia en `docs/DATA_SOURCES.md`
+7. ✅ **Hallazgo cerrado (2026-08-24)**: el WS de futuros mainnet no está
+   bloqueado — Binance **calla streams concretos y entrega otros sobre la misma
+   conexión TLS** (mudos: `@aggTrade`, `@kline_*`, `@markPrice`, `@ticker`,
+   `@forceOrder`; vivos: `@trade`, `@bookTicker`, `@depth*`). El primer
+   diagnóstico ("filtrado por IP/región del feed de derivados") era falso. El
+   flujo taker se sostiene con `@trade`, verificado idéntico al REST oficial
+   (0.000% de diferencia de volumen), y `kline`/`markPrice` se rellenan por
+   REST en paralelo. La salud se lleva **por stream**, no por socket, y
+   `conn.status` reporta el híbrido (`binance_ws+rest_fill(kline,markPrice)`).
+   Regla 6 cumplida: precio y flujo por WS a <100ms. Evidencia, medición
+   decisiva y diseño en `docs/DATA_SOURCES.md`
 
 ### Fase 2 — Feature engine (PURO) ✅
 1. ✅ `signals/numeric.py` (primitivas causales) + `features.py` (55 features
