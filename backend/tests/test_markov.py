@@ -4,16 +4,13 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
-
 from bob.models.markov import (
+    _DEFAULT_TRANSITIONS,
     MarketRegime,
     MarkovRegimeDetector,
     RegimeState,
-    _DEFAULT_TRANSITIONS,
     expected_regime_duration,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

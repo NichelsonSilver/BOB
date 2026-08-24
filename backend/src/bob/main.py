@@ -1,5 +1,6 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -7,7 +8,8 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from bob.api.ws import broadcast_hub, router as ws_router
+from bob.api.ws import broadcast_hub
+from bob.api.ws import router as ws_router
 from bob.config import settings
 from bob.db.session import init_db
 
@@ -78,7 +80,7 @@ app.include_router(ws_router)
 
 
 @app.get("/api/health")
-async def health() -> dict:
+async def health() -> dict[str, Any]:
     return {
         "status": "ok",
         "service": "bob",

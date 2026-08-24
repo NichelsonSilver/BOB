@@ -20,13 +20,13 @@ en unidades del timeframe. El regime actual es además un feature del KPI 1.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
-from enum import Enum
-from typing import Sequence
+from enum import StrEnum
 
 
-class MarketRegime(str, Enum):
+class MarketRegime(StrEnum):
     RANGING = "ranging"
     TRENDING_UP = "trending_up"
     TRENDING_DOWN = "trending_down"

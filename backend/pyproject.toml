@@ -15,6 +15,8 @@ dependencies = [
     "numpy>=2.0",
     "apscheduler>=3.10",
     # Fase 3 agrega: hmmlearn (HMM gaussiano) + scikit-learn (calibración isotónica)
+    "scikit-learn>=1.5",
+    "scipy>=1.14",
 ]
 
 [project.optional-dependencies]
@@ -44,9 +46,20 @@ asyncio_mode = "auto"
 strict = true
 plugins = ["pydantic.mypy"]
 
+# scipy y scikit-learn no publican stubs ni py.typed. No se relaja la
+# estrictez del codigo propio: solo se acepta que estas dos librerias
+# entren como Any en su frontera.
+[[tool.mypy.overrides]]
+module = ["scipy.*", "sklearn.*"]
+ignore_missing_imports = true
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
+# `X` para la matriz de features es la convencion universal en ML y la que
+# usa la API de scikit-learn (`fit(X, y)`). Renombrarla a `x` haria el codigo
+# menos legible para quien viene del dominio, no mas.
+ignore = ["N803", "N806"]
