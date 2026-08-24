@@ -38,6 +38,29 @@ class CandleRecord(SQLModel, table=True):
     n_trades: int = 0
 
 
+class DerivativeSnapshot(SQLModel, table=True):
+    """Foto periódica de open interest y posicionamiento (data/snapshots.py).
+
+    Binance solo conserva ~30 días de esta historia (docs/DATA_SOURCES.md):
+    cada día sin persistir es un día menos de entrenamiento para los features
+    de derivados de la Fase 2b. Única por (symbol, period, timestamp).
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    symbol: str = Field(index=True)
+    period: str = Field(index=True)  # "5m" | "15m" | "1h" | ...
+    timestamp: int = Field(index=True)  # epoch ms UTC, el que reporta Binance
+
+    open_interest: str | None = None  # contratos, moneda base
+    open_interest_value: str | None = None  # notional en USDT
+    long_short_ratio: str | None = None  # cuentas globales long/short
+    long_account_pct: str | None = None
+    short_account_pct: str | None = None
+    taker_buy_sell_ratio: str | None = None  # volumen taker comprador/vendedor
+
+    captured_at: datetime = Field(default_factory=_utcnow)
+
+
 class Signal(SQLModel, table=True):
     """Una señal emitida por el asistente (en vivo o en backtest).
 

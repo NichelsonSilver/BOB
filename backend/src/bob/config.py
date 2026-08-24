@@ -29,6 +29,19 @@ class Settings(BaseSettings):
     # Señales — umbral mínimo del KPI Seguridad para emitir señal
     bob_signal_threshold: float = 0.70
 
+    # Datos en vivo (Fase 1) — el WS de Binance y los snapshots de derivados
+    # arrancan con el backend. Apagarlos (BOB_LIVE_DATA=false) deja el backend
+    # 100% offline: útil para trabajar el backtest sin tocar la red.
+    bob_live_data: bool = True
+    #: "auto" | "ws" | "rest". En "auto" arranca por WebSocket y cae a polling
+    #: REST si el WS conecta pero no entrega frames (ver data/binance_poll.py).
+    bob_feed_mode: str = "auto"
+    #: Granularidad de los snapshots de OI / ratios (ventana ~30 días).
+    bob_snapshot_period: str = "15m"
+    #: Cadencia del snapshot. Cada request trae ~5 días, así que el solape
+    #: cubre cualquier rato que el proceso haya estado caído.
+    bob_snapshot_interval_min: int = 30
+
     # Telegram (Fase 7) — vacíos = alertas Telegram deshabilitadas
     telegram_bot_token: SecretStr = SecretStr("")
     telegram_chat_id: str = ""

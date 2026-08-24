@@ -52,6 +52,52 @@ Formato: `wss://fstream.binance.com/stream?streams=ethusdt@kline_15m/ethusdt@agg
   watchlist v1 (pocos símbolos) irrelevante, pero multiplexar en una sola
   conexión como hacía el build GRVT.
 
+**Cómo quedó implementado** (`data/binance_ws.py`, Fase 1):
+
+- Endpoint combinado por URL (`/stream?streams=...`): la suscripción viaja en
+  el handshake, así que "resuscribir" tras un corte es simplemente reconectar.
+- **TTL propio de 23h**: la conexión se recicla antes de que Binance la corte a
+  las 24h, para que el corte no caiga en medio de un cierre de vela.
+- **Timeout de recepción de 60s**: con markPrice@1s activo, el silencio es
+  anomalía. Un socket vivo que no manda nada es peor que uno caído — el
+  dashboard mostraría un precio viejo como si fuera de ahora.
+- **Piso de 100ms entre reconexiones**, además del backoff con jitter: sin él,
+  un handshake que falla al instante gira en vacío y se come el event loop.
+- Símbolos en minúscula: con mayúscula Binance acepta el handshake y no manda
+  nada, así que el bug parece de red y no lo es.
+
+### ⚠️ Hallazgo de campo (2026-08-24): el WS de futuros está MUDO desde acá
+
+Desde la red del usuario (Antofagasta, ISP residencial), `fstream.binance.com`:
+
+1. acepta la conexión TLS y el handshake WebSocket,
+2. responde `{"result":null,"id":1}` a un `SUBSCRIBE`,
+3. confirma con `LIST_SUBSCRIPTIONS` que la suscripción está registrada,
+4. **y no envía ni un solo frame de mercado** — probado 15+ min, con
+   `@aggTrade`, `@markPrice`, `@kline_1m`, combinado y simple, ETHUSDT y BTCUSDT.
+
+Lo que SÍ funciona desde la misma máquina, mismo minuto:
+
+| Endpoint | Resultado |
+|---|---|
+| `fapi.binance.com` REST (klines, OI, funding, ratios) | ✅ normal |
+| `stream.binance.com:9443` (spot WS) | ✅ entrega trades |
+| `data-stream.binance.vision` (spot WS) | ✅ entrega trades |
+| `stream.binancefuture.com` (**testnet** de futuros WS) | ✅ entrega todo |
+| `fstream.binance.com` (futuros mainnet WS) | ❌ mudo |
+
+Diagnóstico: filtrado del lado de Binance sobre el feed de derivados para esa
+IP/región. **No es un bug del cliente**: el mismo `BinanceMarketStream` corrió
+130s contra el host de testnet y recibió 592 mensajes, 3 velas cerradas y
+reconectó solo tras un corte forzado.
+
+Consecuencia de diseño: `data/binance_poll.py` replica el feed por REST
+(`klines?limit=2` + `premiumIndex`, ~2 de peso por símbolo por ciclo) emitiendo
+**los mismos eventos**, y el hub arranca en modo `auto`: prueba el WS y, si en
+25s no llegó un frame, cambia a REST y lo anuncia por `conn.status`. Si el
+usuario opera desde otra red o con VPN, el WS vuelve solo — no hay que tocar
+código, y `BOB_FEED_MODE=ws` fuerza el camino de baja latencia.
+
 ## Klines REST — formato posicional
 
 `/fapi/v1/klines` devuelve arrays, no dicts:

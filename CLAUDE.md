@@ -315,16 +315,30 @@ de DB definido, backend booteable sin `.env`, frontend compilando con las
 5 páginas placeholder, 35 tests en verde. Estado detallado y gotchas de
 entorno: `docs/HANDOFF_FASE1.md`.
 
-### Fase 1 — Pipeline de datos Binance (REST ✅ / WS pendiente)
-1. ⬜ `data/binance_ws.py`: klines + aggTrades + depth + markPrice, multiplexado,
-   reconexión con backoff+jitter — **lo único que falta de la fase**
+### Fase 1 — Pipeline de datos Binance ✅ (2026-08-24)
+1. ✅ `data/binance_ws.py`: kline + markPrice + aggTrade multiplexados en una
+   conexión, reconexión con backoff+jitter, TTL de 23h (el corte de 24h de
+   Binance no espera), y `MarketDataHub` que persiste **solo velas cerradas**
+   (`k.x == true`). `depth20` queda para Fase 2b junto a microstructure.py
 2. ✅ `data/binance_rest.py`: histórico de klines, OI, funding, ratios; limiter
    autorregulado por el header `X-MBX-USED-WEIGHT-1M`
-3. ✅ `data/store.py`: klines en SQLite + `OHLCVSeries` (frontera de pureza:
-   de acá para arriba solo numpy). Huecos se reportan, nunca se rellenan
+3. ✅ `data/store.py`: klines y derivados en SQLite + `OHLCVSeries` (frontera de
+   pureza: de acá para arriba solo numpy). Huecos se reportan, nunca se rellenan
 4. ✅ `data/download.py`: CLI idempotente. **69.119 velas de ETHUSDT 15m
    persistidas (720 días, 100% de completitud, 0 huecos)** — superado el
    objetivo de 90 días
+5. ✅ `data/snapshots.py`: la ventana de OI / long-short / taker ratio es de
+   ~30 días y **no se puede recuperar hacia atrás**, así que el snapshot corre
+   con el backend (cada 30 min) y como CLI. Primera captura: 2026-08-24
+6. ✅ `live/feed.py`: puente feed → dashboard (`market.tick`, `market.candle`,
+   `conn.status`), cableado en el `lifespan` de `main.py`. Se apaga con
+   `BOB_LIVE_DATA=false` para trabajar offline
+7. ⚠️ **Hallazgo**: desde la red del usuario el WS de futuros mainnet acepta la
+   suscripción y **nunca manda un frame** (REST, spot WS y futuros testnet sí
+   funcionan → es filtrado de Binance por IP/región, no un bug). Por eso existe
+   `data/binance_poll.py`: misma interfaz de eventos vía REST, y el hub en modo
+   `auto` cambia de fuente solo y lo reporta en `conn.status`. Detalle y
+   evidencia en `docs/DATA_SOURCES.md`
 
 ### Fase 2 — Feature engine (PURO) ✅
 1. ✅ `signals/numeric.py` (primitivas causales) + `features.py` (55 features
