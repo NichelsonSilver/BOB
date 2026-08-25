@@ -331,3 +331,112 @@ class TestStore:
         s: OHLCVSeries = series_from_klines("ETHUSDT", TF, [])
         assert len(s) == 0
         assert s.gaps == []
+
+
+# --------------------------------------------------------------------- #
+# repair_series — lo que hace segura una pausa del proceso
+# --------------------------------------------------------------------- #
+
+
+class _FakeRestClient:
+    """Cliente REST de mentira que devuelve las velas de un rango pedido."""
+
+    def __init__(self, disponibles):
+        self.disponibles = disponibles
+        self.pedidos = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def fetch_klines(self, symbol, interval, start_time, end_time=None, **kw):
+        self.pedidos.append((start_time, end_time))
+        return [
+            k
+            for k in self.disponibles
+            if k.open_time >= start_time and (end_time is None or k.open_time <= end_time)
+        ]
+
+
+def _kline(open_time: int, step: int, price: float = 100.0):
+    from bob.data.binance_rest import Kline
+
+    return Kline(
+        open_time=open_time, open=str(price), high=str(price), low=str(price),
+        close=str(price), volume="1", close_time=open_time + step - 1,
+        quote_volume="100", n_trades=1, taker_buy_volume="0.5",
+        taker_buy_quote_volume="50",
+    )
+
+
+async def test_repair_cierra_un_hueco_interior(in_memory_engine, monkeypatch):
+    """La secuencia que rompe: el equipo se suspende, el feed vuelve y escribe
+    la vela actual, así que la descarga incremental salta el rango caído."""
+    from bob.data import download as mod
+    from bob.data.binance_rest import INTERVAL_MS
+    from bob.data.store import load_series, upsert_klines
+
+    step = INTERVAL_MS["15m"]
+    base = 1_700_000_000_000
+    todas = [_kline(base + i * step, step) for i in range(10)]
+    # En DB: las 3 primeras y las 3 últimas. Falta el medio (la pausa).
+    upsert_klines("ETHUSDT", "15m", todas[:3] + todas[7:])
+    assert len(load_series("ETHUSDT", "15m").gaps) == 1
+
+    fake = _FakeRestClient(todas)
+    monkeypatch.setattr(mod, "BinanceRestClient", lambda: fake)
+
+    resultado = await mod.repair_series("ETHUSDT", "15m")
+
+    assert resultado["gaps_found"] == 1
+    assert resultado["filled"] == 4  # las velas 3..6
+    assert resultado["gaps_remaining"] == 0
+    serie = load_series("ETHUSDT", "15m")
+    assert len(serie) == 10
+    assert serie.gaps == []
+
+
+async def test_repair_es_idempotente_sobre_una_serie_completa(
+    in_memory_engine, monkeypatch
+):
+    from bob.data import download as mod
+    from bob.data.binance_rest import INTERVAL_MS
+    from bob.data.store import upsert_klines
+
+    step = INTERVAL_MS["15m"]
+    base = 1_700_000_000_000
+    todas = [_kline(base + i * step, step) for i in range(5)]
+    upsert_klines("ETHUSDT", "15m", todas)
+
+    fake = _FakeRestClient(todas)
+    monkeypatch.setattr(mod, "BinanceRestClient", lambda: fake)
+    resultado = await mod.repair_series("ETHUSDT", "15m")
+
+    assert resultado == {"gaps_found": 0, "filled": 0, "extended": 0, "gaps_remaining": 0}
+    # Sin huecos, el único request es el de extensión hacia adelante.
+    assert len(fake.pedidos) == 1
+
+
+async def test_repair_reporta_el_hueco_que_binance_no_devuelve(
+    in_memory_engine, monkeypatch
+):
+    """No se rellena lo que la fuente no entrega: se reporta y se sigue."""
+    from bob.data import download as mod
+    from bob.data.binance_rest import INTERVAL_MS
+    from bob.data.store import load_series, upsert_klines
+
+    step = INTERVAL_MS["15m"]
+    base = 1_700_000_000_000
+    todas = [_kline(base + i * step, step) for i in range(6)]
+    upsert_klines("ETHUSDT", "15m", [todas[0], todas[1], todas[4], todas[5]])
+
+    fake = _FakeRestClient([])  # Binance no tiene esas velas
+    monkeypatch.setattr(mod, "BinanceRestClient", lambda: fake)
+    resultado = await mod.repair_series("ETHUSDT", "15m")
+
+    assert resultado["gaps_found"] == 1
+    assert resultado["filled"] == 0
+    assert resultado["gaps_remaining"] == 1
+    assert len(load_series("ETHUSDT", "15m").gaps) == 1

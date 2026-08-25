@@ -43,9 +43,9 @@ DEFAULT_INTERVAL_S = 1800.0
 class DerivativePoint:
     """Un punto de derivados ya alineado por timestamp.
 
-    Los campos son opcionales a propósito: los tres endpoints no siempre
-    devuelven la misma grilla, y es preferible guardar un punto con OI y sin
-    ratio que descartarlo. El modelo tiene que tolerar features faltantes.
+    Los campos son opcionales a propósito: los endpoints no siempre devuelven
+    la misma grilla, y es preferible guardar un punto con OI y sin ratio que
+    descartarlo. El modelo tiene que tolerar features faltantes.
     """
 
     timestamp: int  # epoch ms UTC
@@ -55,8 +55,16 @@ class DerivativePoint:
     long_account_pct: str | None = None
     short_account_pct: str | None = None
     taker_buy_sell_ratio: str | None = None
-    #: Solo los llena el archivo histórico (data/vision.py); el REST no los da
-    #: en el mismo endpoint y no vale la pena un request extra en vivo.
+    #: Los dos "top": "account" cuenta cabezas, "position" pesa notional, y la
+    #: diferencia entre ambos ES la señal. Los mismos campos que publica el
+    #: archivo diario `metrics/`, para que el tramo caliente y el histórico
+    #: escriban la misma columna.
+    #:
+    #: Hasta la Fase 5 solo los llenaba el archivo: se creía que "no vale la
+    #: pena un request extra en vivo". Medido, esa decisión dejaba las 5
+    #: columnas de top traders con 73 NaN de 96 en la cola —o sea el analista
+    #: sin poder emitir— porque el archivo llega un día tarde. Binance las da
+    #: en dos endpoints propios con la misma ventana de ~30 días.
     top_trader_account_ratio: str | None = None
     top_trader_position_ratio: str | None = None
     #: Solo en las filas de period="funding"; el resto lo deja en None.
@@ -83,11 +91,19 @@ def merge_derivative_rows(
     oi_rows: Iterable[dict[str, Any]],
     ls_rows: Iterable[dict[str, Any]],
     taker_rows: Iterable[dict[str, Any]],
+    top_account_rows: Iterable[dict[str, Any]] = (),
+    top_position_rows: Iterable[dict[str, Any]] = (),
 ) -> list[DerivativePoint]:
-    """Alinea las tres respuestas por timestamp. Puro: se testea sin red.
+    """Alinea las respuestas por timestamp. Puro: se testea sin red.
 
     Las filas sin timestamp usable se descartan — un punto sin su instante no
     sirve para nada aguas arriba, y colarlo con timestamp 0 sería peor.
+
+    Los dos "top" llegaron después: durante la Fase 2b solo los traía el
+    archivo diario `metrics/`, y el vivo heredó ese hueco — las 5 columnas de
+    top traders quedaban NaN desde el día en que terminaba el archivo. Medido
+    sobre las últimas 96 barras reales: 73 NaN de 96. Binance las publica en
+    dos endpoints propios con la misma ventana de ~30 días.
     """
     merged: dict[int, dict[str, str | None]] = {}
 
@@ -115,6 +131,22 @@ def merge_derivative_rows(
         entry = merged.setdefault(ts, {})
         entry["taker_buy_sell_ratio"] = _text(row, "buySellRatio")
 
+    for row in top_account_rows:
+        ts = _ts(row)
+        if ts is None:
+            continue
+        merged.setdefault(ts, {})["top_trader_account_ratio"] = _text(
+            row, "longShortRatio"
+        )
+
+    for row in top_position_rows:
+        ts = _ts(row)
+        if ts is None:
+            continue
+        merged.setdefault(ts, {})["top_trader_position_ratio"] = _text(
+            row, "longShortRatio"
+        )
+
     return [
         DerivativePoint(
             timestamp=ts,
@@ -124,6 +156,8 @@ def merge_derivative_rows(
             long_account_pct=fields.get("long_account_pct"),
             short_account_pct=fields.get("short_account_pct"),
             taker_buy_sell_ratio=fields.get("taker_buy_sell_ratio"),
+            top_trader_account_ratio=fields.get("top_trader_account_ratio"),
+            top_trader_position_ratio=fields.get("top_trader_position_ratio"),
         )
         for ts, fields in sorted(merged.items())
     ]
@@ -135,16 +169,18 @@ async def fetch_derivatives(
     period: str = DEFAULT_PERIOD,
     limit: int = DEFAULT_LIMIT,
 ) -> list[DerivativePoint]:
-    """Pide los tres endpoints y devuelve los puntos alineados.
+    """Pide los cinco endpoints y devuelve los puntos alineados.
 
     Secuencial, no en paralelo: los `/futures/data/*` comparten un límite
-    estrecho y el limiter del cliente los espacia. Son tres requests cada
+    estrecho y el limiter del cliente los espacia. Son cinco requests cada
     media hora — la latencia acá no le importa a nadie.
     """
     oi = await client.open_interest_hist(symbol, period=period, limit=limit)
     ls = await client.long_short_ratio(symbol, period=period, limit=limit)
     taker = await client.taker_ratio(symbol, period=period, limit=limit)
-    return merge_derivative_rows(oi, ls, taker)
+    top_acc = await client.top_account_ratio(symbol, period=period, limit=limit)
+    top_pos = await client.top_position_ratio(symbol, period=period, limit=limit)
+    return merge_derivative_rows(oi, ls, taker, top_acc, top_pos)
 
 
 async def snapshot_once(

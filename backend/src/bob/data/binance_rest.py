@@ -368,3 +368,34 @@ class BinanceRestClient:
             {"symbol": symbol.upper(), "period": period, "limit": min(limit, 500)},
         )
         return list(data)
+
+    async def top_account_ratio(
+        self, symbol: str, period: str = "15m", limit: int = 500
+    ) -> list[dict[str, Any]]:
+        """Long/short de las cuentas TOP, contando cabezas. Ventana ~30 días.
+
+        Los dos "top" existen porque el archivo diario `metrics/` los publica y
+        el modelo los usa: `top_vs_crowd` y `top_concentration` comparan a los
+        grandes contra la multitud, y divergen justo cuando el posicionamiento
+        se concentra. Sin estos dos endpoints esas columnas solo existen hasta
+        donde llegó el archivo —un día atrás— y el vivo no puede emitir.
+        """
+        data = await self._get(
+            "/futures/data/topLongShortAccountRatio",
+            {"symbol": symbol.upper(), "period": period, "limit": min(limit, 500)},
+        )
+        return list(data)
+
+    async def top_position_ratio(
+        self, symbol: str, period: str = "15m", limit: int = 500
+    ) -> list[dict[str, Any]]:
+        """Long/short de las cuentas TOP, pesando notional. Ventana ~30 días.
+
+        "account" cuenta cabezas (una ballena pesa igual que un minorista) y
+        "position" pesa dinero: la diferencia entre ambos ES la señal.
+        """
+        data = await self._get(
+            "/futures/data/topLongShortPositionRatio",
+            {"symbol": symbol.upper(), "period": period, "limit": min(limit, 500)},
+        )
+        return list(data)

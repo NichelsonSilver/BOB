@@ -74,6 +74,72 @@ async def download_history(
     return written
 
 
+async def repair_series(symbol: str, timeframe: str) -> dict[str, int]:
+    """Rellena los huecos INTERIORES de la serie y la extiende hasta ahora.
+
+    `download_history --resume` avanza desde la última vela que hay en DB: es
+    lo correcto para una descarga incremental y es exactamente lo que falla
+    después de una pausa del proceso.
+
+    La secuencia que rompe: el equipo se suspende dos horas, vuelve, el feed
+    reconecta y escribe la vela **actual**. Ahora la última vela en DB es
+    posterior a la pausa, así que `--resume` arranca de ahí y el agujero de dos
+    horas queda dentro de la serie para siempre — silencioso, porque nadie
+    vuelve a mirar ese rango. Y un hueco interior no es cosmético: las ventanas
+    rodantes de `signals/features.py` cuentan barras, no tiempo, así que a
+    partir del hueco todas las features de contexto describen una ventana que
+    no existió.
+
+    Por eso esta función mira los huecos que reporta `OHLCVSeries.gaps` y pide
+    cada rango por separado, y solo después extiende hacia adelante. Es
+    idempotente: sobre una serie completa no hace ni un request de relleno.
+    """
+    init_db()
+    series = load_series(symbol, timeframe)
+    step = INTERVAL_MS[timeframe]
+    filled = 0
+    gaps = series.gaps
+
+    async with BinanceRestClient() as client:
+        for prev_open, next_open in gaps:
+            klines = await client.fetch_klines(
+                symbol, timeframe, prev_open + step, next_open - 1, only_closed=True
+            )
+            if klines:
+                filled += upsert_klines(symbol, timeframe, klines)
+        if gaps:
+            logger.info(
+                "{} {}: {} hueco(s) interiores, {} velas recuperadas",
+                symbol,
+                timeframe,
+                len(gaps),
+                filled,
+            )
+
+        last = int(series.open_time[-1]) if len(series) else None
+        extended = 0
+        if last is not None:
+            nuevas = await client.fetch_klines(symbol, timeframe, last + step, only_closed=True)
+            if nuevas:
+                extended = upsert_klines(symbol, timeframe, nuevas)
+
+    restante = load_series(symbol, timeframe).gaps
+    if restante:
+        logger.warning(
+            "{} {}: quedan {} hueco(s) que Binance no devolvió — se reportan, "
+            "no se rellenan",
+            symbol,
+            timeframe,
+            len(restante),
+        )
+    return {
+        "gaps_found": len(gaps),
+        "filled": filled,
+        "extended": extended,
+        "gaps_remaining": len(restante),
+    }
+
+
 def print_status(symbol: str, timeframe: str) -> None:
     have = coverage(symbol, timeframe)
     print(f"\n{symbol} {timeframe}")
@@ -104,15 +170,29 @@ def main() -> None:
     parser.add_argument("--months", type=int, default=24)
     parser.add_argument("--no-resume", action="store_true", help="ignora lo ya persistido")
     parser.add_argument("--status", action="store_true", help="solo reporta qué hay en DB")
+    parser.add_argument(
+        "--repair",
+        action="store_true",
+        help="rellena huecos interiores y extiende hasta ahora (usar tras una pausa)",
+    )
     args = parser.parse_args()
 
     if args.status:
         print_status(args.symbol, args.timeframe)
         return
 
-    asyncio.run(
-        download_history(args.symbol, args.timeframe, args.months, resume=not args.no_resume)
-    )
+    if args.repair:
+        resultado = asyncio.run(repair_series(args.symbol, args.timeframe))
+        print(
+            f"\nreparación: {resultado['gaps_found']} hueco(s) encontrados, "
+            f"{resultado['filled']} velas recuperadas, "
+            f"{resultado['extended']} agregadas al final, "
+            f"{resultado['gaps_remaining']} hueco(s) sin cerrar"
+        )
+    else:
+        asyncio.run(
+            download_history(args.symbol, args.timeframe, args.months, resume=not args.no_resume)
+        )
     print_status(args.symbol, args.timeframe)
 
 

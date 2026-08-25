@@ -144,7 +144,10 @@ def _client(handler) -> BinanceRestClient:
 
 
 class TestFetch:
-    async def test_pide_los_tres_endpoints(self) -> None:
+    async def test_pide_los_cinco_endpoints(self) -> None:
+        """Los dos "top" se agregaron después: sin ellos, las 5 columnas de top
+        traders quedaban NaN en vivo desde el día en que terminaba el archivo
+        (medido: 73 barras NaN de 96)."""
         visitados: list[str] = []
 
         def handler(request: Request) -> Response:
@@ -153,13 +156,19 @@ class TestFetch:
                 return Response(200, json=[_oi_row(T0)])
             if "globalLongShortAccountRatio" in request.url.path:
                 return Response(200, json=[_ls_row(T0)])
+            if "topLongShortAccountRatio" in request.url.path:
+                return Response(200, json=[{"timestamp": T0, "longShortRatio": "2.1"}])
+            if "topLongShortPositionRatio" in request.url.path:
+                return Response(200, json=[{"timestamp": T0, "longShortRatio": "1.4"}])
             return Response(200, json=[_taker_row(T0)])
 
         client = _client(handler)
         points = await fetch_derivatives(client, "ETHUSDT", "15m", 500)
         await client.aclose()
 
-        assert len(visitados) == 3
+        assert len(visitados) == 5
+        assert points[0].top_trader_account_ratio == "2.1"
+        assert points[0].top_trader_position_ratio == "1.4"
         assert len(points) == 1
         assert points[0].open_interest == "150000.5"
 

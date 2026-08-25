@@ -61,6 +61,9 @@ from sqlmodel import select
 
 from bob.data.binance_rest import Kline
 from bob.data.binance_ws import KlineEvent, MarketEvent
+from bob.data.download import repair_series
+from bob.data.download_vision import ingest_funding
+from bob.data.snapshots import snapshot_once
 from bob.data.store import (
     BookDepthSeries,
     DerivativesSeries,
@@ -81,6 +84,7 @@ from bob.models.production import (
     fit_bundle,
 )
 from bob.models.projection import LeverageProfile
+from bob.signals.features import CONTEXT_H, window_bars
 
 Publisher = Callable[[str, Any], Awaitable[None]]
 
@@ -91,6 +95,11 @@ DEFAULT_REFIT_EVERY_BARS = 96
 
 #: Familia por defecto en vivo. Ver la nota del encabezado sobre `full`.
 DEFAULT_FEATURE_SET = "price+deriv"
+
+#: Cuánto hacia atrás se repide el funding en cada reparación. Son 3 cobros
+#: por día, así que una semana es una página y sobra para cubrir cualquier
+#: pausa razonable; el upsert es idempotente y reescribir lo mismo no cuesta.
+FUNDING_LOOKBACK_MS = 7 * 86_400_000
 
 
 @dataclass(frozen=True)
@@ -128,6 +137,7 @@ class LiveAnalyst:
         refit_every_bars: int = DEFAULT_REFIT_EVERY_BARS,
         barrier_sigma_source: str = "forecast",
         persist: bool = True,
+        repair_on_fit: bool = True,
     ) -> None:
         if feature_set not in FEATURE_SETS:
             raise ValueError(
@@ -142,6 +152,7 @@ class LiveAnalyst:
         self._refit_every_bars = refit_every_bars
         self._barrier_sigma_source = barrier_sigma_source
         self._persist_enabled = persist
+        self._repair_on_fit = repair_on_fit
 
         use_deriv, use_book, use_near = FEATURE_SETS[feature_set]
         self.config = replace(
@@ -172,9 +183,76 @@ class LiveAnalyst:
     # -- Ciclo de vida ---------------------------------------------------- #
 
     async def start(self) -> None:
-        """Carga la historia, ajusta el bundle y analiza la última barra cerrada."""
+        """Repara la serie, ajusta el bundle y analiza la última barra cerrada."""
+        await self._repair()
         await asyncio.to_thread(self._load_and_fit)
+        await asyncio.to_thread(self._replay_cone_state)
         await self.analyze_latest()
+
+    async def _repair(self) -> None:
+        """Pone al día las DOS series que alimentan la matriz, tras cualquier parada.
+
+        Se corre ANTES de ajustar y antes de cada reajuste, y cubre los dos
+        modos en que una pausa del proceso deja al analista mudo:
+
+        * **Velas.** El feed reconecta y escribe la vela actual, así que la
+          descarga incremental —que reanuda desde la última vela en DB— salta
+          el rango caído y nadie vuelve a mirarlo. `repair_series` pide los
+          huecos interiores uno por uno. Un hueco no es cosmético: las
+          ventanas de `signals/features.py` cuentan barras, no tiempo.
+        * **Derivados.** Los snapshots corren con el backend, así que mientras
+          está caído no se escriben, y `align_to_bars` marca NaN por staleness
+          pasada 1h. Sin esto las 26 columnas de derivados salen vacías en la
+          cola y `assert_tail_observable` aborta el arranque — que es lo
+          correcto, pero arreglable solo. Cada request trae ~41h de grilla de
+          5m, así que un ciclo recupera cualquier pausa menor a eso.
+        * **Funding.** Vive en su propia grilla de 8h y hasta ahora solo lo
+          escribía la ingesta del archivo. Su tolerancia de staleness es de
+          8h exactas, así que basta perderse un cobro para que las 4 columnas
+          de funding salgan NaN: medido, 9 barras de 96 en la cola real.
+
+        Un fallo de red acá no impide arrancar: se sigue con lo que haya en DB
+        y las guardas de observabilidad y contigüidad deciden si esa serie
+        sirve para pronosticar.
+        """
+        if not self._repair_on_fit:
+            return
+        try:
+            resultado = await repair_series(self.symbol, self.timeframe)
+            if resultado["gaps_found"] or resultado["extended"]:
+                logger.info(
+                    "analista: velas al día — {} hueco(s) cerrados, {} nuevas",
+                    resultado["filled"],
+                    resultado["extended"],
+                )
+        except Exception as exc:  # noqa: BLE001 — sin red se sigue con la DB
+            logger.warning("analista: no se pudieron reparar las velas ({})", exc)
+
+        if not self.config.use_derivatives:
+            return
+        try:
+            escritos = await snapshot_once([self.symbol], self.snapshot_period)
+            logger.info(
+                "analista: derivados al día — {} punto(s)", escritos.get(self.symbol, 0)
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("analista: no se pudieron poner al día los derivados ({})", exc)
+
+        try:
+            desde = int(self._inputs.series.open_time[-1]) if self._inputs else 0
+            report = await ingest_funding(
+                self.symbol, max(desde - FUNDING_LOOKBACK_MS, 0)
+            )
+            logger.info("analista: funding al día — {} fila(s)", report.rows_written)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("analista: no se pudo poner al día el funding ({})", exc)
+
+    def _replay_cone_state(self) -> None:
+        """Devuelve al cono el estado de ACI que ya había ganado (ver tracker)."""
+        from bob.paper.tracker import replay_cone_state
+
+        if self._bundle is not None:
+            replay_cone_state(self.symbol, self.timeframe, self._bundle.cones)
 
     async def stop(self) -> None:
         if self._refit_task is not None and not self._refit_task.done():
@@ -269,6 +347,8 @@ class LiveAnalyst:
                 f"({len(names)} columnas vs {len(bundle.feature_names)}): "
                 "reajustar antes de emitir"
             )
+
+        _assert_tail_contiguous(inputs.series)
 
         row = X[-1]
         if not bundle.row_is_usable(row):
@@ -389,7 +469,9 @@ class LiveAnalyst:
     async def _refit(self) -> None:
         """Reajusta sin dejar de emitir: el bundle viejo sigue vigente mientras."""
         try:
+            await self._repair()
             await asyncio.to_thread(self._load_and_fit)
+            await asyncio.to_thread(self._replay_cone_state)
         except Exception as exc:  # noqa: BLE001
             logger.exception("analista: el reajuste falló, sigue el bundle previo: {}", exc)
             await self._publish(
@@ -472,3 +554,29 @@ def _append_candle(series: OHLCVSeries, kline: Kline) -> OHLCVSeries | None:
         ),
         n_trades=push(series.n_trades, kline.n_trades, np.int64),
     )
+
+
+def _assert_tail_contiguous(series: OHLCVSeries) -> None:
+    """Falla si a la ventana de warm-up de la última barra le faltan velas.
+
+    Las ventanas rodantes de `signals/features.py` cuentan **barras, no
+    tiempo**: si en las últimas 168 horas falta una hora de velas, la ventana
+    de contexto de la barra actual abarca en realidad 169 horas y todas las
+    features de contexto —z-scores, rangos percentiles— describen algo que no
+    pasó. El número saldría igual de convincente y sería falso.
+
+    Se mira solo la cola porque es lo que alimenta la fila que se va a emitir;
+    un hueco viejo ya estaba en el backtest y no cambia el pronóstico de hoy.
+    """
+    warmup = window_bars(CONTEXT_H, series.interval_ms)
+    tail = series.slice(max(0, len(series) - (warmup + 1)))
+    huecos = tail.gaps
+    if huecos:
+        inicio, fin = huecos[0]
+        raise ValueError(
+            f"faltan velas en la ventana de warm-up de la última barra "
+            f"({len(huecos)} hueco(s), el primero entre {inicio} y {fin}): las "
+            "ventanas de features cuentan barras, no tiempo, así que el "
+            "pronóstico describiría un contexto que no existió. Correr "
+            "`python -m bob.data.download --repair` y reintentar."
+        )
