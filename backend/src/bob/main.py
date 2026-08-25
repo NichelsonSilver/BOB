@@ -166,6 +166,7 @@ app.include_router(ws_router)
 @app.get("/api/health")
 async def health(request: Request) -> dict[str, Any]:
     feed: LiveDataService | None = getattr(request.app.state, "feed", None)
+    analyst: LiveAnalyst | None = getattr(request.app.state, "analyst", None)
     return {
         "status": "ok",
         "service": "bob",
@@ -180,4 +181,7 @@ async def health(request: Request) -> dict[str, Any]:
             if feed is not None
             else None
         ),
+        # Un backend en verde que no emite nada se ve igual que uno sano si no
+        # se mira esto: durante una corrida larga es LA pregunta.
+        "analyst": analyst.status() if analyst is not None else None,
     }

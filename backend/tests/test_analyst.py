@@ -535,3 +535,110 @@ async def test_sin_red_la_reparacion_no_impide_arrancar(
     analyst._repair_on_fit = True
     await analyst.start()
     assert len(rec.of("analysis.forecast")) == 1
+
+
+# --------------------------------------------------------------------- #
+# Estado operativo — la pregunta de una corrida larga
+# --------------------------------------------------------------------- #
+
+
+@pytest.mark.asyncio
+async def test_status_distingue_arrancando_de_emitiendo(listo, in_memory_engine) -> None:
+    """Un backend en verde que no emite nada se ve igual que uno sano si no se
+    mira esto. Durante 72h de corrida es exactamente lo que hay que poder ver."""
+    analyst, _, series = listo
+
+    antes = analyst.status()
+    assert antes["fitted"] is False
+    assert antes["last_forecast_open_time"] is None
+    assert antes["n_train"] == 0
+
+    await analyst.start()
+
+    despues = analyst.status()
+    assert despues["fitted"] is True
+    assert despues["refitting"] is False
+    assert despues["feature_set"] == "price"
+    assert despues["n_train"] > 0
+    assert despues["last_forecast_open_time"] == int(series.open_time[-1])
+    assert despues["last_reference_price"] == pytest.approx(float(series.close[-1]))
+    assert despues["model_version"]
+    # El cono arranca sin observaciones: el ACI aún no tiene qué realimentar.
+    assert despues["cone_coverage"]["0.20"]["n"] == 0
+
+
+@pytest.mark.asyncio
+async def test_una_vela_que_cierra_durante_el_ajuste_no_se_pierde(
+    in_memory_engine, monkeypatch
+) -> None:
+    """El ajuste toma ~90s y las barras son de 15 min: ~1 de cada 10 arranques
+    tiene una vela cerrando en medio. Si se perdiera, la siguiente dejaría un
+    hueco en la serie en memoria y el analista quedaría mudo 24h — hasta el
+    reajuste. Visto en una corrida real del backend."""
+    completa = synthetic_series(n=3000, seed=5, symbol="TESTUSDT")
+    # Lo que el analista alcanza a leer antes de ajustar: una barra menos.
+    parcial = completa.slice(0, len(completa) - 1)
+    lecturas: list[int] = []
+
+    def _fake_load(self):
+        from bob.live.analyst import AnalystInputs
+
+        lecturas.append(1)
+        # La primera lectura ve la serie corta; la de después del ajuste ya
+        # ve la vela que el hub persistió mientras tanto.
+        serie = parcial if len(lecturas) == 1 else completa
+        return AnalystInputs(series=serie, derivatives=None, funding=None, book=None)
+
+    monkeypatch.setattr(LiveAnalyst, "_load_inputs", _fake_load)
+    rec = _Recorder()
+    analyst = _analyst(rec)
+    await analyst.start()
+
+    # La barra emitida es la última de verdad, no la que se leyó al ajustar.
+    assert rec.of("analysis.forecast")[0]["open_time"] == int(completa.open_time[-1])
+
+    # Y la serie quedó contigua, así que la vela siguiente no abre un hueco.
+    await analyst.on_closed_candle(
+        _kline(int(completa.open_time[-1]) + TF_MS, close=float(completa.close[-1]))
+    )
+    assert len(rec.of("analysis.error")) == 0
+    assert len(rec.of("analysis.forecast")) == 2
+
+
+@pytest.mark.asyncio
+async def test_si_la_serie_en_memoria_se_desincroniza_se_recupera_sola(
+    listo, in_memory_engine, monkeypatch
+) -> None:
+    """La auto-curación: un hueco en memoria se arregla releyendo la DB.
+
+    Y si tras releer el hueco sigue, es de los datos y no de la memoria — ahí
+    el error tiene que salir a la superficie en vez de reintentarse en círculos.
+    """
+    analyst, rec, series = listo
+    await analyst.start()
+
+    # Se le arranca una vela del medio de la ventana de warm-up.
+    rota = _concat_sin(series, len(series) - 100)
+    from bob.live.analyst import AnalystInputs
+
+    analyst._inputs = AnalystInputs(
+        series=rota, derivatives=None, funding=None, book=None
+    )
+
+    n = len(rec.of("analysis.forecast"))
+    assert await analyst.analyze_latest() is not None  # releyó la DB y siguió
+    assert len(rec.of("analysis.forecast")) == n + 1
+
+    # Ahora el hueco está en la fuente: releer no lo arregla y debe reportarse.
+    monkeypatch.setattr(
+        LiveAnalyst,
+        "_load_inputs",
+        lambda self: AnalystInputs(
+            series=rota, derivatives=None, funding=None, book=None
+        ),
+    )
+    analyst._inputs = AnalystInputs(
+        series=rota, derivatives=None, funding=None, book=None
+    )
+    assert await analyst.analyze_latest() is None
+    assert "warm-up" in rec.of("analysis.error")[-1]["detail"]

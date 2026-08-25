@@ -173,8 +173,24 @@ durante el trade abierto (si cae bajo un umbral de salida, alerta).
 - **SQLModel** sobre SQLite
 - **pydantic v2**, **loguru**, **APScheduler**
 - **websockets** para streams de Binance
-- **numpy** para el motor numérico (features, HMM, backtest). `hmmlearn`
-  permitido para el HMM gaussiano; nada de librerías all-in-one de trading.
+- **numpy** para el motor numérico (features, HMM, backtest), **scipy** solo
+  para optimización y distribuciones, **scikit-learn** para los estimadores
+  de caja (GBM, logística, Ridge, isotónica, KMeans de inicialización).
+  Nada de librerías all-in-one de trading.
+- **Los baselines econométricos y el HMM están escritos desde cero**
+  (`models/baselines.py`, `models/hmm.py`). **No se usan `statsmodels` ni
+  `arch`**, y `hmmlearn` quedó descartado aunque este documento lo permitía:
+  su `predict` es Viterbi sobre la secuencia completa y su `predict_proba` es
+  el posterior suavizado, o sea **los dos miran el futuro de cada barra** —
+  usarlos como feature es el lookahead de la regla 5, y sería invisible
+  (métricas hermosas en backtest, irreproducibles en vivo). El filtro causal
+  había que escribirlo igual; lo que agregaba la librería era el Baum-Welch.
+  Con GARCH el motivo es otro y también decide: un GARCH que no converge en
+  silencio hace ver *skill* donde no lo hay, así que la implementación propia
+  reescala, restringe `alpha+beta` y **cae a EWMA si no converge**. El
+  baseline es el número que decide; si es caja negra, la respuesta no es
+  auditable. Tabla completa en `README.md` § "Cómo están implementados los
+  modelos" y en `docs/PROBABILITY_MODEL.md` §7.1.
 
 ### Fuentes de datos (criterio: máxima calidad, mínimo costo, mínima latencia)
 
@@ -217,16 +233,19 @@ bob/
 │   │   ├── main.py                 # Entry FastAPI
 │   │   ├── config.py               # Settings (pydantic-settings)
 │   │   ├── db/
-│   │   │   ├── models.py           # Signal, PaperTrade, BacktestRun, Snapshot, Candle
+│   │   │   ├── models.py           # ForecastRecord, Signal, PaperTrade, BacktestRun, Snapshot, Candle
 │   │   │   └── session.py
 │   │   ├── venues.py               # Perfiles de venue de ejecución (fees, MMR, funding)
 │   │   ├── data/                   # Conectores (ÚNICO lugar con I/O de mercado)
 │   │   │   ├── binance_ws.py       # WS multiplexado por símbolo, reconexión+backoff
 │   │   │   ├── binance_rest.py     # Histórico + OI + funding + ratios, token bucket
+│   │   │   ├── binance_poll.py     # Relleno REST de los streams que el WS calla
 │   │   │   ├── vision.py           # Archivo histórico data.binance.vision (metrics, bookDepth)
+│   │   │   ├── download.py         # CLI de klines: idempotente, --resume, --repair
 │   │   │   ├── download_vision.py  # CLI de ingesta idempotente del archivo
-│   │   │   ├── sentiment.py        # Fear&Greed, CoinGecko (cache agresivo, APScheduler)
-│   │   │   ├── outliers.py         # Fase 8 — Outliers Club
+│   │   │   ├── snapshots.py        # OI / long-short / taker ratio en vivo (ventana de ~30d)
+│   │   │   ├── sentiment.py        # (pendiente, Fase 7) Fear&Greed, CoinGecko
+│   │   │   ├── outliers.py         # (pendiente, Fase 8) Outliers Club
 │   │   │   └── store.py            # Persistencia de klines para backtest offline
 │   │   ├── signals/                # Feature engine (PURO, sin I/O)
 │   │   │   ├── indicators.py       # Decimal, pocas velas — camino de PRESENTACIÓN
@@ -236,28 +255,30 @@ bob/
 │   │   │   └── derivatives.py      # OI × precio, posicionamiento, funding
 │   │   ├── models/                 # Modelos probabilísticos (PUROS, sin I/O)
 │   │   │   ├── markov.py           # Heredado — baseline de régimen
+│   │   │   ├── hmm.py              # HMM gaussiano propio: Baum-Welch, filtrado causal, BIC/ICL
 │   │   │   ├── labeling.py         # Triple-barrier, targets, pesos por unicidad
 │   │   │   ├── validation.py       # Walk-forward purgado + embargo
 │   │   │   ├── forecast.py         # Probabilidad calibrada, volatilidad, conformal
-│   │   │   ├── baselines.py        # RandomWalk, EWMA, GARCH(1,1), HAR-RV
+│   │   │   ├── baselines.py        # RandomWalk, EWMA, GARCH(1,1), HAR-RV — propios, en numpy
 │   │   │   ├── metrics.py          # Brier, ECE, QLIKE, Winkler, Diebold-Mariano
-│   │   │   ├── experiment.py       # Orquesta el walk-forward completo
+│   │   │   ├── experiment.py       # Orquesta el walk-forward completo + umbrales del gate
 │   │   │   ├── report.py           # Renderiza el reporte a texto
-│   │   │   └── projection.py       # (pendiente) EV con leverage, precio de liq
+│   │   │   ├── production.py       # UN ajuste consultable barra a barra + ACI en vivo
+│   │   │   └── projection.py       # EV con leverage, precio de liq, leverage máx seguro
 │   │   ├── backtest/               # Capa de I/O del experimento
 │   │   │   ├── runner.py           # DB → experiment → reporte + BacktestRun
 │   │   │   └── compare.py          # Ablación entre variantes de features
 │   │   ├── paper/
-│   │   │   └── tracker.py          # Simula forward cada señal emitida, registra outcome
+│   │   │   └── tracker.py          # Resuelve cada pronóstico con las métricas del gate
 │   │   ├── live/
-│   │   │   └── analyst.py          # Loop en vivo: data → features → modelo → señal
-│   │   ├── alerts/
-│   │   │   ├── telegram.py
-│   │   │   └── broadcast.py        # WS al frontend
+│   │   │   ├── feed.py             # Puente feed → dashboard (market.tick, market.candle)
+│   │   │   └── analyst.py          # Loop en vivo: data → features → bundle → proyección
+│   │   ├── alerts/                 # (pendiente, Fase 7) telegram.py, broadcast.py
 │   │   ├── api/
-│   │   │   ├── routes/             # signal, backtest, history, watchlist, settings
-│   │   │   └── ws.py
+│   │   │   ├── routes/             # (pendiente, Fase 6) signal, backtest, history, settings
+│   │   │   └── ws.py               # Broadcast al frontend
 │   │   └── utils/
+│   ├── artifacts/                  # Reportes de gate VERSIONADOS (.txt legible + .json)
 │   └── tests/                      # signals/, models/, backtest/ con cobertura ≥ 90%
 │
 ├── frontend/
@@ -271,8 +292,9 @@ bob/
 │       └── ...                     # (shell heredado)
 │
 └── docs/
-    ├── PROBABILITY_MODEL.md        # Deducción del modelo del KPI Seguridad
-    └── DATA_SOURCES.md             # Endpoints, rate limits, trampas de cada fuente
+    ├── PROBABILITY_MODEL.md        # Deducción del stack, el gate y sus resultados
+    ├── DATA_SOURCES.md             # Endpoints, rate limits, trampas de cada fuente
+    └── HANDOFF_FASE1.md            # Estado al cierre de Fase 0 y gotchas de entorno
 ```
 
 ---
@@ -522,6 +544,15 @@ completo.
 3. **Criterio de salida (los dos, en TODAS las direcciones)**: error de
    calibración < 10pp por bucket **y** AUC > 0.55 con BSS > 0. Método completo
    y límites conocidos: `docs/PROBABILITY_MODEL.md`
+
+**VEREDICTO: el target de dirección NO pasó el gate.** Calibra (4,0pp / 5,1pp)
+y no discrimina (AUC 0,519 / 0,533). El target de volatilidad y el cono sí
+pasan. Está escrito de forma verificable por cualquiera que entre al repo:
+`README.md` abre con la sección "Veredicto del gate", los reportes completos
+están **versionados** en `backend/artifacts/*.txt` con su bloque `GATE DE LA
+FASE 4`, y `uv run python -m bob.backtest.compare` reimprime el veredicto
+desde los `.json`. Nada de esto es un resumen escrito a mano: sale del
+`ExperimentResult`.
 4. ✅ **Reejecución con las familias de Fase 2b (2026-08-25)**. `runner.py
    --features {price|price+deriv|full|full+near}` corre la misma configuración
    con distintas familias, y `backtest/compare.py` las pone lado a lado. El
@@ -591,7 +622,16 @@ Reformulada por la decisión del 25-08: se emite **proyección**, no dirección.
 6. ✅ **Las pausas del proceso son seguras** (2026-08-25). El analista repara
    las tres series al arrancar y en cada reajuste, así que apagar el equipo no
    cuesta muestras más allá de las barras que no ocurrieron. Ver abajo
-7. ⏳ **Pendiente**: acumular ~280 pronósticos resueltos (≈72h de mercado, no
+7. ✅ **`/api/health` reporta el estado del analista**, no solo el del feed.
+   Durante una corrida larga la pregunta que importa no es "¿el backend
+   responde?" sino "¿está emitiendo?", y son cosas distintas: el ajuste
+   inicial toma ~80s, un reajuste fallido lo deja sirviendo con el bundle
+   previo, y una familia de features que dejó de llegar lo deja mudo. Sin
+   `analyst.status()` las tres se ven igual desde afuera — un backend en verde
+   que no produce nada. Expone `fitted`, `refitting`, `bars_since_fit`,
+   `n_train`, `last_forecast_open_time` y la cobertura del cono con su
+   `alpha_t`
+8. ⏳ **Pendiente**: acumular ~280 pronósticos resueltos (≈72h de mercado, no
    necesariamente corridas) y comparar cobertura forward vs backtest
 
 **Correr la validación: qué sobrevive a una pausa y qué no.**

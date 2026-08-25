@@ -350,6 +350,47 @@ Los forecasts de volatilidad en log llevan **corrección de Jensen**
 sesgados hacia abajo, y subestimar la volatilidad es exactamente el error
 que liquida cuentas apalancadas.
 
+### 7.1 Todos están escritos desde cero — y por qué
+
+**No se usan `statsmodels` ni `arch`.** Ninguna de las dos está en
+`backend/pyproject.toml` ni en el entorno. `GarchVolForecaster` y
+`HARVolForecaster` son implementaciones propias en numpy:
+
+- **GARCH(1,1)**: verosimilitud gaussiana escrita a mano y minimizada con
+  `scipy.optimize.minimize` (L-BFGS-B). Tiene tres decisiones que una llamada
+  a `arch_model(...).fit()` no deja tomar: los retornos se **reescalan a
+  desviación unitaria** antes de optimizar (los de 15m son ~1e-3 y una
+  verosimilitud sobre varianzas de 1e-6 es numéricamente frágil); la
+  restricción `alpha + beta < 0.9999` se impone dentro de la función objetivo
+  además de en los bounds; y si la optimización no converge **cae a EWMA en
+  vez de devolver basura**, que es lo que un baseline roto haría pasar por
+  "el modelo le gana".
+- **HAR-RV**: OLS con `np.linalg.lstsq` sobre `log RV`, con corrección de
+  Jensen al volver a niveles.
+
+La razón de fondo no es evitar dependencias: es que **el baseline es el
+número que decide**. Todo el proyecto se apoya en "¿le gana el modelo a la
+alternativa trivial?"; si la alternativa trivial es una caja negra, la
+respuesta no es auditable. Un GARCH que no converge en silencio y devuelve
+varianza incondicional haría ver *skill* donde no lo hay, y eso es
+indistinguible de un fraude involuntario.
+
+Lo mismo aplica al resto del motor:
+
+| Componente | Implementación |
+|---|---|
+| GARCH(1,1), HAR-RV, EWMA/RiskMetrics, random walk, tasa base | Propias — numpy (+ `scipy.optimize` en GARCH) |
+| HMM gaussiano: Baum-Welch, forward-backward escalado, BIC/ICL | Propia — numpy; `sklearn.cluster.KMeans` **solo** para inicializar |
+| Brier, BSS, ECE, QLIKE, Winkler, Mincer-Zarnowitz | Propias — numpy |
+| Diebold-Mariano + corrección Harvey-Leybourne-Newbold | Propia — `scipy.stats` solo para la t de Student |
+| Triple-barrier, walk-forward purgado + embargo, pesos por unicidad | Propios — numpy |
+| Conformal CQR + ACI | Propia — numpy |
+| GBM, logística, Ridge, isotónica, StandardScaler | **scikit-learn** |
+
+`hmmlearn` se descarta por una razón distinta y más grave, desarrollada en
+§9-bis.1: su inferencia mira el futuro de cada barra y usarla como feature
+sería lookahead invisible.
+
 ---
 
 ## 8. El gate de la Fase 4 — dos criterios, no uno
@@ -476,6 +517,86 @@ correctamente. Lo que sí entrega es un pronóstico de volatilidad con skill
 real y un cono de precio con cobertura verificada. Para el asistente eso ya
 es valor operativo: dimensionar TP/SL y mostrarle al usuario un rango de
 precio en el que confiar es útil aunque nadie sepa hacia dónde va el precio.
+
+---
+
+## 9-a. Segunda corrida (2026-08-25) — la ablación de familias
+
+La Fase 2b se hizo bajo una hipótesis explícita: *el gate no pasa
+discriminación porque le faltan datos de derivados y de microestructura*. Al
+cerrarla, esos datos ya no faltaban —730/730 días de `metrics` y `bookDepth`
+desde el archivo de data.binance.vision— así que la hipótesis se volvió
+comprobable. `runner.py --features {price|price+deriv|full|full+near}` corre
+la misma configuración cambiando solo las familias, y `backtest/compare.py`
+las pone lado a lado.
+
+Runs: `ETHUSDT-15m-price-20260825150516`,
+`ETHUSDT-15m-price+deriv-20260825151728`, `ETHUSDT-15m-full-20260825153235`.
+69.119 velas, misma semilla, mismos folds, mismas barreras.
+
+### TARGET 1 — la dirección empeora al agregar features
+
+| variante | features | AUC long | AUC short | BSS long | BSS short | calib long | calib short | veredicto |
+|---|---|---|---|---|---|---|---|---|
+| `price` | 55 | 0,519 | 0,533 | −0,0028 | +0,0005 | 4,0pp | 5,1pp | ✗ no habilitado |
+| `price+deriv` | 81 | 0,512 | 0,517 | −0,0035 | −0,0025 | 4,1pp | 6,4pp | ✗ no habilitado |
+| `full` | 96 | 0,509 | 0,515 | −0,0049 | −0,0018 | 5,8pp | 1,7pp | ✗ no habilitado |
+
+La degradación es **monótona con el número de features y simultánea en las
+dos direcciones**. Eso descarta ruido de muestreo como explicación: el ruido
+no se ordena. La lectura es dilución — la capacidad fija del GBM repartida
+entre columnas sin señal direccional.
+
+Detalle que vale más que la tabla: en `price+deriv` la familia `derivados`
+marca **0,00151** de importancia por permutación, segundo lugar tras
+`volatilidad`; el modelo **sí las usa**. En `full` la misma familia cae a
+0,00006 y `libro` sale **negativa** (−0,00002). O sea:
+
+> **Importancia por permutación positiva ≠ ganancia fuera de muestra.**
+> La permutación mide de qué depende el modelo ajustado, no si ese modelo
+> generaliza mejor que otro. Leerla como evidencia de que una familia "sirve"
+> es un error fácil de cometer y caro.
+
+### TARGET 2 — la volatilidad se sostiene en las tres
+
+| variante | RMSE | R² vs media | R² vs EWMA | QLIKE | DM vs EWMA | DM vs HAR |
+|---|---|---|---|---|---|---|
+| `price` | 0,00559 | +0,400 | +0,374 | 0,3963 | p=0,0000 | p=0,0000 |
+| `price+deriv` | 0,00568 | +0,392 | +0,366 | 0,4144 | p=0,0000 | p=0,0000 |
+| `full` | 0,00543 | +0,405 | +0,378 | 0,4067 | p=0,0000 | p=0,0000 |
+
+El edge de volatilidad no depende de las familias nuevas ni las necesita, y
+tampoco se rompe con ellas. Es el resultado robusto del proyecto.
+
+### Qué queda refutado, y qué no
+
+Refutado: **la causa del fallo del gate no es la disponibilidad de datos.**
+La Fase 2b no fue en vano —730 días de derivados y de libro son
+infraestructura real y reutilizable, y el vivo corre sobre ellos— pero su
+premisa era falsa y conviene que quede escrito que lo era.
+
+Queda como sospechoso principal la **formulación del target**: barreras a
+±0,5σ con H=16 sobre 15m puede ser sencillamente casi impredecible. Barrer
+combinaciones de TP/SL/H es la salida obvia y **no se tomó**, porque con
+suficientes combinaciones una pasa el gate por azar. Si algún día se retoma,
+hay que fijar el criterio y el número de pruebas **antes** de correrlas.
+
+### Control de regresión
+
+El run `price` del 2026-08-25 reproduce el del 2026-08-24 **bit a bit**:
+AUC 0.518701 / 0.532680, BSS −0.002801 / +0.000498. Ni el cambio de
+`numeric.zscore` ni el refactor completo de la Fase 2b movieron el baseline.
+Es la propiedad que permite atribuir cualquier diferencia a un cambio de
+código o de datos, y no al azar del entrenamiento.
+
+### `full+near` no es evaluable con este periodo
+
+El nivel near-touch (±0,2%) empieza el 2026-01-15, así que en los primeros
+folds esas 8 columnas son NaN puro. El binning de sklearn revienta con
+`window shape cannot be larger than input array shape`, un error que no dice
+nada de la causa. `assert_columns_trainable` lo convierte en un diagnóstico
+que **nombra las columnas** y falla en segundos. La variante requiere que el
+nivel acumule historia suficiente para cubrir varios folds.
 
 ---
 
@@ -718,17 +839,33 @@ el dato justo donde el dato no está.
 ```bash
 cd backend
 
-# 1. Histórico (idempotente, reanuda desde lo ya persistido)
+# 1. Histórico de klines (idempotente, reanuda desde lo ya persistido)
 uv run python -m bob.data.download --symbol ETHUSDT --timeframe 15m --months 24
 uv run python -m bob.data.download --status
+uv run python -m bob.data.download --repair          # cierra huecos interiores
 
-# 2. Experimento walk-forward completo
+# 2. Derivados y libro desde el archivo estático (idempotente por día UTC)
+uv run python -m bob.data.download_vision --symbol ETHUSDT --timeframe 15m --days 730
+uv run python -m bob.data.download_vision --status
+
+# 3. Experimento walk-forward completo
 uv run python -m bob.backtest.runner --symbol ETHUSDT --timeframe 15m --folds 6
+
+# 4. La escalera de ablación del §9-a, y su comparador
+uv run python -m bob.backtest.runner --features price
+uv run python -m bob.backtest.runner --features price+deriv
+uv run python -m bob.backtest.runner --features full
+uv run python -m bob.backtest.compare
 
 # Variantes
 uv run python -m bob.backtest.runner --tp 1.0 --sl 0.5 --horizon 32 --folds 8
 uv run python -m bob.backtest.runner --model logistic --rolling --no-persist
 ```
+
+Los reportes de las corridas que sostienen este documento están
+**versionados en el repo** bajo `backend/artifacts/`, no resumidos a mano:
+cualquiera puede leer el bloque `GATE DE LA FASE 4` en el `.txt` o los
+buckets completos en el `.json` sin volver a correr nada.
 
 Cada run escribe `backend/artifacts/<run_id>.txt` (reporte legible) y
 `<run_id>.json` (resultado completo, incluidos todos los buckets), y
@@ -751,16 +888,31 @@ Declarados acá para que nadie los descubra después leyendo el código:
    por construcción y hay tests que lo verifican, pero agnóstico ≠ validado.
 2. **Funding aproximado.** Constante de 0.01%/8h como costo en ambas
    direcciones. La serie real existe (`funding_history`) y no está cableada.
-3. **OI y ratios long/short ausentes.** Binance solo conserva ~30 días de
-   histórico, insuficiente para entrenar sobre 2 años. Hay que empezar a
-   snapshotearlos desde ya para que estén disponibles más adelante.
-4. **Sin datos de orderbook.** El `depth` requiere captura en vivo; la
-   microestructura actual sale solo de lo que trae la kline.
-5. **Los costos son un supuesto, no una medición.** 0.10% de fees + 0.04%
+3. **Los costos son un supuesto, no una medición.** 0.10% de fees + 0.04%
    de slippage. El slippage real depende del tamaño y del momento; medirlo
    requiere ejecución real, que BOB no hace por diseño.
-6. **Dos años cubren pocos regímenes macro.** Los folds tempranos entrenan
+4. **Dos años cubren pocos regímenes macro.** Los folds tempranos entrenan
    con relativamente pocos datos.
+5. **El near-touch del libro (±0,2%) no tiene historia suficiente.** Binance
+   lo publica desde 2026-01-15; la variante `full+near` no es evaluable
+   todavía (§9-a).
+6. **El vivo no puede correr con `full`.** `bookDepth` llega del archivo
+   diario con ~1 día de retraso, así que la cola de barras recientes queda
+   sin las 15 columnas del núcleo. Default en vivo: `price+deriv`. Usar libro
+   en vivo exige antes cablear el stream `@depth` (§9-ter.4).
+7. **La ventana de derivados en vivo es irrecuperable hacia atrás más allá
+   de ~30 días**, y los snapshots recuperan ~41h por request: una pausa larga
+   del proceso deja un hueco de derivados que no se puede rellenar.
+
+Dos límites que estaban en versiones anteriores de este documento y **ya no
+aplican**, anotados acá para que nadie los repita de memoria:
+
+- ~~OI y ratios long/short ausentes por la ventana de ~30 días~~ — la ventana
+  es del *endpoint* `/futures/data/*`, no del *dato*. El archivo diario de
+  `data.binance.vision` publica los mismos campos en grilla de 5m desde
+  2021-12, sin API key. Hay 730/730 días persistidos.
+- ~~Sin datos de orderbook~~ — `bookDepth` también sale del archivo, desde
+  2023-01. Hay 70.074 filas agregadas a la grilla de 15m, 730/730 días.
 
 ---
 
