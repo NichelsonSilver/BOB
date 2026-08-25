@@ -7,6 +7,12 @@ el experimento, escribe el reporte y persiste el run en `BacktestRun`.
 Uso:
     uv run python -m bob.backtest.runner --symbol ETHUSDT --timeframe 15m
     uv run python -m bob.backtest.runner --tp 2.0 --sl 1.0 --horizon 24 --folds 8
+    uv run python -m bob.backtest.runner --features price     # baseline Fase 2
+    uv run python -m bob.backtest.runner --features full+near # todo, Fase 2b
+
+`--features` decide qué familias entran. Es el eje de la comparación del gate:
+sin él no se puede afirmar que las familias nuevas aportan, solo que el número
+cambió.
 """
 
 from __future__ import annotations
@@ -18,7 +24,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from bob.data.store import load_series
+from bob.data.store import load_book_depth, load_derivatives, load_series
 from bob.db.models import BacktestRun
 from bob.db.session import get_session, init_db
 from bob.models.experiment import ExperimentConfig, ExperimentResult, run_experiment
@@ -29,11 +35,33 @@ from bob.utils.console import enable_utf8_stdout
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
 ARTIFACTS_DIR = _BACKEND_DIR / "artifacts"
 
+#: Combinaciones de familias, como (derivados, libro, near-touch). Nombrarlas
+#: acá y no dejar tres flags sueltos es lo que hace que un run sea citable:
+#: "full contra price" dice algo, "--use-book --no-near" no.
+FEATURE_SETS: dict[str, tuple[bool, bool, bool]] = {
+    "price": (False, False, False),
+    "price+deriv": (True, False, False),
+    "full": (True, True, False),
+    "full+near": (True, True, True),
+}
+
+
+def feature_set_name(config: ExperimentConfig) -> str:
+    """Nombre corto de la combinacion de familias, para etiquetar el run."""
+    for name, flags in FEATURE_SETS.items():
+        if flags == (config.use_derivatives, config.use_book, config.use_book_near):
+            return name
+    return "custom"
+
 
 def persist_run(result: ExperimentResult) -> str:
     """Guarda el run en `BacktestRun`. Devuelve el run_id."""
     init_db()
-    run_id = f"{result.symbol}-{result.timeframe}-{datetime.now(UTC):%Y%m%d%H%M%S}"
+    variante = feature_set_name(result.config)
+    run_id = (
+        f"{result.symbol}-{result.timeframe}-{variante}-"
+        f"{datetime.now(UTC):%Y%m%d%H%M%S}"
+    )
 
     # Métricas agregadas: se toma la peor dirección, no el promedio. Un
     # promedio esconde que una de las dos está descalibrada, y el usuario
@@ -125,6 +153,16 @@ def main() -> None:
     parser.add_argument("--threshold", type=float, default=exp_defaults.signal_threshold)
     parser.add_argument("--model", default="gbm", choices=["gbm", "logistic"])
     parser.add_argument("--rolling", action="store_true", help="train rodante en vez de anclado")
+    parser.add_argument(
+        "--features",
+        default="full",
+        choices=sorted(FEATURE_SETS),
+        help=(
+            "qué familias entran: price = solo las 55 de Fase 2 (baseline); "
+            "price+deriv = agrega derivados; full = agrega el núcleo del libro; "
+            "full+near = agrega también el near-touch (cobertura ~30%%)"
+        ),
+    )
     parser.add_argument("--no-persist", action="store_true")
     args = parser.parse_args()
 
@@ -136,6 +174,7 @@ def main() -> None:
         )
     logger.info("cargadas {:,} velas de {} {}", len(series), args.symbol, args.timeframe)
 
+    use_deriv, use_book, use_near = FEATURE_SETS[args.features]
     config = ExperimentConfig(
         barrier=BarrierConfig(
             tp_mult=args.tp, sl_mult=args.sl, horizon_bars=args.horizon
@@ -144,9 +183,21 @@ def main() -> None:
         model_kind=args.model,
         signal_threshold=args.threshold,
         expanding=not args.rolling,
+        use_derivatives=use_deriv,
+        use_book=use_book,
+        use_book_near=use_near,
     )
 
-    result = run_experiment(series, config)
+    # El I/O de las familias de Fase 2b vive acá, no en `models/` (regla 3).
+    derivatives = load_derivatives(args.symbol, "5m") if use_deriv else None
+    funding = load_derivatives(args.symbol, "funding") if use_deriv else None
+    book = load_book_depth(args.symbol, args.timeframe) if use_book else None
+    if derivatives is not None:
+        logger.info("derivados: {:,} puntos | funding: {:,}", len(derivatives), len(funding or []))
+    if book is not None:
+        logger.info("libro: {:,} barras", len(book))
+
+    result = run_experiment(series, config, derivatives, funding, book)
     report = render_report(result)
     print("\n" + report)
 

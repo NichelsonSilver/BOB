@@ -25,7 +25,7 @@ from typing import Any
 import numpy as np
 from loguru import logger
 
-from bob.data.store import OHLCVSeries
+from bob.data.store import BookDepthSeries, DerivativesSeries, OHLCVSeries
 from bob.models import metrics as mx
 from bob.models.baselines import (
     BaseRateClassifier,
@@ -49,7 +49,9 @@ from bob.models.labeling import (
     uniqueness_weights,
 )
 from bob.signals import numeric as nm
+from bob.signals.derivatives import build_derivative_features
 from bob.signals.features import FeatureSet, build_features, feature_families
+from bob.signals.microstructure import build_microstructure_features
 
 MODEL_VERSION = "bob-forecast-0.1.0"
 
@@ -69,6 +71,19 @@ class ExperimentConfig:
     conformal_alphas: tuple[float, ...] = (0.20, 0.05)
     signal_threshold: float = 0.70
     seed: int = 42
+
+    #: Familias de features que entran al modelo. "price" son las 55 de la
+    #: Fase 2; las otras dos llegaron con la Fase 2b y solo tienen efecto si
+    #: el runner pasa las series correspondientes.
+    #:
+    #: `use_book_near` va aparte a propósito: el nivel de 0,2% existe en el
+    #: archivo solo desde 2026-01-15, así que esas columnas cubren ~30% de la
+    #: muestra. Mezclarlas con el resto obliga a elegir entre tirar el 70% de
+    #: las filas o dejar que el modelo aprenda de un feature que existe en un
+    #: solo tramo del periodo — y esa elección tiene que ser explícita.
+    use_derivatives: bool = True
+    use_book: bool = True
+    use_book_near: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         out = asdict(self)
@@ -345,8 +360,98 @@ def _permutation_importance(
     return scores
 
 
-def run_experiment(series: OHLCVSeries, config: ExperimentConfig | None = None) -> ExperimentResult:
-    """Corre el experimento completo sobre una serie de velas."""
+def assemble_features(
+    series: OHLCVSeries,
+    cfg: ExperimentConfig,
+    derivatives: DerivativesSeries | None = None,
+    funding: DerivativesSeries | None = None,
+    book: BookDepthSeries | None = None,
+) -> tuple[np.ndarray, list[str], set[str], dict[str, list[str]]]:
+    """Arma la matriz completa: precio + derivados + libro.
+
+    Devuelve `(X, names, sparse, families)`. `sparse` son las columnas que
+    **no** entran al criterio de finitud porque su cobertura es parcial por
+    construcción, no por un bug: hoy, únicamente las del near-touch.
+
+    PURO: recibe series de numpy, no toca la DB.
+    """
+    fs: FeatureSet = build_features(series)
+    blocks: list[np.ndarray] = [fs.X]
+    names: list[str] = list(fs.names)
+    sparse: set[str] = set()
+    families: dict[str, list[str]] = feature_families(fs.names)
+
+    if cfg.use_derivatives and derivatives is not None and len(derivatives) > 0:
+        df = build_derivative_features(series, derivatives, funding)
+        blocks.append(df.X)
+        names.extend(df.names)
+        families["derivados"] = list(df.names)
+        logger.info("+{} features de derivados", len(df.names))
+
+    if cfg.use_book and book is not None and len(book) > 0:
+        mf = build_microstructure_features(series, book)
+        keep = list(mf.names) if cfg.use_book_near else mf.core_names()
+        idx = [mf.names.index(nm_) for nm_ in keep]
+        blocks.append(mf.X[:, idx])
+        names.extend(keep)
+        families["libro"] = list(keep)
+        if cfg.use_book_near:
+            sparse.update(mf.near_names)
+        logger.info(
+            "+{} features de libro ({} de cobertura parcial)", len(keep), len(sparse)
+        )
+
+    return np.column_stack(blocks), names, sparse, families
+
+
+
+def assert_columns_trainable(
+    X: np.ndarray, names: list[str], min_train_frac: float
+) -> None:
+    """Falla temprano si alguna columna es NaN entero en el primer train.
+
+    El GBM de sklearn tolera NaN **salvo** cuando una columna no tiene ni un
+    valor finito en el set de entrenamiento: ahí el binning no puede calcular
+    umbrales y revienta con `window shape cannot be larger than input array
+    shape`, un error que no dice absolutamente nada sobre la causa.
+
+    Pasa de verdad, no en teoría: el near-touch del libro existe recién desde
+    2026-01-15, así que en los primeros folds del walk-forward esas columnas
+    son NaN puro. Un feature que no existe en el tramo donde el modelo aprende
+    no es un feature con huecos — es un feature que no se puede evaluar con
+    este periodo, y conviene que lo diga en esas palabras.
+    """
+    n_train = max(1, int(len(X) * min_train_frac))
+    vacias = [
+        name
+        for i, name in enumerate(names)
+        if not np.any(np.isfinite(X[:n_train, i]))
+    ]
+    if vacias:
+        muestra = ", ".join(vacias[:5])
+        extra = f" (y {len(vacias) - 5} más)" if len(vacias) > 5 else ""
+        raise ValueError(
+            f"{len(vacias)} columna(s) sin un solo valor en el primer train "
+            f"({n_train:,} barras): {muestra}{extra}. El modelo no puede "
+            "aprender de un feature que no existe donde entrena — si es el "
+            "near-touch del libro, su historia arranca demasiado tarde para "
+            "este periodo: correr con use_book_near=False."
+        )
+
+
+def run_experiment(
+    series: OHLCVSeries,
+    config: ExperimentConfig | None = None,
+    derivatives: DerivativesSeries | None = None,
+    funding: DerivativesSeries | None = None,
+    book: BookDepthSeries | None = None,
+) -> ExperimentResult:
+    """Corre el experimento completo sobre una serie de velas.
+
+    Las series de derivados y libro son opcionales: sin ellas el experimento
+    corre con las 55 features de precio, que es exactamente el baseline contra
+    el que hay que comparar.
+    """
     from bob.models.validation import assert_no_leakage, purged_walk_forward
 
     cfg = config or ExperimentConfig()
@@ -356,9 +461,31 @@ def run_experiment(series: OHLCVSeries, config: ExperimentConfig | None = None) 
         raise ValueError(f"serie demasiado corta para walk-forward: {n} velas")
 
     logger.info("features sobre {} velas de {} {}", n, series.symbol, series.timeframe)
-    fs: FeatureSet = build_features(series)
-    X = fs.X
-    finite_rows = np.all(np.isfinite(X), axis=1)
+    X, feature_names, sparse_names, families = assemble_features(
+        series, cfg, derivatives, funding, book
+    )
+
+    if sparse_names and cfg.model_kind == "logistic":
+        raise ValueError(
+            "el modelo logístico no admite NaN: correr con use_book_near=False "
+            "o con model_kind='gbm'"
+        )
+
+    assert_columns_trainable(X, feature_names, cfg.min_train_frac)
+
+    # El criterio de finitud ignora las columnas de cobertura parcial: exigirlas
+    # tiraría el 70% de la muestra para ganar 8 columnas que solo existen en el
+    # último tramo. El GBM trata el NaN como rama propia y las aprovecha donde
+    # están sin necesitar que estén siempre.
+    dense_idx = [i for i, nm_ in enumerate(feature_names) if nm_ not in sparse_names]
+    finite_rows = np.all(np.isfinite(X[:, dense_idx]), axis=1)
+    logger.info(
+        "matriz {}x{} — {:,} filas con las columnas densas completas ({:.1f}%)",
+        X.shape[0],
+        X.shape[1],
+        int(finite_rows.sum()),
+        100 * finite_rows.mean(),
+    )
 
     horizon = cfg.barrier.horizon_bars
     y_vol = forward_volatility(series.close, horizon)
@@ -486,7 +613,7 @@ def run_experiment(series: OHLCVSeries, config: ExperimentConfig | None = None) 
         if direction == cfg.directions[0] and last_model is not None and last_test is not None:
             logger.info("importancia por permutación sobre el último fold…")
             importance = _permutation_importance(
-                last_model, X[last_test], y[last_test], fs.names, cfg.seed
+                last_model, X[last_test], y[last_test], feature_names, cfg.seed
             )
 
     # ------------------------------------------------------------------ #
@@ -607,11 +734,11 @@ def run_experiment(series: OHLCVSeries, config: ExperimentConfig | None = None) 
             yt, np.concatenate(g_lo), np.concatenate(g_hi), 1.0 - alpha
         )
 
-    families = feature_families(fs.names)
     imp_map = dict(importance)
     family_importance = {
         fam: float(sum(imp_map.get(nm_, 0.0) for nm_ in members))
         for fam, members in families.items()
+        if members
     }
 
     return ExperimentResult(
@@ -619,8 +746,8 @@ def run_experiment(series: OHLCVSeries, config: ExperimentConfig | None = None) 
         timeframe=series.timeframe,
         config=cfg,
         n_bars=n,
-        n_features=fs.n_features,
-        feature_names=fs.names,
+        n_features=X.shape[1],
+        feature_names=feature_names,
         date_from=_ms_to_date(int(series.open_time[0])),
         date_to=_ms_to_date(int(series.open_time[-1])),
         folds=fold_rows,
