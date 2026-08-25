@@ -268,7 +268,13 @@ def resolve_pending(
 
     resolved: list[ResolvedForecast] = []
     try:
-        stmt = select(ForecastRecord).where(ForecastRecord.status == "open")
+        # También se re-examinan los `gap`: un hueco del feed se cierra con
+        # `download --repair`, y entonces ese registro vuelve a ser medible.
+        # Marcarlo una vez y nunca volver a mirarlo regalaría justo las
+        # muestras de alrededor de cada pausa del proceso.
+        stmt = select(ForecastRecord).where(
+            col(ForecastRecord.status).in_(("open", "gap"))
+        )
         if symbol is not None:
             stmt = stmt.where(ForecastRecord.symbol == symbol)
         if timeframe is not None:
@@ -282,6 +288,8 @@ def resolve_pending(
             if len(candles) < record.horizon_bars:
                 continue  # sigue abierto: todavía no pasó el horizonte
             if not _is_contiguous(record, candles):
+                if record.status == "gap":
+                    continue  # ya estaba marcado y el hueco sigue abierto
                 record.status = "gap"
                 record.closed_at = datetime.now(UTC)
                 session.add(record)
@@ -404,6 +412,64 @@ def coverage_report(
             "mean_bars_held": float(np.mean([o["bars_held"] for o in outs])),
         }
     return report
+
+
+def replay_cone_state(
+    symbol: str,
+    timeframe: str,
+    cones: dict[float, OnlineConformalCone],
+    session: Session | None = None,
+) -> int:
+    """Reconstruye el estado del ACI desde los registros ya resueltos.
+
+    `OnlineConformalCone.alpha_t` vive en memoria, así que un reinicio lo
+    devolvería al alpha nominal y el cono perdería toda la adaptación que
+    había acumulado — invisible, porque el intervalo se sigue dibujando igual
+    de lindo. Como la DB ya guarda el cono emitido y el retorno realizado de
+    cada registro, el estado no hace falta persistirlo aparte: se **deriva**
+    reproduciendo las observaciones en orden.
+
+    Eso hace que reiniciar el proceso (o pausar el equipo) sea gratis para el
+    cono. Devuelve cuántas observaciones se reprodujeron.
+    """
+    owns = session is None
+    if owns:
+        init_db()
+        session = get_session()
+    assert session is not None
+    try:
+        stmt = (
+            select(ForecastRecord)
+            .where(
+                ForecastRecord.symbol == symbol,
+                ForecastRecord.timeframe == timeframe,
+                ForecastRecord.status == "resolved",
+            )
+            .order_by(col(ForecastRecord.open_time))
+        )
+        records = list(session.exec(stmt).all())
+    finally:
+        if owns:
+            session.close()
+
+    n = 0
+    for record in records:
+        if record.realized_return is None:
+            continue
+        for band in json.loads(record.cones_json):
+            cone = cones.get(float(band["alpha"]))
+            if cone is not None:
+                cone.observe(
+                    record.realized_return, float(band["ret_lo"]), float(band["ret_hi"])
+                )
+                n += 1
+    if n:
+        logger.info(
+            "tracker: estado del ACI reconstruido con {} observación(es) de {} registro(s)",
+            n,
+            len(records),
+        )
+    return n
 
 
 def render_coverage(report: CoverageReport) -> str:

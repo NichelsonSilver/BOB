@@ -227,10 +227,32 @@ def test_fila_con_hueco_denso_no_es_utilizable(fitted: tuple) -> None:
 
 
 def test_assert_tail_observable_nombra_la_columna_que_falta() -> None:
+    """Una familia que dejó de llegar: 25% de cobertura en la cola."""
     X = np.ones((200, 3))
-    X[-10:, 1] = np.nan  # una familia que dejó de llegar
+    X[-72:, 1] = np.nan
     with pytest.raises(ValueError, match="col_b"):
         assert_tail_observable(X, ["col_a", "col_b", "col_c"], set(), n_bars=96)
+
+
+def test_assert_tail_observable_tolera_un_nan_aislado() -> None:
+    """Distingue "esta familia no llega" de "este cociente se degeneró una vez".
+
+    Medido sobre la cola real de ETHUSDT: `oi_per_px_24h` tiene 1 NaN de 96
+    —el cociente se degenera cuando el precio no se movió en 24h— contra las 5
+    columnas de top traders con 73 de 96. Exigir cobertura perfecta abortaba
+    el arranque por lo primero. La barra concreta la sigue vigilando
+    `row_is_usable` en el momento de emitir.
+    """
+    X = np.ones((200, 3))
+    X[-5, 1] = np.nan  # 99% de cobertura
+    assert_tail_observable(X, ["col_a", "col_b", "col_c"], set(), n_bars=96)
+
+
+def test_assert_tail_observable_reporta_la_cobertura_medida() -> None:
+    X = np.ones((200, 2))
+    X[-96:, 1] = np.nan  # 0%
+    with pytest.raises(ValueError, match=r"col_b \(0%\)"):
+        assert_tail_observable(X, ["col_a", "col_b"], set(), n_bars=96)
 
 
 def test_assert_tail_observable_ignora_las_columnas_ralas() -> None:

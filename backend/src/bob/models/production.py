@@ -328,8 +328,9 @@ def assert_tail_observable(
     feature_names: list[str],
     sparse_names: set[str],
     n_bars: int = 96,
+    min_coverage: float = 0.7,
 ) -> None:
-    """Falla si las últimas `n_bars` no tienen completas las columnas densas.
+    """Falla si una columna densa cubre menos de `min_coverage` de la cola.
 
     El gemelo en vivo de `experiment.assert_columns_trainable`, y ataja el
     fallo simétrico. Aquel protege el pasado —una columna que no existe donde
@@ -348,25 +349,40 @@ def assert_tail_observable(
 
     Los derivados sí llegan: `data/snapshots.py` corre cada 30 min sobre la
     grilla de 5m y `align_to_bars` tolera hasta 1h de antigüedad.
+
+    **Por qué una fracción y no cobertura perfecta.** La primera versión exigía
+    las 96 barras finitas y abortaba el arranque por un solo NaN. Medido sobre
+    la cola real de ETHUSDT, eso mezclaba dos cosas muy distintas:
+    `oi_per_px_24h` con 1 NaN de 96 —un cociente que se degenera cuando el
+    precio no se movió en 24h, legítimo y aislado— contra las 5 columnas de
+    top traders con 73 de 96, que es una familia que sencillamente no llega.
+    Lo que este chequeo tiene que cazar es lo segundo.
+
+    El NaN aislado no queda sin vigilancia: si cae justo en la barra que se va
+    a emitir, `row_is_usable` la rechaza y el analista lo dice y sigue. La
+    división del trabajo es esa — acá, "esta familia no llega nunca"; allá,
+    "esta barra concreta está incompleta".
     """
     if X.shape[0] == 0:
         raise ValueError("matriz de features vacía")
     tail = X[-min(n_bars, X.shape[0]) :]
+    n = tail.shape[0]
     culpables = [
-        name
+        (name, float(np.mean(np.isfinite(tail[:, i]))))
         for i, name in enumerate(feature_names)
-        if name not in sparse_names and not np.all(np.isfinite(tail[:, i]))
+        if name not in sparse_names
+        and np.mean(np.isfinite(tail[:, i])) < min_coverage
     ]
     if culpables:
-        muestra = ", ".join(culpables[:6])
+        muestra = ", ".join(f"{name} ({cov:.0%})" for name, cov in culpables[:6])
         extra = f" (y {len(culpables) - 6} más)" if len(culpables) > 6 else ""
         raise ValueError(
-            f"{len(culpables)} columna(s) densas con huecos en las últimas "
-            f"{tail.shape[0]} barras: {muestra}{extra}. Una familia que no "
-            "llega a tiempo deja el pronóstico en silencio permanente: correr "
-            "el vivo con una combinación de features observable (price o "
-            "price+deriv) o cablear una fuente de baja latencia para la que "
-            "falta."
+            f"{len(culpables)} columna(s) densas por debajo del {min_coverage:.0%} "
+            f"de cobertura en las últimas {n} barras: {muestra}{extra}. Una "
+            "familia que no llega a tiempo deja el pronóstico en silencio "
+            "permanente: correr el vivo con una combinación de features "
+            "observable (price o price+deriv) o cablear una fuente de baja "
+            "latencia para la que falta."
         )
 
 

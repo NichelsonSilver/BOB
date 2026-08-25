@@ -420,3 +420,112 @@ def test_la_cli_resuelve_y_reporta(in_memory_engine, capsys) -> None:
     assert "VOLATILIDAD PRONOSTICADA" in capsys.readouterr().out
     with get_session() as s:
         assert s.exec(_select_records()).first().status == "resolved"
+
+
+# --------------------------------------------------------------------- #
+# Sobrevivir a una pausa del proceso
+# --------------------------------------------------------------------- #
+
+
+def test_un_gap_vuelve_a_medirse_cuando_el_backfill_lo_cierra(in_memory_engine) -> None:
+    """Marcar el hueco una vez y no volver a mirarlo regalaría las muestras de
+    alrededor de cada pausa, que son justo las que el backfill puede rescatar."""
+    with get_session() as s:
+        s.add(_record(1_000_000, 100.0))
+        for c in _candles(1_000_000 + TF_MS, [100.0, 101.0, 100.5, 102.0], skip=1):
+            s.add(c)
+        s.commit()
+
+    assert resolve_pending("TESTUSDT", "15m") == []
+    with get_session() as s:
+        assert s.exec(_select_records()).first().status == "gap"
+
+    # Llega la vela que faltaba (equivalente a `download --repair`).
+    with get_session() as s:
+        s.add(_candles(1_000_000 + 2 * TF_MS, [100.7])[0])
+        s.commit()
+
+    resueltos = resolve_pending("TESTUSDT", "15m")
+    assert len(resueltos) == 1
+    with get_session() as s:
+        rec = s.exec(_select_records()).first()
+        assert rec.status == "resolved"
+        assert rec.realized_vol is not None
+
+
+def test_un_gap_que_sigue_abierto_no_se_reescribe(in_memory_engine) -> None:
+    with get_session() as s:
+        s.add(_record(1_000_000, 100.0))
+        for c in _candles(1_000_000 + TF_MS, [100.0, 101.0, 100.5, 102.0], skip=1):
+            s.add(c)
+        s.commit()
+
+    resolve_pending("TESTUSDT", "15m")
+    resolve_pending("TESTUSDT", "15m")  # segunda vuelta, el hueco sigue
+    with get_session() as s:
+        assert s.exec(_select_records()).first().status == "gap"
+
+
+def test_el_estado_del_aci_se_reconstruye_desde_la_db(in_memory_engine) -> None:
+    """Reiniciar el proceso no puede costar la adaptación que el cono ya ganó."""
+    from bob.models.production import OnlineConformalCone
+    from bob.paper.tracker import replay_cone_state
+
+    class _Stub:
+        gamma = 0.05
+
+        def predict_interval(self, X):
+            n = X.shape[0]
+            return np.full(n, -0.001), np.full(n, 0.001)
+
+    # Tres pronósticos, todos con el precio saliéndose del cono.
+    with get_session() as s:
+        for k in range(3):
+            t = 1_000_000 + k * 10 * TF_MS
+            s.add(_record(t, 100.0, cones=((0.20, -0.001, 0.001),)))
+            for c in _candles(t + TF_MS, [110.0] * 4):
+                s.add(c)
+        s.commit()
+
+    vivo = OnlineConformalCone(model=_Stub(), alpha=0.20, gamma=0.05)  # type: ignore[arg-type]
+    resolve_pending("TESTUSDT", "15m", cones={0.20: vivo})
+    assert vivo.n_observed == 3
+
+    # Un proceso nuevo: cono en blanco, estado reconstruido desde la DB.
+    reiniciado = OnlineConformalCone(model=_Stub(), alpha=0.20, gamma=0.05)  # type: ignore[arg-type]
+    assert reiniciado.alpha_t == 0.20
+    n = replay_cone_state("TESTUSDT", "15m", {0.20: reiniciado})
+
+    assert n == 3
+    assert reiniciado.n_observed == vivo.n_observed
+    assert reiniciado.n_covered == vivo.n_covered
+    assert reiniciado.alpha_t == pytest.approx(vivo.alpha_t)
+
+
+def test_replay_ignora_niveles_que_el_cono_vivo_no_tiene(in_memory_engine) -> None:
+    from bob.models.production import OnlineConformalCone
+    from bob.paper.tracker import replay_cone_state
+
+    class _Stub:
+        gamma = 0.05
+
+        def predict_interval(self, X):
+            n = X.shape[0]
+            return np.full(n, -0.001), np.full(n, 0.001)
+
+    with get_session() as s:
+        s.add(_record(1_000_000, 100.0, cones=((0.05, -0.9, 0.9),)))
+        for c in _candles(1_000_000 + TF_MS, [100.0] * 4):
+            s.add(c)
+        s.commit()
+    resolve_pending("TESTUSDT", "15m")
+
+    cono = OnlineConformalCone(model=_Stub(), alpha=0.20, gamma=0.05)  # type: ignore[arg-type]
+    assert replay_cone_state("TESTUSDT", "15m", {0.20: cono}) == 0
+    assert cono.n_observed == 0
+
+
+def test_replay_sin_nada_resuelto_no_hace_nada(in_memory_engine) -> None:
+    from bob.paper.tracker import replay_cone_state
+
+    assert replay_cone_state("TESTUSDT", "15m", {}) == 0

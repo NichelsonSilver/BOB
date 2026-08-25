@@ -67,6 +67,9 @@ CFG = ExperimentConfig(
 
 
 def _analyst(publish, **kw) -> LiveAnalyst:
+    # `repair_on_fit=False` explícito: la reparación sale a la red, y estos
+    # tests miden el pegamento del analista, no la conectividad con Binance.
+    kw.setdefault("repair_on_fit", False)
     return LiveAnalyst(
         "TESTUSDT", "15m", publish=publish, config=CFG, feature_set="price", **kw
     )
@@ -444,3 +447,91 @@ async def test_stop_cancela_un_reajuste_en_curso(listo, in_memory_engine) -> Non
     analyst._refit_task = asyncio.create_task(_eterno())
     await analyst.stop()
     assert analyst._refit_task is None
+
+
+# --------------------------------------------------------------------- #
+# Sobrevivir a una pausa del proceso
+# --------------------------------------------------------------------- #
+
+
+def test_una_ventana_de_warmup_con_huecos_no_se_pronostica() -> None:
+    """Las ventanas de features cuentan barras, no tiempo: un hueco las miente."""
+    from bob.live.analyst import _assert_tail_contiguous
+    from bob.signals.features import CONTEXT_H, window_bars
+
+    completa = synthetic_series(n=1200, seed=4)
+    _assert_tail_contiguous(completa)  # no levanta
+
+    warmup = window_bars(CONTEXT_H, completa.interval_ms)
+    con_hueco = completa.slice(0)
+    # Se borra una vela dentro de la ventana de warm-up de la última barra.
+    corte = len(completa) - warmup // 2
+    partida = _concat_sin(completa, corte)
+    with pytest.raises(ValueError, match="warm-up"):
+        _assert_tail_contiguous(partida)
+
+    # Un hueco viejo, fuera de la ventana, no impide emitir: ya estaba en el
+    # backtest y no cambia el pronóstico de hoy.
+    vieja = _concat_sin(completa, 10)
+    _assert_tail_contiguous(vieja)
+    assert len(con_hueco) == len(completa)
+
+
+def _concat_sin(series, i: int):
+    """La serie sin la vela `i` — deja un hueco real en la grilla."""
+    import numpy as np
+
+    from bob.data.store import OHLCVSeries
+
+    keep = np.delete(np.arange(len(series)), i)
+    return OHLCVSeries(
+        symbol=series.symbol, timeframe=series.timeframe,
+        open_time=series.open_time[keep], open=series.open[keep],
+        high=series.high[keep], low=series.low[keep], close=series.close[keep],
+        volume=series.volume[keep], quote_volume=series.quote_volume[keep],
+        taker_buy_volume=series.taker_buy_volume[keep], n_trades=series.n_trades[keep],
+    )
+
+
+@pytest.mark.asyncio
+async def test_el_arranque_repara_la_serie_antes_de_ajustar(
+    listo, in_memory_engine, monkeypatch
+) -> None:
+    """Tras una pausa el hueco hay que cerrarlo ANTES de armar los features."""
+    from bob.live import analyst as mod
+
+    orden: list[str] = []
+
+    async def _repair(symbol, timeframe):
+        orden.append("repair")
+        return {"gaps_found": 1, "filled": 8, "extended": 2, "gaps_remaining": 0}
+
+    monkeypatch.setattr(mod, "repair_series", _repair)
+    analyst, _, _ = listo
+    analyst._repair_on_fit = True
+    original = LiveAnalyst._load_and_fit
+
+    def _fit(self):
+        orden.append("fit")
+        return original(self)
+
+    monkeypatch.setattr(LiveAnalyst, "_load_and_fit", _fit)
+    await analyst.start()
+    assert orden == ["repair", "fit"]
+
+
+@pytest.mark.asyncio
+async def test_sin_red_la_reparacion_no_impide_arrancar(
+    listo, in_memory_engine, monkeypatch
+) -> None:
+    """Se sigue con lo que hay en DB; la guarda de contigüidad decide si sirve."""
+    from bob.live import analyst as mod
+
+    async def _cae(symbol, timeframe):
+        raise OSError("sin conexión")
+
+    monkeypatch.setattr(mod, "repair_series", _cae)
+    analyst, rec, _ = listo
+    analyst._repair_on_fit = True
+    await analyst.start()
+    assert len(rec.of("analysis.forecast")) == 1

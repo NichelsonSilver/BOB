@@ -588,8 +588,62 @@ Reformulada por la decisión del 25-08: se emite **proyección**, no dirección.
    para el día en que el motor direccional pase el gate
 5. ✅ Cableado en el `lifespan`: el ajuste inicial (78s medidos sobre 69k
    barras) arranca en background para no dejar el backend sin responder
-6. ⏳ **Pendiente**: correr 72h continuas y comparar cobertura forward vs
-   backtest. El software está listo; falta el tiempo de mercado
+6. ✅ **Las pausas del proceso son seguras** (2026-08-25). El analista repara
+   las tres series al arrancar y en cada reajuste, así que apagar el equipo no
+   cuesta muestras más allá de las barras que no ocurrieron. Ver abajo
+7. ⏳ **Pendiente**: acumular ~280 pronósticos resueltos (≈72h de mercado, no
+   necesariamente corridas) y comparar cobertura forward vs backtest
+
+**Correr la validación: qué sobrevive a una pausa y qué no.**
+
+No hacen falta 72 horas ininterrumpidas. Lo que se necesita son ~280
+pronósticos resueltos, y el reloj puede pararse entre medio: todo lo que
+importa vive en SQLite, no en memoria.
+
+| | sobrevive a apagar el equipo |
+|---|---|
+| Pronósticos emitidos, con su vector completo | ✅ están en `ForecastRecord` |
+| Resultados ya resueltos y el reporte de cobertura | ✅ se recalculan de la DB |
+| Estado del ACI (`alpha_t`, cobertura acumulada) | ✅ se **deriva** de los registros resueltos con `replay_cone_state` — por eso no se persiste aparte |
+| Velas y derivados del rango caído | ✅ el analista los repara al arrancar |
+| Barras que ocurrieron con el proceso abajo | ❌ esas no se pronostican nunca |
+
+Tres cosas rompían esto y quedaron cerradas, **cada una encontrada midiendo,
+no razonando**:
+
+1. **El hueco de velas era permanente.** El feed reconecta y escribe la vela
+   actual, así que `download --resume` reanuda desde ahí y salta el rango
+   caído para siempre. `data/download.repair_series` pide los huecos
+   interiores uno por uno; el analista lo llama al arrancar y hay
+   `--repair` en la CLI. No es cosmético: las ventanas de `features.py`
+   cuentan **barras, no tiempo**, así que a partir de un hueco todas las
+   features de contexto describen una ventana que no existió —
+   `_assert_tail_contiguous` se niega a emitir sobre eso.
+2. **El snapshot en vivo no pedía los dos endpoints de top traders.** Se
+   asumía que "no vale la pena un request extra"; medido sobre la cola real,
+   esas 5 columnas tenían **73 NaN de 96** porque solo las llenaba el archivo
+   diario, que llega un día tarde. Ahora `fetch_derivatives` pide cinco
+   endpoints. El funding tampoco lo refrescaba nadie en vivo (9 NaN de 96, su
+   tolerancia es de 8h exactas): el analista lo reingesta por REST.
+3. **La guarda de observabilidad exigía cobertura perfecta** y abortaba el
+   arranque por un solo NaN. Confundía dos cosas: `oi_per_px_24h` con 1 NaN
+   de 96 —un cociente que se degenera cuando el precio no se movió en 24h—
+   contra una familia que no llega nunca. Ahora pide 70% de cobertura; la
+   barra concreta la sigue vigilando `row_is_usable` al emitir.
+
+**Procedimiento.** Arrancar el backend (`uv run uvicorn bob.main:app`) y
+dejarlo. El ajuste inicial toma ~83s medidos y corre en background. Para
+pausar: cerrar el backend, apagar. Para reanudar: volver a levantarlo — repara
+solo. El estado se consulta con
+`uv run python -m bob.paper.tracker --symbol ETHUSDT`, que resuelve lo maduro
+e imprime la cobertura acumulada.
+
+Dos advertencias que no dependen del software: los snapshots de derivados
+recuperan **~41h** por request y la ventana de Binance es de ~30 días, así que
+una pausa mayor a ~41h deja un hueco de derivados **irrecuperable**. Y la
+suspensión del equipo cuenta como pausa: si Windows lo duerme, el feed se
+corta igual.
+
 
 **Dos hallazgos de la fase, ambos con consecuencia de diseño:**
 
