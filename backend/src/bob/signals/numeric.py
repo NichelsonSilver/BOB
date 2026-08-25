@@ -296,6 +296,19 @@ def zscore(x: FloatArray, window: int) -> FloatArray:
     return np.where(np.isnan(mean), np.nan, out)
 
 
+def log_positive(x: FloatArray) -> FloatArray:
+    """log(x) donde x es estrictamente positivo, NaN en el resto.
+
+    Ni -inf ni un piso arbitrario: un ratio o una profundidad que llega en 0 o
+    en negativo es un dato que no existe, y arrastrar un -inf contamina
+    cualquier media o z-score que lo toque despues.
+    """
+    x = _as_f64(x)
+    valid = x > 0.0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(valid, np.log(np.where(valid, x, 1.0)), np.nan)
+
+
 def safe_div(num: FloatArray, den: FloatArray, fill: float = 0.0) -> FloatArray:
     """División protegida: donde |den| < EPS devuelve `fill`."""
     num, den = _as_f64(num), _as_f64(den)

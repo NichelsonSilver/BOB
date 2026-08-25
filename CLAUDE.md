@@ -114,7 +114,8 @@ durante el trade abierto (si cae bajo un umbral de salida, alerta).
 | Fuente | Qué da | Costo | Fase |
 |---|---|---|---|
 | **Binance Futures WS** (`fstream.binance.com`) | klines, aggTrades, depth, markPrice, funding — latencia <100ms, sin API key | Gratis | 1 |
-| **Binance Futures REST** (`fapi.binance.com`) | histórico de klines, OI, funding, ratio long/short, taker buy/sell | Gratis (respetar rate limits con token bucket) | 1 |
+| **Binance Futures REST** (`fapi.binance.com`) | histórico de klines y de funding (completo), OI y ratios de los últimos ~30 días | Gratis (respetar rate limits con token bucket) | 1 |
+| **Binance Data Vision** (`data.binance.vision`) | archivo diario estático: OI, ratios long/short y taker ratio en grilla 5m desde 2021-12; profundidad del libro a ±0,2/1/5% desde 2023-01 | Gratis, sin API key ni peso de rate limit | 2b |
 | **alternative.me** | Fear & Greed index | Gratis | 7 |
 | **CoinGecko API** | dominancia BTC, marketcap global | Gratis (30 req/min) | 7 |
 | **Outliers Club** (premium de Nichelson) | métricas de riesgo, analytics curados | Membresía ya pagada | 8 — vía credenciales en `.env` local, NUNCA versionadas; evaluar API interna vs export manual; si es frágil o roza ToS, queda como fuente manual |
@@ -151,9 +152,12 @@ bob/
 │   │   ├── db/
 │   │   │   ├── models.py           # Signal, PaperTrade, BacktestRun, Snapshot, Candle
 │   │   │   └── session.py
+│   │   ├── venues.py               # Perfiles de venue de ejecución (fees, MMR, funding)
 │   │   ├── data/                   # Conectores (ÚNICO lugar con I/O de mercado)
 │   │   │   ├── binance_ws.py       # WS multiplexado por símbolo, reconexión+backoff
 │   │   │   ├── binance_rest.py     # Histórico + OI + funding + ratios, token bucket
+│   │   │   ├── vision.py           # Archivo histórico data.binance.vision (metrics, bookDepth)
+│   │   │   ├── download_vision.py  # CLI de ingesta idempotente del archivo
 │   │   │   ├── sentiment.py        # Fear&Greed, CoinGecko (cache agresivo, APScheduler)
 │   │   │   ├── outliers.py         # Fase 8 — Outliers Club
 │   │   │   └── store.py            # Persistencia de klines para backtest offline
@@ -161,8 +165,8 @@ bob/
 │   │   │   ├── indicators.py       # Decimal, pocas velas — camino de PRESENTACIÓN
 │   │   │   ├── numeric.py          # float64 vectorizado — camino de MODELADO
 │   │   │   ├── features.py         # Ensambla las 55 features adimensionales
-│   │   │   ├── microstructure.py   # (Fase 2b) orderbook imbalance desde WS
-│   │   │   └── derivatives.py      # (Fase 2b) funding, OI deltas, long/short
+│   │   │   ├── microstructure.py   # Libro: imbalance, pendiente, cobertura
+│   │   │   └── derivatives.py      # OI × precio, posicionamiento, funding
 │   │   ├── models/                 # Modelos probabilísticos (PUROS, sin I/O)
 │   │   │   ├── markov.py           # Heredado — baseline de régimen
 │   │   │   ├── labeling.py         # Triple-barrier, targets, pesos por unicidad
@@ -347,11 +351,84 @@ entorno: `docs/HANDOFF_FASE1.md`.
 
 ### Fase 2 — Feature engine (PURO) ✅
 1. ✅ `signals/numeric.py` (primitivas causales) + `features.py` (55 features
-   en 6 familias). `microstructure.py`/`derivatives.py` quedan para Fase 2b:
-   necesitan el WS y el histórico de OI que Binance solo guarda 30 días
-2. ✅ Cobertura 100% en features.py, 91% en numeric.py. Dos invariantes con
+   en 6 familias)
+2. ✅ Cobertura 100% en features.py, 92% en numeric.py. Dos invariantes con
    test propio: **sin lookahead** (mutar el futuro no altera el pasado) y
    **adimensionalidad** (escalar el precio ×10 no cambia la matriz)
+
+### Fase 2b — Derivados + microestructura ✅ (2026-08-24)
+
+**El hallazgo que la desbloqueó**: la ventana de ~30 días es del *endpoint*
+`/futures/data/*`, no del *dato*. Binance publica los mismos campos en el
+archivo estático diario `data.binance.vision`, sin API key y sin peso de rate
+limit, con grilla de 5m desde **2021-12-01**. La nota de Fase 2 que decía que
+el OI histórico "NO está disponible gratis" era falsa y quedó corregida en
+`docs/DATA_SOURCES.md`.
+
+1. ✅ `data/vision.py`: cliente del archivo (listado S3 paginado, descarga
+   concurrente, 404 = hueco reportado y no error) + parseo de `metrics` y
+   `bookDepth`. `bookDepth` se **agrega a la grilla del timeframe al ingerir**:
+   el crudo son ~2 GB por año y por símbolo, y lo que el modelo necesita son
+   seis columnas por barra
+2. ✅ `data/download_vision.py`: ingesta idempotente **por día UTC** — un día
+   ya completo no se vuelve a bajar. Cubre `metrics`, `bookDepth` y `funding`
+   (este último por REST, que sí tiene historia completa). Distingue **404 de
+   fallo de red**: la primera corrida atravesó un corte de conectividad y
+   reportó 726 días "ausentes del archivo" que existen todos — ahora el día
+   caído se reintenta, queda pendiente, y el reporte dice que la corrida no
+   está completa en vez de terminar en verde
+3. ✅ `signals/derivatives.py`: `align_to_bars` lleva la grilla de 5m a la de
+   velas **con retraso de publicación explícito** y NaN por staleness. Es la
+   pieza donde un bug de causalidad se esconde mejor, y tiene test de
+   no-lookahead propio. Features: cambios de OI, **interacción OI × precio**
+   (dinero nuevo vs. short covering), posicionamiento top-traders vs. multitud,
+   flujo taker y funding
+4. ✅ `signals/microstructure.py`: 23 features de libro partidas en dos por una
+   razón de datos, no de diseño. **Núcleo (15 columnas, niveles 1% y 5%)**:
+   desbalance, pendiente, profundidad relativa al volumen y presión taker —
+   cubre los 720 días. **Near-touch (8 columnas, nivel 0,2%)**: Binance lo
+   publica solo desde 2026-01-15, así que sale NaN antes, con máscara
+   `near_available` y `near_names` declarados explícitamente. Exigirlo descartó
+   508 días en silencio en la primera ingesta; y como la pendiente estaba
+   definida contra el 0,2%, cinco columnas más quedaban al 30% de cobertura sin
+   necesidad — medida sobre el núcleo dicen lo mismo y cubren todo
+5. ✅ **Grilla del snapshot en vivo alineada a 5m** (antes 15m). Con periods
+   distintos, archivo y REST escribían dos series que nunca se tocaban y la
+   familia se cortaba el día en que terminaba el archivo
+6. ✅ `venues.py`: perfil declarativo del **venue de ejecución** (fees, tiers
+   de MMR, intervalo de funding). Separa los dos roles de Binance — fuente de
+   datos, que no es opcional, y lugar donde el usuario entra, que sí lo es
+7. ✅ Cobertura 99% en derivatives.py y microstructure.py, 100% en venues.py,
+   95% en vision.py. Las dos invariantes del proyecto extendidas a las familias
+   nuevas, incluida la adimensionalidad frente a un mercado ×1000
+
+**Datos persistidos (2026-08-25)**, todos sobre los mismos 720 días de ETHUSDT
+15m que ya tenía el backtest:
+
+| Fuente | Filas | Cobertura |
+|---|---|---|
+| klines 15m | 69.119 | 2024-08-31 .. 2026-08-21 |
+| metrics 5m | 210.232 | 2024-08-25 .. 2026-08-24, **730/730 días, 0 huecos** |
+| funding 8h | 2.192 | 2024-08-25 .. 2026-08-25 |
+| bookDepth 15m | 70.074 | 2024-08-25 .. 2026-08-24, **730/730 días, 0 huecos** |
+
+**104 features**: 55 de precio + 26 de derivados (26/26 con >90% de cobertura,
+mediana 99,9%) + 23 de libro (núcleo 15/15 >90%, mediana 100%; near-touch 8
+columnas al 30,4% por la fecha en que Binance empezó a publicar el nivel).
+
+8. ✅ `numeric.zscore` unificado. Devolvía `0.0` tanto para una ventana plana
+   (dato válido: el punto ES su media) como para una ventana sin datos
+   (warm-up o hueco) — o sea imputaba "exactamente el promedio" donde no
+   sabía nada, y esa fila pasaba el filtro de finitud. Medido sobre los 720
+   días reales: afectaba **671 filas, todas de warm-up, y ninguna llegaba al
+   modelo** porque otro feature tenía la ventana más larga. La protección era
+   accidental. Ahora devuelve NaN sin datos y 0 solo si la ventana es plana;
+   verificado que la matriz que llega al modelo queda **byte-idéntica**, así
+   que el cambio no mueve el gate. `zscore_nan` se eliminó por redundante
+
+**Pendiente que abre**: rehacer el gate de Fase 4 con las dos familias nuevas.
+Antes entrenaban sobre la ventana de snapshots; ahora cubren el backtest
+completo.
 
 ### Fase 3 — Modelos (PUROS) ✅
 1. ✅ HMM gaussiano (`models/hmm.py`): Baum-Welch propio en numpy, filtrado

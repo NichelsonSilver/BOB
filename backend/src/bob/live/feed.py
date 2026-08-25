@@ -54,7 +54,7 @@ class LiveDataService:
         *,
         publish: Publisher,
         hub: MarketDataHub | None = None,
-        snapshot_period: str = "15m",
+        snapshot_period: str = "5m",
         snapshot_interval_s: float = 1800.0,
         feed_mode: str = "auto",
         status_poll_s: float = STATUS_POLL_S,

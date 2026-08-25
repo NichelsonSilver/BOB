@@ -79,8 +79,12 @@ def _safe_log(x: np.ndarray) -> np.ndarray:
     return np.where(np.isfinite(x), out, np.nan)
 
 
-def _w(hours: float, tf_ms: int, minimum: int = 2) -> int:
-    """Traduce horas a barras del timeframe, con piso para que la ventana exista."""
+def window_bars(hours: float, tf_ms: int, minimum: int = 2) -> int:
+    """Traduce horas a barras del timeframe, con piso para que la ventana exista.
+
+    Es lo que hace que el mismo set de features signifique lo mismo en 5m, 15m
+    o 1h — por eso lo comparten también `derivatives.py` y `microstructure.py`.
+    """
     return max(minimum, int(round(hours * bars_per_hour(tf_ms))))
 
 
@@ -119,18 +123,18 @@ def build_features(series: OHLCVSeries) -> FeatureSet:
     #    un +2% en régimen tranquilo no significa lo mismo que en uno agitado.
     # ------------------------------------------------------------------ #
     for hrs in HORIZONS_H:
-        w = _w(hrs, tf_ms)
+        w = window_bars(hrs, tf_ms)
         ret = nm.rolling_sum(r1, w)
         add(f"mom_{hrs:g}h", ret)
         add(f"mom_{hrs:g}h_vol_adj", nm.safe_div(ret, nm.realized_vol(r1, w)))
 
     for hrs in (4.0, 24.0, 72.0):
-        w = _w(hrs, tf_ms)
+        w = window_bars(hrs, tf_ms)
         ema = nm.ewma(c, w)
         add(f"ema_dist_{hrs:g}h", nm.safe_div(c - ema, np.maximum(atr14, nm.EPS)))
 
-    ema_fast = nm.ewma(c, _w(3.0, tf_ms))
-    ema_slow = nm.ewma(c, _w(12.0, tf_ms))
+    ema_fast = nm.ewma(c, window_bars(3.0, tf_ms))
+    ema_slow = nm.ewma(c, window_bars(12.0, tf_ms))
     add("ema_cross", nm.safe_div(ema_fast - ema_slow, np.maximum(atr14, nm.EPS)))
 
     macd = nm.ewma(c, 12) - nm.ewma(c, 26)
@@ -142,22 +146,22 @@ def build_features(series: OHLCVSeries) -> FeatureSet:
     #    cierres, Parkinson el recorrido intrabarra, Garman-Klass el OHLC
     #    completo. Su divergencia informa sobre gaps y colas.
     # ------------------------------------------------------------------ #
-    w_ctx = _w(CONTEXT_H, tf_ms)
+    w_ctx = window_bars(CONTEXT_H, tf_ms)
     for hrs in (1.0, 4.0, 24.0):
-        w = _w(hrs, tf_ms)
+        w = window_bars(hrs, tf_ms)
         rv = nm.realized_vol(r1, w)
         add(f"rv_{hrs:g}h", rv)
         add(f"rv_{hrs:g}h_rank", nm.rolling_rank(rv, w_ctx))
 
-    add("parkinson_4h", nm.parkinson_vol(h, low, _w(4.0, tf_ms)))
-    add("garman_klass_4h", nm.garman_klass_vol(o, h, low, c, _w(4.0, tf_ms)))
+    add("parkinson_4h", nm.parkinson_vol(h, low, window_bars(4.0, tf_ms)))
+    add("garman_klass_4h", nm.garman_klass_vol(o, h, low, c, window_bars(4.0, tf_ms)))
     add("atr_pct", atr_pct)
     add("atr_pct_rank", nm.rolling_rank(atr_pct, w_ctx))
 
     # Term structure de volatilidad: >1 = agitación reciente sobre la basal.
-    rv_short = nm.realized_vol(r1, _w(1.0, tf_ms))
-    rv_long = nm.realized_vol(r1, _w(24.0, tf_ms))
-    scale = np.sqrt(_w(24.0, tf_ms) / _w(1.0, tf_ms))
+    rv_short = nm.realized_vol(r1, window_bars(1.0, tf_ms))
+    rv_long = nm.realized_vol(r1, window_bars(24.0, tf_ms))
+    scale = np.sqrt(window_bars(24.0, tf_ms) / window_bars(1.0, tf_ms))
     add("vol_term_structure", nm.safe_div(rv_short * scale, rv_long, fill=1.0))
     add("vol_of_vol", nm.safe_div(nm.rolling_std(rv_short, w_ctx), rv_long))
 
@@ -168,11 +172,11 @@ def build_features(series: OHLCVSeries) -> FeatureSet:
     add("rsi_48", nm.rsi(c, 48) / 100.0)
 
     for hrs in (4.0, 24.0):
-        w = _w(hrs, tf_ms)
+        w = window_bars(hrs, tf_ms)
         vwap = nm.rolling_vwap(c, h, low, vol, w)
         add(f"vwap_dist_{hrs:g}h", nm.safe_div(c - vwap, np.maximum(atr14, nm.EPS)))
 
-    w_bb = _w(4.0, tf_ms)
+    w_bb = window_bars(4.0, tf_ms)
     ma = nm.rolling_mean(c, w_bb)
     sd = nm.rolling_std(c, w_bb)
     add("bollinger_pctb", nm.safe_div(c - ma, 2.0 * np.maximum(sd, nm.EPS), fill=0.0))
@@ -181,7 +185,7 @@ def build_features(series: OHLCVSeries) -> FeatureSet:
     # 4. Estructura de precio — dónde está el precio en su rango reciente
     # ------------------------------------------------------------------ #
     for hrs in (4.0, 24.0, 72.0):
-        w = _w(hrs, tf_ms)
+        w = window_bars(hrs, tf_ms)
         hi = nm.rolling_max(h, w)
         lo = nm.rolling_min(low, w)
         add(f"donchian_pos_{hrs:g}h", nm.safe_div(c - lo, hi - lo, fill=0.5))
@@ -202,12 +206,13 @@ def build_features(series: OHLCVSeries) -> FeatureSet:
     taker_ratio = nm.safe_div(tbv, vol, fill=0.5)
     add("taker_buy_ratio", taker_ratio)
     for hrs in (1.0, 4.0):
-        w = _w(hrs, tf_ms)
+        w = window_bars(hrs, tf_ms)
         add(f"taker_buy_ratio_ma_{hrs:g}h", nm.rolling_mean(taker_ratio, w) - 0.5)
 
     # Volume delta normalizado: (compras - ventas) / total, en [-1, 1].
     add("volume_delta", nm.safe_div(2.0 * tbv - vol, vol))
-    add("volume_delta_ma_4h", nm.rolling_mean(nm.safe_div(2.0 * tbv - vol, vol), _w(4.0, tf_ms)))
+    volume_delta = nm.safe_div(2.0 * tbv - vol, vol)
+    add("volume_delta_ma_4h", nm.rolling_mean(volume_delta, window_bars(4.0, tf_ms)))
 
     # Logaritmo puro, no log1p: bajo un cambio de escala (mismo par a otro
     # nivel de precio, u otro símbolo con otro volumen típico) log(k·x) =

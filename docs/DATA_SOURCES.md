@@ -14,9 +14,9 @@ Sin API key para todo lo que BOB necesita (market data público).
 | `/fapi/v1/exchangeInfo` | símbolos, tickSize, stepSize, filtros | Cachear al boot; cuantizar SIEMPRE precios mostrados al tickSize |
 | `/fapi/v1/klines` | velas históricas | `limit` máx 1500 por request. Para 12+ meses de 15m (~35k velas) paginar por `startTime`/`endTime`. El peso del request sube con `limit` |
 | `/fapi/v1/premiumIndex` | mark price + funding rate actual + next funding time | |
-| `/fapi/v1/fundingRate` | historial de funding (cada 8h) | máx 1000 rows/request, paginar |
-| `/futures/data/openInterestHist` | OI histórico (granularidad 5m mínima) | ⚠️ **Solo conserva ~30 días de historia** — para el backtest de 12 meses el OI histórico NO está disponible gratis. Decisión Fase 2: empezar a persistir OI desde ya (data/store.py) y entrenar el feature de OI solo sobre la ventana que tengamos; el modelo debe funcionar con features faltantes |
-| `/futures/data/topLongShortPositionRatio` | ratio long/short de top traders | misma ventana ~30 días, máx 500 rows |
+| `/fapi/v1/fundingRate` | historial de funding (cada 8h) | máx 1000 rows/request, paginar. **NO tiene la ventana de 30 días**: verificado devolviendo datos de 2021-01-01. Es la fuente del funding histórico completo |
+| `/futures/data/openInterestHist` | OI histórico (granularidad 5m mínima) | ⚠️ **Solo conserva ~30 días** — pero eso es límite del *endpoint*, no del *dato*: el mismo OI está en el archivo estático (ver abajo) desde 2021-12-01. Este endpoint queda para el tramo caliente que el archivo aún no publicó |
+| `/futures/data/topLongShortPositionRatio` | ratio long/short de top traders | misma ventana ~30 días del endpoint, máx 500 rows. Histórico largo: archivo estático |
 | `/futures/data/globalLongShortAccountRatio` | ratio long/short global | idem |
 | `/futures/data/takerlongshortRatio` | taker buy/sell volume ratio | idem |
 
@@ -25,6 +25,64 @@ conservador (usar el header `X-MBX-USED-WEIGHT-1M` de las responses para
 autorregular) no se llega ni cerca. Los `/futures/data/*` tienen límites
 propios más estrictos — espaciar esas llamadas (son para snapshots
 periódicos, no para el hot path).
+
+## Binance Data Vision — archivo histórico (`https://data.binance.vision`)
+
+**La fuente que cierra el hueco de la Fase 2b.** Binance publica dumps diarios
+estáticos, sin API key y sin peso de rate limit: es un CDN de objetos, no la
+API. Todo lo verificado abajo es contra archivos reales el 2026-08-24.
+
+Cableado en `data/vision.py` (parseo + cliente) y `data/download_vision.py`
+(ingesta idempotente por día UTC).
+
+| Dataset | Qué da | Desde | Tamaño | Grilla |
+|---|---|---|---|---|
+| `futures/um/daily/metrics/` | `sum_open_interest`, `sum_open_interest_value`, `count_toptrader_long_short_ratio`, `sum_toptrader_long_short_ratio`, `count_long_short_ratio`, `sum_taker_long_short_vol_ratio` | **2021-12-01** | ~12 KB/día (≈20 MB por 5 años) | 5m exacta: 288 filas/día, delta 300s, sin duplicados |
+| `futures/um/daily/bookDepth/` | profundidad **acumulada** a ±0,2/1/2/3/4/5% del mid (`timestamp,percentage,depth,notional`) | **2023-01-01** | ~600 KB/día comprimido, ~2 MB descomprimido | 2880 snapshots/día (uno cada ~30s), 12 filas cada uno |
+| `futures/um/daily/aggTrades/`, `trades/` | ticks | 2019-11 | cientos de MB/día | tick |
+| `futures/um/monthly/klines/<sym>/<tf>/` | velas | 2020-01 | — | mensual |
+
+### Trampas verificadas
+
+1. **No hay agregados mensuales para `metrics` ni `bookDepth`.** Solo diarios,
+   aunque `klines` sí los tiene. Bajar 720 días son 720 requests.
+2. **El listado pagina de a 1000 claves.** Va contra el bucket S3 crudo
+   (`https://s3-ap-northeast-1.amazonaws.com/data.binance.vision`), no contra
+   `data.binance.vision`, que sirve objetos pero no índices. Sin paginar se
+   pierden años en silencio. Cada `.zip` tiene su `.CHECKSUM` en el mismo
+   prefijo: filtrar por extensión o el conteo de días sale al doble.
+3. **El archivo del día D aparece con ~1 día de retraso** (a veces más). El
+   tramo caliente lo sigue cubriendo `data/snapshots.py` por REST; las dos
+   fuentes escriben la misma tabla y el upsert las reconcilia.
+4. **Hay huecos reales de días.** Se reportan, nunca se rellenan — misma regla
+   que los huecos de klines. **Pero un 404 y un corte de red no son lo mismo**:
+   en la primera corrida de 730 días la red se cayó a mitad y la ingesta
+   reportó 726 días "ausentes del archivo" que existen todos. `fetch_days`
+   devuelve tres estados (ok / ausente / fallido), reintenta solo el fallido
+   —un 404 es una respuesta, no un error— y el reporte los cuenta por separado
+   y avisa que la corrida quedó incompleta.
+5. **`bookDepth` es acumulado, no marginal**: el notional hasta 1% incluye el
+   que está hasta 0,2%. Restarlo para obtener el tramo es correcto; sumarlo
+   cuenta doble.
+6. **El esquema de `bookDepth` cambió con el tiempo.** El nivel ±0,2% —el
+   near-touch, el más informativo a horizonte corto— aparece recién alrededor
+   de **2026-01-15**; los archivos anteriores traen solo ±1/2/3/4/5%
+   (verificado bajando días de 2024, 2025 y enero de 2026). Exigirlo descartó
+   508 días en silencio en la primera ingesta. El núcleo utilizable en toda la
+   historia es **1% y 5%**; el 0,2% es opcional y sus features salen NaN en el
+   tramo viejo. El listado S3 dice que el archivo existe desde 2023-01-01 y es
+   cierto — lo que cambió es qué trae adentro, y el listado no lo dice.
+6. **`metrics` no trae `longAccount`/`shortAccount` sueltos**, solo el ratio.
+   La reconstrucción `long = r/(1+r)` es exacta (long+short=1), no una
+   aproximación: por eso las filas del archivo y las del REST son
+   intercambiables en la misma tabla.
+
+### Qué NO se baja, y por qué
+
+`aggTrades` histórico son decenas de GB para dos años, y el 80% de su valor
+para features de 15m —el desbalance de flujo taker— ya viene resumido en
+`sum_taker_long_short_vol_ratio` cada 5 minutos. La relación costo/beneficio
+solo cambiaría si el modelo bajara a horizontes de segundos.
 
 ## Binance USDⓈ-M Futures — WebSocket (`wss://fstream.binance.com`)
 

@@ -10,19 +10,21 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from loguru import logger
-from sqlalchemy import func
+from sqlalchemy import Integer, func
+from sqlalchemy.orm import Mapped
 from sqlmodel import Session, col, select
 
 from bob.data.binance_rest import INTERVAL_MS, Kline
-from bob.db.models import CandleRecord, DerivativeSnapshot
+from bob.db.models import BookDepthBar, CandleRecord, DerivativeSnapshot
 from bob.db.session import get_session, init_db
 
-if TYPE_CHECKING:  # solo para tipos: snapshots.py importa store, no al reves
+if TYPE_CHECKING:  # solo para tipos: snapshots.py y vision.py importan store
     from bob.data.snapshots import DerivativePoint
+    from bob.data.vision import BookDepthAggregate
 
 
 @dataclass(frozen=True)
@@ -332,6 +334,12 @@ def upsert_derivatives(
                 record.short_account_pct = point.short_account_pct
             if point.taker_buy_sell_ratio is not None:
                 record.taker_buy_sell_ratio = point.taker_buy_sell_ratio
+            if point.top_trader_account_ratio is not None:
+                record.top_trader_account_ratio = point.top_trader_account_ratio
+            if point.top_trader_position_ratio is not None:
+                record.top_trader_position_ratio = point.top_trader_position_ratio
+            if point.funding_rate is not None:
+                record.funding_rate = point.funding_rate
             session.add(record)
             written += 1
 
@@ -365,3 +373,283 @@ def derivatives_coverage(
     finally:
         if owns:
             session.close()
+
+
+@dataclass(frozen=True)
+class DerivativesSeries:
+    """Serie de derivados en su grilla nativa (5m/15m/1h de Binance).
+
+    A diferencia de `OHLCVSeries`, acá los huecos **sí** aparecen como NaN
+    dentro de los arrays: los tres endpoints no siempre pueblan la misma
+    grilla, y un punto con OI y sin ratio es información útil que no se
+    descarta. Alinear esta grilla con la de las velas es trabajo puro de
+    `signals/derivatives.py`, no de este módulo.
+    """
+
+    symbol: str
+    period: str
+    timestamp: np.ndarray  # int64, epoch ms
+    open_interest: np.ndarray  # float64, contratos (moneda base)
+    open_interest_value: np.ndarray  # float64, notional USDT
+    long_short_ratio: np.ndarray
+    taker_buy_sell_ratio: np.ndarray
+    top_trader_account_ratio: np.ndarray
+    top_trader_position_ratio: np.ndarray
+    funding_rate: np.ndarray
+
+    def __len__(self) -> int:
+        return int(self.timestamp.shape[0])
+
+
+@dataclass(frozen=True)
+class BookDepthSeries:
+    """Profundidad del libro ya agregada a la grilla del timeframe.
+
+    Magnitudes crudas en USDT: los ratios adimensionales los arma
+    `signals/microstructure.py`.
+    """
+
+    symbol: str
+    timeframe: str
+    open_time: np.ndarray  # int64
+    #: Near-touch (±0,2%): **NaN en el archivo anterior a ~2026-01-15**, cuando
+    #: Binance agregó ese nivel. Los features que dependen de él salen NaN ahí.
+    bid_02: np.ndarray
+    ask_02: np.ndarray
+    bid_1: np.ndarray
+    ask_1: np.ndarray
+    bid_5: np.ndarray
+    ask_5: np.ndarray
+    n_snapshots: np.ndarray  # int64
+
+    def __len__(self) -> int:
+        return int(self.open_time.shape[0])
+
+
+def _optional_floats(values: Sequence[str | None]) -> np.ndarray:
+    """Columna `str | None` de la DB -> float64 con NaN donde no había dato."""
+    return np.array([np.nan if v is None else float(v) for v in values], dtype=np.float64)
+
+
+def load_derivatives(
+    symbol: str,
+    period: str,
+    start_time: int | None = None,
+    end_time: int | None = None,
+    session: Session | None = None,
+) -> DerivativesSeries:
+    """Carga los puntos de derivados persistidos, ordenados por timestamp."""
+    owns = session is None
+    if owns:
+        init_db()
+        session = get_session()
+    assert session is not None
+
+    try:
+        stmt = select(DerivativeSnapshot).where(
+            DerivativeSnapshot.symbol == symbol, DerivativeSnapshot.period == period
+        )
+        if start_time is not None:
+            stmt = stmt.where(DerivativeSnapshot.timestamp >= start_time)
+        if end_time is not None:
+            stmt = stmt.where(DerivativeSnapshot.timestamp <= end_time)
+        stmt = stmt.order_by(col(DerivativeSnapshot.timestamp))
+        records = list(session.exec(stmt).all())
+    finally:
+        if owns:
+            session.close()
+
+    timestamp = np.array([r.timestamp for r in records], dtype=np.int64)
+    if timestamp.size and not np.all(np.diff(timestamp) > 0):
+        raise ValueError(f"{symbol} {period}: timestamps de derivados duplicados o desordenados")
+
+    return DerivativesSeries(
+        symbol=symbol,
+        period=period,
+        timestamp=timestamp,
+        open_interest=_optional_floats([r.open_interest for r in records]),
+        open_interest_value=_optional_floats([r.open_interest_value for r in records]),
+        long_short_ratio=_optional_floats([r.long_short_ratio for r in records]),
+        taker_buy_sell_ratio=_optional_floats([r.taker_buy_sell_ratio for r in records]),
+        top_trader_account_ratio=_optional_floats([r.top_trader_account_ratio for r in records]),
+        top_trader_position_ratio=_optional_floats([r.top_trader_position_ratio for r in records]),
+        funding_rate=_optional_floats([r.funding_rate for r in records]),
+    )
+
+
+def upsert_book_depth(
+    symbol: str,
+    timeframe: str,
+    bars: Iterable[BookDepthAggregate],
+    session: Session | None = None,
+) -> int:
+    """Inserta o actualiza barras de profundidad. Única por (symbol, timeframe, open_time).
+
+    Idempotente, igual que `upsert_klines`: reingerir un día del archivo pisa
+    la misma barra en vez de duplicarla.
+    """
+    owns = session is None
+    if owns:
+        init_db()
+        session = get_session()
+    assert session is not None
+
+    try:
+        rows = list(bars)
+        if not rows:
+            return 0
+
+        existing = {
+            record.open_time: record
+            for record in session.exec(
+                select(BookDepthBar).where(
+                    BookDepthBar.symbol == symbol,
+                    BookDepthBar.timeframe == timeframe,
+                    BookDepthBar.open_time >= min(b.open_time for b in rows),
+                    BookDepthBar.open_time <= max(b.open_time for b in rows),
+                )
+            ).all()
+        }
+
+        for bar in rows:
+            record = existing.get(bar.open_time)
+            if record is None:
+                record = BookDepthBar(symbol=symbol, timeframe=timeframe, open_time=bar.open_time)
+            record.bid_notional_02pct = None if bar.bid_02 is None else repr(bar.bid_02)
+            record.ask_notional_02pct = None if bar.ask_02 is None else repr(bar.ask_02)
+            record.bid_notional_1pct = repr(bar.bid_1)
+            record.ask_notional_1pct = repr(bar.ask_1)
+            record.bid_notional_5pct = repr(bar.bid_5)
+            record.ask_notional_5pct = repr(bar.ask_5)
+            record.n_snapshots = bar.n_snapshots
+            record.n_snapshots_near = bar.n_snapshots_near
+            session.add(record)
+
+        session.commit()
+        return len(rows)
+    finally:
+        if owns:
+            session.close()
+
+
+def load_book_depth(
+    symbol: str,
+    timeframe: str,
+    start_time: int | None = None,
+    end_time: int | None = None,
+    session: Session | None = None,
+) -> BookDepthSeries:
+    """Carga la profundidad agregada persistida, ordenada por open_time."""
+    owns = session is None
+    if owns:
+        init_db()
+        session = get_session()
+    assert session is not None
+
+    try:
+        stmt = select(BookDepthBar).where(
+            BookDepthBar.symbol == symbol, BookDepthBar.timeframe == timeframe
+        )
+        if start_time is not None:
+            stmt = stmt.where(BookDepthBar.open_time >= start_time)
+        if end_time is not None:
+            stmt = stmt.where(BookDepthBar.open_time <= end_time)
+        stmt = stmt.order_by(col(BookDepthBar.open_time))
+        records = list(session.exec(stmt).all())
+    finally:
+        if owns:
+            session.close()
+
+    open_time = np.array([r.open_time for r in records], dtype=np.int64)
+    _validate_monotonic(open_time, symbol, timeframe)
+    return BookDepthSeries(
+        symbol=symbol,
+        timeframe=timeframe,
+        open_time=open_time,
+        bid_02=_optional_floats([r.bid_notional_02pct for r in records]),
+        ask_02=_optional_floats([r.ask_notional_02pct for r in records]),
+        bid_1=np.array([float(r.bid_notional_1pct) for r in records], dtype=np.float64),
+        ask_1=np.array([float(r.ask_notional_1pct) for r in records], dtype=np.float64),
+        bid_5=np.array([float(r.bid_notional_5pct) for r in records], dtype=np.float64),
+        ask_5=np.array([float(r.ask_notional_5pct) for r in records], dtype=np.float64),
+        n_snapshots=np.array([r.n_snapshots for r in records], dtype=np.int64),
+    )
+
+
+def book_depth_coverage(
+    symbol: str, timeframe: str, session: Session | None = None
+) -> dict[str, int]:
+    """Resumen de profundidad persistida: n barras, primer y último open_time."""
+    owns = session is None
+    if owns:
+        init_db()
+        session = get_session()
+    assert session is not None
+    try:
+        ot = col(BookDepthBar.open_time)
+        stmt = select(func.count(ot), func.min(ot), func.max(ot)).where(
+            BookDepthBar.symbol == symbol, BookDepthBar.timeframe == timeframe
+        )
+        count, first, last = session.exec(stmt).one()
+        return {
+            "n_bars": int(count or 0),
+            "first_open_time": int(first or 0),
+            "last_open_time": int(last or 0),
+        }
+    finally:
+        if owns:
+            session.close()
+
+
+#: Milisegundos en un día UTC. Los archivos de data.binance.vision rotan por
+#: día UTC, así que la ingesta cuenta cobertura en esa misma unidad.
+DAY_MS = 86_400_000
+
+
+def _day_counts(
+    entity: type[DerivativeSnapshot] | type[BookDepthBar],
+    time_col: Mapped[int],
+    filters: list[Any],
+    session: Session | None,
+) -> dict[int, int]:
+    owns = session is None
+    if owns:
+        init_db()
+        session = get_session()
+    assert session is not None
+    try:
+        day = (time_col / DAY_MS).cast(Integer).label("day")
+        stmt = select(day, func.count(time_col)).where(*filters).group_by(day)
+        return {int(d): int(c) for d, c in session.exec(stmt).all()}
+    finally:
+        if owns:
+            session.close()
+
+
+def derivative_day_counts(
+    symbol: str, period: str, session: Session | None = None
+) -> dict[int, int]:
+    """Cuántos puntos de derivados hay por día UTC (epoch // 86.400.000).
+
+    Es lo que hace idempotente a la ingesta del archivo histórico: un día ya
+    completo no se vuelve a descargar. Contar por día y no solo mirar el rango
+    total importa porque el archivo tiene huecos reales en el medio.
+    """
+    return _day_counts(
+        DerivativeSnapshot,
+        col(DerivativeSnapshot.timestamp),
+        [DerivativeSnapshot.symbol == symbol, DerivativeSnapshot.period == period],
+        session,
+    )
+
+
+def book_depth_day_counts(
+    symbol: str, timeframe: str, session: Session | None = None
+) -> dict[int, int]:
+    """Cuántas barras de profundidad hay por día UTC."""
+    return _day_counts(
+        BookDepthBar,
+        col(BookDepthBar.open_time),
+        [BookDepthBar.symbol == symbol, BookDepthBar.timeframe == timeframe],
+        session,
+    )
