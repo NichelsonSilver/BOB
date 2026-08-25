@@ -671,7 +671,9 @@ no razonando**:
    contra una familia que no llega nunca. Ahora pide 70% de cobertura; la
    barra concreta la sigue vigilando `row_is_usable` al emitir.
 
-**Procedimiento.** Arrancar el backend (`uv run uvicorn bob.main:app`) y
+**Procedimiento: `docs/RUNBOOK_FASE5.md`** — verificado end-to-end levantando
+el backend real. Arrancar con `uv run python -m uvicorn bob.main:app` (con
+`python -m`: `uv run uvicorn` falla con `trampoline failed to canonicalize`) y
 dejarlo. El ajuste inicial toma ~83s medidos y corre en background. Para
 pausar: cerrar el backend, apagar. Para reanudar: volver a levantarlo — repara
 solo. El estado se consulta con
