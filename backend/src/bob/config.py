@@ -29,6 +29,22 @@ class Settings(BaseSettings):
     # Señales — umbral mínimo del KPI Seguridad para emitir señal
     bob_signal_threshold: float = 0.70
 
+    # Analista en vivo (Fase 5) — el loop que convierte velas en proyecciones.
+    # Se apaga solo (BOB_LIVE_ANALYST=false) para correr el feed sin modelo.
+    bob_live_analyst: bool = True
+    #: Familias de features del vivo. NO es "full" por defecto: el libro sale
+    #: del archivo diario de data.binance.vision, que llega con ~1 día de
+    #: retraso, y con esas columnas en NaN el analista no puede pronosticar la
+    #: barra actual. Ver models/production.assert_tail_observable.
+    bob_live_features: str = "price+deriv"
+    #: Cada cuántas velas cerradas se reajusta el modelo (96 = 1 día en 15m).
+    bob_refit_every_bars: int = 96
+    #: Leverage con el que se dibuja la proyección por defecto. El dashboard lo
+    #: mueve con su slider; esto es solo el punto de partida del backend.
+    bob_default_leverage: float = 1.0
+    #: Cadencia del paper tracker, en minutos.
+    bob_tracker_interval_min: int = 5
+
     # Datos en vivo (Fase 1) — el WS de Binance y los snapshots de derivados
     # arrancan con el backend. Apagarlos (BOB_LIVE_DATA=false) deja el backend
     # 100% offline: útil para trabajar el backtest sin tocar la red.

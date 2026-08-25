@@ -27,31 +27,19 @@ from loguru import logger
 from bob.data.store import load_book_depth, load_derivatives, load_series
 from bob.db.models import BacktestRun
 from bob.db.session import get_session, init_db
-from bob.models.experiment import ExperimentConfig, ExperimentResult, run_experiment
+from bob.models.experiment import (
+    FEATURE_SETS,
+    ExperimentConfig,
+    ExperimentResult,
+    feature_set_name,
+    run_experiment,
+)
 from bob.models.labeling import BarrierConfig
 from bob.models.report import render_report, render_summary
 from bob.utils.console import enable_utf8_stdout
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
 ARTIFACTS_DIR = _BACKEND_DIR / "artifacts"
-
-#: Combinaciones de familias, como (derivados, libro, near-touch). Nombrarlas
-#: acá y no dejar tres flags sueltos es lo que hace que un run sea citable:
-#: "full contra price" dice algo, "--use-book --no-near" no.
-FEATURE_SETS: dict[str, tuple[bool, bool, bool]] = {
-    "price": (False, False, False),
-    "price+deriv": (True, False, False),
-    "full": (True, True, False),
-    "full+near": (True, True, True),
-}
-
-
-def feature_set_name(config: ExperimentConfig) -> str:
-    """Nombre corto de la combinacion de familias, para etiquetar el run."""
-    for name, flags in FEATURE_SETS.items():
-        if flags == (config.use_derivatives, config.use_book, config.use_book_near):
-            return name
-    return "custom"
 
 
 def persist_run(result: ExperimentResult) -> str:

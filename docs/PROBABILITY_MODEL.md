@@ -580,6 +580,139 @@ rodante), nunca parte del hot path del tick.
 
 ---
 
+## 9-ter. Fase 5 — qué se emite en vivo, y el techo aritmético del EV
+
+### 9-ter.1 El ajuste de producción (`models/production.py`)
+
+El walk-forward entrena un modelo por fold y lo descarta: su producto son
+métricas. El vivo necesita lo contrario, **un** ajuste consultable barra a
+barra. `fit_bundle` lo construye sobre toda la historia utilizable y protege
+la única propiedad que no se puede perder: las últimas H filas tienen la
+etiqueta incompleta —`forward_volatility` mira i+1..i+H— así que salen NaN y
+el filtro de finitud las descarta. El bundle nunca aprende de una etiqueta
+que todavía no terminó de ocurrir, y `fit_through_ms` deja escrito hasta
+dónde llegaban las etiquetas completas.
+
+**El cono en vivo usa ACI, igual que en el gate.** `predict_interval_adaptive`
+recorre un test con las verdades ya conocidas: sirve para medir, no para
+vivir. `OnlineConformalCone` mantiene el estado de alpha entre barras y lo
+mueve cuando el paper tracker resuelve el horizonte, H barras después. La
+aritmética es la misma —hay un test que exige que los intervalos coincidan
+uno a uno con los del método offline—, porque si divergiera, la cobertura
+medida en el gate dejaría de describir la que recibe el usuario.
+
+### 9-ter.2 Las dos sigmas
+
+Hay dos números de volatilidad y confundirlos es el error silencioso más caro
+de esta fase:
+
+| | qué es | quién la usa |
+|---|---|---|
+| `sigma_backward` | realizada de la ventana pasada × √H (`target_volatility`) | la que **etiquetó** el triple-barrier, o sea la que define el setup del que habla el KPI 1 |
+| `sigma_forecast` | salida del `VolatilityModel` | el target que **pasó el gate** |
+
+La decisión del 25-08 manda dimensionar TP y SL con la pronosticada. La
+consecuencia hay que decirla: la probabilidad que se registra al lado
+describe barreras a `sigma_backward`, no las que se muestran. Por eso
+`MarketAnalysis` lleva las dos, su razón, y el flag
+`probability_matches_barriers`. Sobre la última barra real de ETHUSDT las dos
+sigmas dieron 1,575% y 1,628% del horizonte (razón 0,967): parecidas, pero no
+la misma, y el registro dice cuál es cuál.
+
+### 9-ter.3 El techo aritmético del EV — por qué la proyección NO promete expectativa positiva
+
+Esto no es un resultado empírico, es álgebra, y conviene que esté escrito
+antes de que alguien diseñe la página Signal alrededor de un número que no
+puede ser positivo.
+
+Para un camino sin deriva con barreras a +a y −b desde la entrada, la
+probabilidad de tocar la de arriba primero es `b/(a+b)`. Entonces:
+
+```
+EV_bruto = [b/(a+b)]·a − [a/(a+b)]·b = 0     para TODO a, b
+EV_neto  = EV_bruto − costo = −costo
+```
+
+**El EV neto es exactamente menos el costo, con cualquier configuración de
+barreras.** Mover el TP, mover el SL o cambiar el ratio riesgo/beneficio no
+lo arregla: reordena la probabilidad y el pago en la proporción exacta que
+mantiene el bruto en cero. Lo único que levanta el EV por encima de −costo es
+**edge direccional**, que es justamente lo que el gate rechazó (AUC 0,52).
+
+Verificado en vivo sobre la última barra real de ETHUSDT: con barreras
+simétricas a ±0,5σ (TP y SL a ±0,788%) y costo de 0,145%, la probabilidad de
+equilibrio es **59,2%** y el KPI 1 registró 49,6% (long) y 44,4% (short).
+Las dos direcciones salen con EV negativo y `is_actionable=False`, y la
+proyección lo dice con esas palabras en `warnings`.
+
+Lo que **sí** entrega la proyección apoyada en volatilidad, y que sigue
+siendo valor operativo real:
+
+- **Dimensionamiento**: TP y SL escalados a la volatilidad que viene, no a un
+  porcentaje fijo que significa cosas distintas en días distintos.
+- **Distancia a liquidación en sigmas** — sobre esa misma barra, a 5x la
+  liquidación quedó a 19,6%, o **12,4 sigmas**; el número que le importa a
+  alguien que ya se liquidó una vez.
+- **Leverage máximo seguro** (59,3x en ese setup, que deja el stop por
+  delante de la liquidación con buffer de 1,5×).
+- **Cono conformal con cobertura medida**: 2.412–2.486 al 80%, 2.386–2.506 al
+  95%.
+
+La conclusión de diseño para la Fase 6: la página Signal se construye sobre
+niveles, cono y riesgo, y el EV se muestra **con su probabilidad de
+equilibrio al lado** como lo que es —el listón que habría que superar— y no
+como una promesa de ganancia. Un EV positivo en pantalla, hoy, solo podría
+salir de un KPI 1 que no discrimina.
+
+### 9-ter.4 Observabilidad: por qué el vivo NO corre con `full`
+
+`assert_columns_trainable` protege el pasado: falla si una columna no existe
+donde el modelo entrena. Falta el gemelo que protege el presente, y es
+`assert_tail_observable`: falla si una columna densa tiene huecos en las
+últimas barras.
+
+El caso concreto es el libro. `bookDepth` sale del archivo diario de
+data.binance.vision, que aparece con ~1 día de retraso, y
+`microstructure.reindex_to_bars` hace un join **exacto** por `open_time` —no
+un forward-fill, porque rellenar sería inventar liquidez—. Toda barra
+posterior a la última del archivo queda con NaN en las 15 columnas del
+núcleo, y con `--features full` el analista no podría pronosticar **nunca**,
+en silencio. Los derivados sí llegan: `data/snapshots.py` corre cada 30 min
+sobre la grilla de 5m y `align_to_bars` tolera hasta 1h de antigüedad.
+
+Por eso el default en vivo es `price+deriv`. Correr con libro exige antes
+cablear una fuente de baja latencia (el stream `@depth`), no el archivo.
+
+### 9-ter.5 Qué mide el paper tracking (`paper/tracker.py`)
+
+Tres preguntas, ninguna sobre dirección: si la sigma pronosticada se pareció
+a la realizada, si el cono cubrió su nivel nominal, y si el EV proyectado se
+pareció al retorno neto realizado. El reporte usa **las mismas funciones de
+métrica que el experimento** (`regression_metrics`, `interval_metrics`,
+`qlike`): el objetivo declarado de la fase es comparar forward contra
+backtest, y dos implementaciones de "cobertura" que difieran en un detalle
+convierten esa comparación en ruido.
+
+Tres convenciones sostienen la honestidad del número:
+
+1. **La entrada se mide al open real de la barra siguiente**, no al precio de
+   referencia con el que se dibujaron los niveles. Medir contra el close de i
+   regalaría el hueco de apertura, que es justo donde se pierde plata.
+2. **Los niveles son los que BOB mostró**, leídos de `projections_json`, no
+   unos recalculados con información posterior.
+3. **El empate intrabarra se resuelve contra el trader**, vía
+   `labeling.resolve_setup_path` — misma regla que el etiquetado. El bucle de
+   `triple_barrier_labels` no se refactorizó para llamarla, porque ese bucle
+   produce el gate que se reproduce bit a bit; en su lugar hay un test que
+   exige que las dos implementaciones coincidan fila por fila. La duplicación
+   está permitida, la divergencia silenciosa no.
+
+Un registro cuyo horizonte tiene huecos se marca `gap` y **no** entra en la
+cobertura. Rellenar la vela faltante para no perder la muestra sería inventar
+el dato justo donde el dato no está.
+
+---
+
 ## 10. Reproducibilidad
 
 ```bash

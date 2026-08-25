@@ -213,3 +213,70 @@ class BookDepthBar(SQLModel, table=True):
     n_snapshots: int = 0
     #: Cuántos de ellos traían el near-touch. 0 = época sin ese nivel.
     n_snapshots_near: int = 0
+
+
+class ForecastRecord(SQLModel, table=True):
+    """Un pronóstico emitido en vivo y, cuando el horizonte cierra, su resultado.
+
+    Es el registro central de la Fase 5 tal como quedó tras la decisión del
+    2026-08-25: lo que BOB emite no es una dirección, es una **proyección**
+    apoyada en el target de volatilidad, y esto es lo que hay que medir
+    forward para saber si sostiene lo que promete.
+
+    Por qué no reutiliza `Signal` + `PaperTrade`: aquellas modelan una señal
+    direccional que puede o no convertirse en trade, una fila por dirección.
+    Un pronóstico es una fila por **barra**, cubre las dos direcciones a la vez
+    y su resultado siempre llega. Se dejan intactas para el día en que el
+    motor direccional pase el gate (CLAUDE.md: no se borra, se apaga).
+
+    Único por `forecast_id` = "SYMBOL-TIMEFRAME-<open_time>": reprocesar la
+    misma barra no duplica el registro ni ensucia la cobertura medida.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    forecast_id: str = Field(index=True, unique=True)
+    symbol: str = Field(index=True)
+    timeframe: str = Field(index=True)
+    #: open_time de la barra CERRADA sobre la que se decidió (epoch ms UTC).
+    #: El horizonte corre desde la barra siguiente, igual que en el etiquetado.
+    open_time: int = Field(index=True)
+
+    reference_price: str  # precio (str por precisión, ver cabecera del módulo)
+
+    # --- Lo que sí pasó el gate ---------------------------------------- #
+    #: Las cantidades estadísticas van como float y no como str a propósito:
+    #: no son montos, son estimaciones, y guardarlas como texto solo
+    #: dificultaría agregarlas en SQL para el reporte de cobertura.
+    sigma_forecast: float
+    sigma_backward: float
+    #: "forecast" | "backward" — con cuál se dimensionaron TP y SL. Sin este
+    #: campo no se puede saber si la probabilidad registrada describe el mismo
+    #: setup que los niveles mostrados (ver models/production.py).
+    barrier_sigma_source: str = "forecast"
+    horizon_bars: int = 0
+
+    cones_json: str = "[]"  # [{alpha, nominal, ret_lo, ret_hi, price_lo, price_hi}]
+    projections_json: str = "{}"  # {direction: SetupProjection.as_dict()}
+
+    # --- KPI 1: se registra, NO se emite (regla 2) ---------------------- #
+    probabilities_json: str = "{}"  # {direction: P(TP antes que SL)}
+    probability_calibrated: bool = False
+
+    features_json: str = "{}"  # regla 10 — vector completo
+    model_version: str = ""
+    fit_through_ms: int = 0  # hasta dónde llegaban las etiquetas del ajuste
+    n_train: int = 0
+
+    emitted_at: datetime = Field(default_factory=_utcnow, index=True)
+
+    # --- Resultado forward (NULL hasta que el horizonte cierra) --------- #
+    #: "open" = faltan barras; "resolved" = medido; "gap" = el horizonte pasó
+    #: pero la serie tiene huecos y medirlo mentiría.
+    status: str = Field(default="open", index=True)
+    realized_vol: float | None = None
+    vol_ratio: float | None = None  # realizada / pronosticada
+    realized_return: float | None = None  # log-retorno a H barras
+    cone_hits_json: str = "{}"  # {alpha: bool} — ¿el cono contuvo al precio?
+    outcomes_json: str = "{}"  # {direction: resolución del setup proyectado}
+    resolved_through: int | None = None  # open_time de la última barra usada
+    closed_at: datetime | None = None

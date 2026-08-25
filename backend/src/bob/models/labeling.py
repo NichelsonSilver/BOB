@@ -278,6 +278,99 @@ def triple_barrier_labels(
     )
 
 
+@dataclass(frozen=True)
+class SetupResolution:
+    """Cómo terminó UN setup concreto recorrido barra a barra.
+
+    Es el resultado de `resolve_setup_path`, que existe para que el
+    seguimiento forward (`paper/tracker.py`) mida el mismo trade que midió el
+    backtest — misma resolución de empate incluida.
+    """
+
+    resolution: int  # 1 = TP, 0 = SL, 2 = expiró en la vertical
+    bars_held: int
+    exit_price: float
+    gross_return: float
+    net_return: float
+
+    @property
+    def status(self) -> str:
+        return {1: "tp_hit", 0: "sl_hit", 2: "expired"}[self.resolution]
+
+    @property
+    def hit_tp(self) -> bool:
+        return self.resolution == 1
+
+
+def resolve_setup_path(
+    high: np.ndarray,
+    low: np.ndarray,
+    close: np.ndarray,
+    *,
+    entry_price: float,
+    tp_level: float,
+    sl_level: float,
+    direction: str,
+    config: BarrierConfig,
+    timeframe_ms: int,
+) -> SetupResolution:
+    """Recorre las barras posteriores a la entrada y dice cómo terminó el setup.
+
+    `high`/`low`/`close` son **las barras del trade**, ya recortadas: la
+    primera es la barra siguiente a la de la decisión y a lo sumo se miran
+    `config.horizon_bars`. Si hay menos, el setup sigue abierto y el resultado
+    parcial no se devuelve: eso lo decide quien llama.
+
+    Comparte con `triple_barrier_labels` las dos convenciones que definen la
+    honestidad del número: el empate intrabarra se resuelve **contra el
+    trader** (si el high toca el TP y el low toca el SL en la misma vela, el
+    OHLC no dice cuál fue primero y se asume SL), y los costos —fees,
+    slippage y drag de funding por barra— se descuentan del retorno, no de las
+    barreras.
+
+    No se refactorizó el bucle de `triple_barrier_labels` para que llame acá:
+    ese bucle produce el gate reproducido bit a bit del 24 y 25 de agosto, y
+    tocarlo para ahorrar quince líneas es un mal negocio. Lo que sí hay es un
+    test que exige que las dos implementaciones coincidan fila por fila —
+    la duplicación está permitida, la divergencia silenciosa no.
+    """
+    if direction not in ("long", "short"):
+        raise ValueError("direction debe ser 'long' o 'short'")
+    if entry_price <= 0:
+        raise ValueError("el precio de entrada debe ser > 0")
+
+    is_long = direction == "long"
+    n_bars = min(int(high.shape[0]), config.horizon_bars)
+
+    resolution = 2
+    bars_held = n_bars
+    exit_px = float(close[n_bars - 1]) if n_bars > 0 else entry_price
+
+    for k in range(n_bars):
+        hi, lo = float(high[k]), float(low[k])
+        if is_long:
+            hit_tp, hit_sl = hi >= tp_level, lo <= sl_level
+        else:
+            hit_tp, hit_sl = lo <= tp_level, hi >= sl_level
+
+        if hit_sl:
+            resolution, bars_held, exit_px = 0, k + 1, sl_level
+            break
+        if hit_tp:
+            resolution, bars_held, exit_px = 1, k + 1, tp_level
+            break
+
+    gross = (exit_px / entry_price - 1.0) if is_long else (1.0 - exit_px / entry_price)
+    cost = config.cost_pct + config.funding_per_bar(timeframe_ms) * bars_held
+    return SetupResolution(
+        resolution=resolution,
+        bars_held=bars_held,
+        exit_price=exit_px,
+        gross_return=gross,
+        net_return=gross - cost,
+    )
+
+
 def forward_volatility(close: np.ndarray, horizon: int) -> np.ndarray:
     """Volatilidad realizada de las próximas `horizon` barras. NaN al final.
 

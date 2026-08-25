@@ -563,15 +563,64 @@ shape` — un error que no dice nada de la causa. `assert_columns_trainable` lo
 convierte en un diagnóstico que nombra las columnas y falla en segundos.
 Requiere que el nivel acumule historia para cubrir varios folds.
 
-### Fase 5 — Live + paper tracking (reformulada por la decisión del 25-08)
-1. `live/analyst.py`: loop data → features → modelo → **proyección**. Emite
-   niveles y EV desde el target de volatilidad, no una señal direccional
-2. `paper/tracker.py`: outcome forward de lo que SÍ está validado — ¿la sigma
-   pronosticada contuvo al precio?, ¿el cono conformal cubrió su nivel
-   nominal?, ¿el EV realizado se pareció al proyectado?
-3. El KPI 1 se registra igual en DB con su feature vector completo (regla 10),
-   para poder medirlo forward — pero no se emite ni se muestra como operable
-4. Correr 72h continuas, comparar cobertura forward vs backtest
+### Fase 5 — Live + paper tracking ✅ construida (2026-08-25)
+
+Reformulada por la decisión del 25-08: se emite **proyección**, no dirección.
+
+1. ✅ `models/production.py`: el puente que faltaba entre el experimento y el
+   vivo. `experiment.py` entrena un modelo por fold y lo tira —su producto son
+   métricas—; `fit_bundle` hace **un** ajuste consultable barra a barra sobre
+   toda la historia. Las últimas H filas quedan fuera solas: su etiqueta no
+   terminó de ocurrir. `OnlineConformalCone` lleva el ACI en vivo con la misma
+   aritmética del experimento (test que exige coincidencia uno a uno)
+2. ✅ `live/analyst.py`: vela cerrada → features → bundle → proyección,
+   publicada como `analysis.forecast` y persistida en `ForecastRecord`. Los
+   features se recalculan sobre la serie **completa** (0,68s), no sobre una
+   cola: medido, la cola de 3.000 barras deja 3e-7 de diferencia en `oi_z_ctx`
+   que **no converge** al alargarla. El reajuste corre en background y el
+   bundle viejo sigue emitiendo mientras
+3. ✅ `paper/tracker.py`: resuelve cada pronóstico cuando su horizonte cierra
+   —sigma realizada, cobertura del cono, EV realizado— con **las mismas
+   funciones de métrica del gate**, para que "forward vs backtest" compare y
+   no traduzca. Un horizonte con huecos se marca `gap` y no entra
+4. ✅ `ForecastRecord`: una fila por barra con el vector completo (regla 10),
+   las dos sigmas y el resultado forward. `Signal`/`PaperTrade` quedan intactas
+   para el día en que el motor direccional pase el gate
+5. ✅ Cableado en el `lifespan`: el ajuste inicial (78s medidos sobre 69k
+   barras) arranca en background para no dejar el backend sin responder
+6. ⏳ **Pendiente**: correr 72h continuas y comparar cobertura forward vs
+   backtest. El software está listo; falta el tiempo de mercado
+
+**Dos hallazgos de la fase, ambos con consecuencia de diseño:**
+
+**(a) El EV no puede ser positivo sin edge direccional — es álgebra, no
+mercado.** Para un camino sin deriva con barreras a +a y −b, P(tocar arriba
+primero) = b/(a+b), y entonces `EV_bruto = [b/(a+b)]·a − [a/(a+b)]·b = 0`
+para **todo** a y b; el neto es exactamente −costo. Mover el TP o cambiar el
+ratio R:B no lo levanta: reordena probabilidad y pago en la proporción exacta
+que deja el bruto en cero. Verificado en vivo sobre la última barra real de
+ETHUSDT: barreras a ±0,788%, costo 0,145%, probabilidad de equilibrio 59,2%,
+KPI 1 en 49,6% (long) y 44,4% (short) → las dos direcciones con EV negativo y
+`is_actionable=False`.
+
+Lo que la proyección **sí** entrega, y sigue siendo valor operativo: barreras
+escaladas a la volatilidad que viene, **distancia a liquidación en sigmas**
+(12,4σ a 5x en esa barra), leverage máximo seguro (59,3x) y el cono con
+cobertura medida (2.412–2.486 al 80%). Consecuencia para la Fase 6: la página
+Signal se construye sobre niveles, cono y riesgo; el EV se muestra **con su
+probabilidad de equilibrio al lado**, como el listón a superar y no como una
+promesa de ganancia.
+
+**(b) El vivo no puede correr con `full`.** `bookDepth` sale del archivo
+diario de data.binance.vision (~1 día de retraso) y `reindex_to_bars` hace un
+join exacto por `open_time` —no forward-fill, porque rellenar sería inventar
+liquidez—. Toda barra posterior a la última del archivo queda con NaN en las
+15 columnas del núcleo, y el analista se callaría **para siempre, en
+silencio**. `assert_tail_observable` es el gemelo en vivo de
+`assert_columns_trainable`: aquel protege el pasado, este el presente, y falla
+nombrando las columnas. Default en vivo: `price+deriv` (los derivados sí
+llegan — snapshots cada 30 min, tolerancia de 1h). Usar libro en vivo exige
+antes cablear el stream `@depth`.
 
 ### Fase 6 — API + Dashboard (pages 1-4 + settings)
 ### Fase 7 — Alertas Telegram + sentimiento (F&G, CoinGecko)
