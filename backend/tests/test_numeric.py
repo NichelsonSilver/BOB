@@ -183,8 +183,29 @@ class TestIndicadores:
         assert out[1] == pytest.approx(0.5)
 
     def test_zscore_de_constante_es_cero(self) -> None:
+        """Ventana plana con datos validos: el punto ES su media, z = 0."""
         out = nm.zscore(np.full(50, 3.0), 10)
-        assert np.allclose(out[10:], 0.0)
+        assert np.allclose(out[9:], 0.0)
+
+    def test_zscore_sin_datos_es_nan_no_cero(self) -> None:
+        """El warm-up no puede salir como "exactamente el promedio".
+
+        Un 0 ahi es una observacion inventada: la fila pasa el filtro de
+        finitud y entra al entrenamiento como si el dato existiera. Es la
+        distincion entre "no se" y "es promedio", y solo la segunda es un dato.
+        """
+        out = nm.zscore(np.arange(50, dtype=float), 10)
+        assert np.all(np.isnan(out[:9]))
+        assert np.all(np.isfinite(out[9:]))
+
+    def test_zscore_con_hueco_en_la_ventana_es_nan(self) -> None:
+        """Un NaN a mitad de serie invalida su ventana, no la promedia."""
+        x = np.arange(50, dtype=float)
+        x[20] = np.nan
+        out = nm.zscore(x, 10)
+        # Las ventanas que contienen el indice 20 (o sea 20..29) salen NaN.
+        assert np.all(np.isnan(out[20:30]))
+        assert np.isfinite(out[30])
 
 
 class TestCausalidad:
