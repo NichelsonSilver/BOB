@@ -5,7 +5,7 @@
 
 ## IDENTIDAD DEL PROYECTO
 
-BOB (**B**ot **O**perador **B**ursátil) pivoteó el 2026-08-19, por decisión
+BOB (**B**ursatil **O**perator **B**uddy) pivoteó el 2026-08-19, por decisión
 explícita de Nichelson, de bot ejecutor de grid en GRVT a **asistente de
 decisión para trading intradía de futuros perpetuos en Binance**.
 
