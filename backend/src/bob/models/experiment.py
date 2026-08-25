@@ -92,6 +92,29 @@ class ExperimentConfig:
         return out
 
 
+#: Combinaciones de familias, como (derivados, libro, near-touch). Nombrarlas
+#: acá y no dejar tres flags sueltos es lo que hace que un run sea citable:
+#: "full contra price" dice algo, "--use-book --no-near" no.
+#:
+#: Vive en este módulo y no en el runner porque el vivo también las necesita:
+#: el analista tiene que poder decir con qué variante corre, y comparar esa
+#: variante contra la que pasó por el gate.
+FEATURE_SETS: dict[str, tuple[bool, bool, bool]] = {
+    "price": (False, False, False),
+    "price+deriv": (True, False, False),
+    "full": (True, True, False),
+    "full+near": (True, True, True),
+}
+
+
+def feature_set_name(config: ExperimentConfig) -> str:
+    """Nombre corto de la combinación de familias, para etiquetar un run."""
+    for name, flags in FEATURE_SETS.items():
+        if flags == (config.use_derivatives, config.use_book, config.use_book_near):
+            return name
+    return "custom"
+
+
 @dataclass
 class DirectionResult:
     """Resultado del target de barrera para una dirección."""
