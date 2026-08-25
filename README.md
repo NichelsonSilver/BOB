@@ -1,82 +1,88 @@
-# BOB — Bot Operador Bursátil
+# BOB — Bursatil Operator Buddy
 
-Asistente de decisión para **trading intradía de futuros perpetuos** en
-Binance. BOB observa el mercado en vivo, computa un estado estadístico
-avanzado y le dice al usuario, con honestidad probabilística, qué escenario
-es el más seguro y cuál es el riesgo. **BOB nunca ejecuta órdenes.**
+A decision assistant for **intraday perpetual-futures trading** on Binance.
+BOB watches the market live, computes an advanced statistical state, and
+tells the user — with probabilistic honesty — which scenario is the safest
+and what the risk is. **BOB never places orders.**
 
-Par inicial: `ETHUSDT` perp. El modelo es agnóstico del símbolo (watchlist
-configurable).
+Starting pair: `ETHUSDT` perp. The model is symbol-agnostic (configurable
+watchlist).
 
-> El build anterior (grid trading bot para GRVT) vive congelado en el branch
-> `legacy/grvt-grid`.
+> The previous build (a grid-trading bot for GRVT) is frozen on the
+> `legacy/grvt-grid` branch.
+
+> **Note on language.** This README is in English; the design documents under
+> `docs/` and the project charter in `CLAUDE.md` are written in Spanish,
+> which is the working language of the project. Section references from here
+> point into those files.
 
 ---
 
-## ⚠️ Veredicto del gate: qué está validado y qué no
+## ⚠️ Gate verdict: what is validated and what is not
 
-Este proyecto tiene un **gate de dos criterios** que decide si un KPI
-probabilístico puede mostrarse como operable. El resultado, medido y
-reproducible, es:
+This project has a **two-criteria gate** that decides whether a probabilistic
+KPI may be shown as tradeable. The result, measured and reproducible:
 
-| Target | Gate | Estado |
+| Target | Gate | Status |
 |---|---|---|
-| **Dirección** — `P(TP antes que SL)` | Calibra (4,0pp / 5,1pp) pero **NO discrimina** (AUC 0,519 / 0,533; BSS −0,0028 / +0,0005) | ❌ **NO habilitado.** Se muestra en gris, etiquetado "experimental". No se emiten señales direccionales. |
-| **Volatilidad realizada futura** | R² OOS **+0,400** vs media y **+0,374** vs EWMA; Diebold-Mariano contra EWMA y HAR-RV con **p < 0,0001** | ✅ **Validado.** Es lo que sostiene el producto. |
-| **Cono de precio** (CQR + ACI) | Cobertura empírica 94,8% al 95% nominal (desvío −0,2pp) y 79,9% al 80% (−0,1pp) | ✅ **Validado.** |
+| **Direction** — `P(TP before SL)` | Calibrates (4.0pp / 5.1pp) but **does NOT discriminate** (AUC 0.519 / 0.533; BSS −0.0028 / +0.0005) | ❌ **Not enabled.** Shown greyed out, labelled "experimental". No directional signals are emitted. |
+| **Future realized volatility** | OOS R² **+0.400** vs the mean and **+0.374** vs EWMA; Diebold-Mariano against EWMA and HAR-RV at **p < 0.0001** | ✅ **Validated.** This is what the product rests on. |
+| **Price cone** (CQR + ACI) | Empirical coverage 94.8% at 95% nominal (deviation −0.2pp) and 79.9% at 80% (−0.1pp) | ✅ **Validated.** |
 
-**Los dos criterios del gate son obligatorios, no alternativos:**
+**Both gate criteria are mandatory, not alternatives:**
 
-1. **Calibración** — error medio < 10pp por bucket. Dice *"cuando digo 70%,
-   acierto 70%"*.
-2. **Discriminación** — AUC > 0,55 **y** Brier Skill Score > 0. Dice *"sé
-   cuáles son los casos de 70%"*.
+1. **Calibration** — mean error < 10pp per bucket. It says *"when I say 70%,
+   I'm right 70% of the time"*.
+2. **Discrimination** — AUC > 0.55 **and** Brier Skill Score > 0. It says
+   *"I know which cases are the 70% ones"*.
 
-Un modelo que predice siempre la tasa base está **perfectamente calibrado por
-construcción** y es inútil. Por eso pasar solo el primero no habilita nada.
-El de dirección pasa el primero y falla el segundo: **calibra y no
-discrimina.** No es un bug — es el hallazgo, y es el que predice la hipótesis
-de mercado eficiente en forma débil para este horizonte.
+A model that always predicts the base rate is **perfectly calibrated by
+construction** and useless. That is why passing only the first enables
+nothing. The directional model passes the first and fails the second: **it
+calibrates and does not discriminate.** That is not a bug — it is the
+finding, and it is exactly what the weak form of the efficient-market
+hypothesis predicts at this horizon.
 
-### La consecuencia de producto
+### What this means for the product
 
-Por decisión explícita del 2026-08-25, **BOB se construye sobre el target de
-volatilidad**, no sobre el de dirección. Lo que entrega:
+By an explicit decision on 2026-08-25, **BOB is built on the volatility
+target**, not the directional one. What it delivers:
 
-- TP y SL **dimensionados por la sigma pronosticada**, no por un número fijo
-- **Precio de liquidación** y distancia a liquidación en sigmas, por leverage
-- **Leverage máximo seguro**
-- Cono de precio con cobertura verificada
-- EV neto de costos, mostrado **siempre junto a su probabilidad de
-  equilibrio** — como el listón a superar, no como una promesa
+- TP and SL **sized by the forecast sigma**, not by a fixed number
+- **Liquidation price** and distance to liquidation in sigmas, per leverage
+- **Maximum safe leverage**
+- A price cone with verified coverage
+- Net EV, always shown **next to its break-even probability** — as the bar to
+  clear, not as a promise
 
-Hay un resultado adicional que conviene conocer antes de esperar EV positivo:
-para un camino sin deriva con barreras a `+a` y `−b`, la probabilidad de tocar
-arriba primero es `b/(a+b)`, y entonces el EV bruto es **exactamente 0 para
-todo a y b** — el neto es `−costo`. Mover el TP o cambiar el ratio R:B no lo
-levanta: reordena probabilidad y pago en la proporción exacta que deja el
-bruto en cero. **Sin edge direccional no hay EV positivo, y eso es álgebra,
-no mercado.** Deducción completa en `docs/PROBABILITY_MODEL.md` §9-ter.3.
+There is one further result worth knowing before expecting positive EV: for a
+driftless path with barriers at `+a` and `−b`, the probability of touching the
+upper barrier first is `b/(a+b)`, and therefore gross EV is **exactly 0 for
+every a and b** — net EV is `−cost`. Moving the TP or changing the R:B ratio
+does not lift it: it reshuffles probability and payoff in exactly the
+proportion that keeps the gross at zero. **Without a directional edge there is
+no positive EV, and that is algebra, not markets.** Full derivation in
+`docs/PROBABILITY_MODEL.md` §9-ter.3.
 
-### Cómo verificarlo tú mismo
+### How to verify it yourself
 
-Los reportes de todas las corridas están **versionados en el repo**, no
-resumidos a mano. El bloque `GATE DE LA FASE 4` está al final de cada uno:
+The reports for every run are **committed to the repo**, not summarized by
+hand. The `GATE DE LA FASE 4` block sits at the end of each one:
 
 ```bash
 cat backend/artifacts/ETHUSDT-15m-price-20260825150516.txt
 cat backend/artifacts/ETHUSDT-15m-price+deriv-20260825151728.txt
 cat backend/artifacts/ETHUSDT-15m-full-20260825153235.txt
 
-# El comparador de variantes, que importa los umbrales del gate del
-# propio ExperimentResult en vez de copiarlos
+# The variant comparator, which imports the gate thresholds from
+# ExperimentResult itself instead of copying them
 cd backend && uv run python -m bob.backtest.compare
 ```
 
-Y para reproducir desde cero (descarga de datos + experimento). Toda la
-aleatoriedad del run pasa por un único `seed` en `ExperimentConfig`, fijo en
-42, así que dos corridas con la misma configuración dan reportes **idénticos
-línea por línea** salvo el runtime y el identificador:
+And to reproduce from scratch (data download + experiment). All randomness in
+a run flows through a single `seed` in `ExperimentConfig`, fixed at 42, so two
+runs with the same configuration produce reports that are **identical line by
+line** except for the runtime and the run id:
 
 ```bash
 cd backend
@@ -85,181 +91,192 @@ uv run python -m bob.data.download_vision --symbol ETHUSDT --timeframe 15m --day
 uv run python -m bob.backtest.runner --symbol ETHUSDT --timeframe 15m --folds 6 --features price
 ```
 
-Verificado, no solo declarado: el run `price` del 2026-08-25 reproduce el del
-2026-08-24 **bit a bit** (AUC 0.518701 / 0.532680, BSS −0.002801 / +0.000498)
-pese al refactor intermedio.
+Verified, not merely claimed: the `price` run of 2026-08-25 reproduces the one
+from 2026-08-24 **bit for bit** (AUC 0.518701 / 0.532680, BSS −0.002801 /
++0.000498) despite the refactor in between.
 
-### La ablación que refutó la hipótesis de trabajo
+### The ablation that refuted the working hypothesis
 
-La Fase 2b se hizo bajo la premisa de que el gate no pasaba discriminación
-*por falta de datos de derivados y microestructura*. Se consiguieron 730/730
-días de ambos. El resultado, con la misma semilla y los mismos folds:
+Phase 2b was carried out under the premise that the gate failed
+discrimination *because derivatives and microstructure data were missing*.
+730/730 days of both were obtained. The result, with the same seed and the
+same folds:
 
-| variante | features | AUC long | AUC short | BSS long | BSS short | veredicto |
+| variant | features | AUC long | AUC short | BSS long | BSS short | verdict |
 |---|---|---|---|---|---|---|
-| `price` | 55 | 0,519 | 0,533 | −0,0028 | +0,0005 | ✗ no habilitado |
-| `price+deriv` | 81 | 0,512 | 0,517 | −0,0035 | −0,0025 | ✗ no habilitado |
-| `full` | 96 | 0,509 | 0,515 | −0,0049 | −0,0018 | ✗ no habilitado |
+| `price` | 55 | 0.519 | 0.533 | −0.0028 | +0.0005 | ✗ not enabled |
+| `price+deriv` | 81 | 0.512 | 0.517 | −0.0035 | −0.0025 | ✗ not enabled |
+| `full` | 96 | 0.509 | 0.515 | −0.0049 | −0.0018 | ✗ not enabled |
 
-**Las familias nuevas empeoran la discriminación**, de forma monótona con el
-número de features y en las dos direcciones a la vez. La premisa era falsa y
-queda escrito que lo era. Detalle revelador: en `price+deriv` la familia
-`derivados` marca 0.00151 de importancia por permutación (segundo lugar) —
-o sea el modelo **sí** las usa — pero en `full` cae a 0.00006 y `libro` sale
-negativa. **Importancia por permutación positiva ≠ ganancia fuera de muestra.**
+**The new families make discrimination worse**, monotonically in the number of
+features and in both directions at once. The premise was false, and it is
+written down that it was. A telling detail: in `price+deriv` the `derivados`
+family scores 0.00151 in permutation importance (second place) — so the model
+**does** use them — but in `full` it drops to 0.00006 and `libro` comes out
+negative. **Positive permutation importance ≠ out-of-sample gain.**
 
-El target de volatilidad, en cambio, se sostiene en las tres variantes
-(R² vs media: 0,400 / 0,392 / 0,405).
+The volatility target, by contrast, holds up across all three variants
+(R² vs the mean: 0.400 / 0.392 / 0.405).
 
 ---
 
-## Cómo están implementados los modelos
+## How the models are implemented
 
-Decisión de diseño explícita: **los baselines econométricos y el motor de
-inferencia están escritos desde cero en numpy**, no importados de una
-librería. El backtest y la calibración son la razón de existir del proyecto;
-un baseline que no se puede auditar línea por línea no sirve para decidir si
-el modelo aporta algo.
+An explicit design decision: **the econometric baselines and the inference
+engine are written from scratch in numpy**, not imported from a library. The
+backtest and the calibration are the reason this project exists; a baseline
+you cannot audit line by line is no basis for deciding whether the model adds
+anything.
 
-| Componente | Implementación | Dependencia |
+| Component | Implementation | Dependency |
 |---|---|---|
-| **GARCH(1,1)**, QMLE gaussiana | Propia — verosimilitud a mano, reescalado numérico, fallback a EWMA si no converge | numpy + `scipy.optimize.minimize` (L-BFGS-B) |
-| **HAR-RV** (Corsi 2009) | Propia — OLS sobre log-volatilidad con corrección de Jensen `exp(µ+σ²/2)` | numpy (`np.linalg.lstsq`) |
-| **EWMA / RiskMetrics** (λ=0,94) | Propia | numpy |
-| Random walk, tasa base | Propias | numpy |
-| **HMM gaussiano** — Baum-Welch, forward-backward con escalado de Rabiner, selección de n por BIC/ICL | Propia (~80 líneas de EM) | numpy; `sklearn.cluster.KMeans` **solo** para inicializar |
-| **Métricas** — Brier, BSS, ECE, QLIKE, Winkler, Mincer-Zarnowitz | Propias | numpy |
-| **Diebold-Mariano** con corrección Harvey-Leybourne-Newbold | Propia | `scipy.stats` solo para la t de Student |
-| Triple-barrier, walk-forward purgado + embargo, pesos por unicidad | Propios | numpy |
-| Conformal CQR + ACI | Propia | numpy |
-| GBM, regresión logística, Ridge, isotónica, StandardScaler | **scikit-learn** | scikit-learn |
+| **GARCH(1,1)**, Gaussian QMLE | Own — hand-written likelihood, numerical rescaling, falls back to EWMA if it fails to converge | numpy + `scipy.optimize.minimize` (L-BFGS-B) |
+| **HAR-RV** (Corsi 2009) | Own — OLS on log-volatility with the Jensen correction `exp(µ+σ²/2)` | numpy (`np.linalg.lstsq`) |
+| **EWMA / RiskMetrics** (λ=0.94) | Own | numpy |
+| Random walk, base rate | Own | numpy |
+| **Gaussian HMM** — Baum-Welch, forward-backward with Rabiner scaling, n selected by BIC/ICL | Own (~80 lines of EM) | numpy; `sklearn.cluster.KMeans` **only** to initialize |
+| **Metrics** — Brier, BSS, ECE, QLIKE, Winkler, Mincer-Zarnowitz | Own | numpy |
+| **Diebold-Mariano** with the Harvey-Leybourne-Newbold correction | Own | `scipy.stats` only for Student's t |
+| Triple-barrier, purged walk-forward + embargo, uniqueness weights | Own | numpy |
+| Conformal CQR + ACI | Own | numpy |
+| GBM, logistic regression, Ridge, isotonic, StandardScaler | **scikit-learn** | scikit-learn |
 
-**No se usan `statsmodels` ni `arch`.** No están en `backend/pyproject.toml`
-ni en el entorno. `hmmlearn` tampoco: además de no publicar wheel para el
-Python de este entorno, su inferencia **no sirve como feature** — `predict` es
-Viterbi sobre la secuencia completa y `predict_proba` es el posterior
-suavizado, y los dos miran el futuro de cada barra. Eso es exactamente el
-lookahead que el proyecto prohíbe, y el bug sería invisible: el backtest daría
-métricas hermosas e irreproducibles en vivo. El filtro causal había que
-escribirlo igual; lo que agregaba la librería era solo el Baum-Welch.
+**Neither `statsmodels` nor `arch` is used.** They are not in
+`backend/pyproject.toml` nor in the environment. Nor is `hmmlearn`: beyond not
+shipping a wheel for this environment's Python, its inference **is unusable as
+a feature** — `predict` is Viterbi over the complete sequence and
+`predict_proba` is the smoothed posterior, and both look at each bar's future.
+That is precisely the lookahead this project forbids, and the bug would be
+invisible: the backtest would produce beautiful metrics that do not reproduce
+live. The causal filter had to be written anyway; all the library added was
+Baum-Welch.
 
-Tampoco se usan librerías all-in-one de trading (freqtrade, backtrader,
-jesse): el backtest es propio porque el error de calibración es el número que
-decide.
+No all-in-one trading libraries either (freqtrade, backtrader, jesse): the
+backtest is our own because calibration error is the number that decides.
 
 ---
 
-## Requisitos
+## Requirements
 
-- Python 3.11+ y [uv](https://docs.astral.sh/uv/)
-- Node.js 18+ con npm
+- Python 3.11+ and [uv](https://docs.astral.sh/uv/)
+- Node.js 18+ with npm
 
 ## Setup
 
 ```bash
-# 1. (Opcional) configurar environment — el backend bootea sin .env
+# 1. (Optional) configure the environment — the backend boots without .env
 cp .env.example backend/.env
 
 # 2. Backend
 cd backend
 uv sync --extra dev
-uv run uvicorn bob.main:app --reload
+uv run python -m uvicorn bob.main:app --reload
 # → http://localhost:8000/api/health
 
-# 3. Frontend (otra terminal)
+# 3. Frontend (another terminal)
 cd frontend
 npm install
 npm run dev
 # → http://localhost:5173
 ```
 
-`GET /api/health` reporta el estado del feed **y del analista** (si está
-ajustado, si está reajustando, último pronóstico emitido, cobertura del cono).
-Durante una corrida larga la pregunta que importa no es "¿el backend
-responde?" sino "¿el analista está emitiendo?", y son cosas distintas.
+> ⚠️ Always invoke entry points as `uv run python -m <module>`. On Windows,
+> `uv run uvicorn ...` (and `uv run pytest`) fails with
+> `uv trampoline failed to canonicalize script path`.
 
-Para trabajar offline (sin tocar Binance): `BOB_LIVE_DATA=false`.
+`GET /api/health` reports the state of the feed **and of the analyst**
+(whether it is fitted, whether it is refitting, the last forecast emitted,
+cone coverage). During a long run the question that matters is not "is the
+backend responding?" but "is the analyst emitting?", and those are different
+things.
+
+To work offline (without touching Binance): `BOB_LIVE_DATA=false`.
 
 ---
 
-## Pipeline de forecasting
+## Forecasting pipeline
 
-BOB **no pronostica el nivel del precio**. Predecir `close[t+H]` da R² ≈ 0,99
-y no significa nada: el modelo aprende a copiar el último precio con un
-retardo. El stack predice tres cosas que sí son predecibles:
+BOB **does not forecast the price level**. Predicting `close[t+H]` yields
+R² ≈ 0.99 and means nothing: the model learns to copy the last price with a
+lag. The stack predicts three things that *are* predictable:
 
-| Target | Tipo | Alimenta | Gate |
+| Target | Type | Feeds | Gate |
 |---|---|---|---|
-| `P(TP antes que SL)` | Clasificación binaria calibrada | KPI 1 — Seguridad | ❌ no pasa |
-| Volatilidad realizada futura | Regresión | Dimensionado de TP/SL, KPI 2 | ✅ pasa |
-| Intervalo del retorno a H barras | Predicción conformal (CQR + ACI) | Cono de precio | ✅ pasa |
+| `P(TP before SL)` | Calibrated binary classification | KPI 1 — Safety | ❌ fails |
+| Future realized volatility | Regression | TP/SL sizing, KPI 2 | ✅ passes |
+| Return interval over H bars | Conformal prediction (CQR + ACI) | Price cone | ✅ passes |
 
-Todo se valida con **walk-forward purgado con embargo** (los labels de
-triple-barrier se solapan; un K-Fold estándar filtra futuro y sale inflado),
-contra baselines reales y con test de **Diebold-Mariano** para saber si la
-diferencia es distinguible de la suerte.
+Everything is validated with **purged walk-forward with embargo**
+(triple-barrier labels overlap; a standard K-Fold leaks the future and comes
+out inflated), against real baselines, and with a **Diebold-Mariano** test to
+tell whether the difference is distinguishable from luck.
 
-### Datos
+### Data
 
-Ningún dato de mercado de Binance requiere API key. BOB no tiene ni necesita
-credenciales de trading — es coherente con "nunca ejecuta órdenes".
+No Binance market data requires an API key. BOB has no trading credentials and
+needs none — consistent with "never places orders".
 
-| Fuente | Qué da | Persistido |
+| Source | What it gives | Persisted |
 |---|---|---|
-| Binance Futures WS | klines, trades, depth, markPrice — latencia <100ms | en vivo |
-| Binance Futures REST | histórico de klines y funding, OI y ratios de ~30 días | 69.119 velas 15m (720 días, 0 huecos) |
-| **data.binance.vision** | archivo diario estático: OI, ratios long/short, taker ratio (5m desde 2021-12) y profundidad del libro (desde 2023-01) | metrics 210.232 filas · bookDepth 70.074 filas · **730/730 días, 0 huecos** |
+| Binance Futures WS | klines, trades, depth, markPrice — latency <100ms | live |
+| Binance Futures REST | kline and funding history, OI and ratios for ~30 days | 69,119 15m candles (720 days, 0 gaps) |
+| **data.binance.vision** | static daily archive: OI, long/short ratios, taker ratio (5m grid since 2021-12) and book depth (since 2023-01) | metrics 210,232 rows · bookDepth 70,074 rows · **730/730 days, 0 gaps** |
 
-**104 features** en total: 55 de precio + 26 de derivados + 23 de libro. De
-las de libro, 8 son *near-touch* (nivel ±0,2%) y salen NaN antes de
-2026-01-15, que es cuando Binance empezó a publicar ese nivel — van con
-máscara explícita, no imputadas.
+**104 features** in total: 55 price + 26 derivatives + 23 order book. Of the
+book features, 8 are *near-touch* (the ±0.2% level) and are NaN before
+2026-01-15, which is when Binance started publishing that level — they carry
+an explicit mask; they are not imputed.
 
-Hallazgo de la Fase 1 que vale documentar: el WS de futuros mainnet **no está
-bloqueado**; Binance calla streams concretos y entrega otros sobre la misma
-conexión TLS (mudos: `@aggTrade`, `@kline_*`, `@markPrice`, `@ticker`; vivos:
-`@trade`, `@bookTicker`, `@depth*`). El flujo taker se sostiene con `@trade`,
-verificado idéntico al REST oficial (0,000% de diferencia de volumen), y
-`kline`/`markPrice` se rellenan por REST en paralelo. Detalle en
+A Phase 1 finding worth recording: the mainnet futures WS is **not blocked**.
+Binance silences specific streams while delivering others over the same TLS
+connection (silent: `@aggTrade`, `@kline_*`, `@markPrice`, `@ticker`; live:
+`@trade`, `@bookTicker`, `@depth*`). Taker flow is sustained with `@trade`,
+verified identical to the official REST data (0.000% volume difference), and
+`kline`/`markPrice` are backfilled over REST in parallel. Details in
 `docs/DATA_SOURCES.md`.
 
 ---
 
-## En vivo y paper tracking
+## Live operation and paper tracking
 
 ```bash
 cd backend
-uv run uvicorn bob.main:app            # el ajuste inicial toma ~83s, en background
-uv run python -m bob.paper.tracker --symbol ETHUSDT   # resuelve lo maduro e imprime cobertura
+uv run python -m uvicorn bob.main:app     # the initial fit takes ~83s, in the background
+uv run python -m bob.paper.tracker --symbol ETHUSDT   # resolves what is mature, prints coverage
 ```
 
-Cada vela cerrada produce un pronóstico (`analysis.forecast` por WS,
-`ForecastRecord` en SQLite con el **vector de features completo**). El tracker
-lo resuelve cuando su horizonte cierra —sigma realizada, cobertura del cono,
-EV realizado— usando **las mismas funciones de métrica del gate**, para que
-"forward vs backtest" compare y no traduzca.
+Step-by-step procedure for the validation run — start, check it is alive,
+pause, resume, and what to do when something breaks:
+**`docs/RUNBOOK_FASE5.md`** (Spanish), verified command by command against a
+real backend.
 
-**Las pausas del proceso son seguras.** No hacen falta 72 horas seguidas: lo
-que se necesita son ~280 pronósticos resueltos, y todo lo que importa vive en
-SQLite. El analista repara las series de velas y derivados al arrancar.
+Every closed candle produces a forecast (`analysis.forecast` over WS, plus a
+`ForecastRecord` row in SQLite carrying the **complete feature vector**). The
+tracker resolves it once its horizon closes — realized sigma, cone coverage,
+realized EV — using **the same metric functions as the gate**, so that
+"forward vs backtest" is a comparison and not a translation.
 
-| | ¿sobrevive a apagar el equipo? |
+**Pausing the process is safe.** You do not need 72 uninterrupted hours: what
+is needed is ~280 resolved forecasts, and everything that matters lives in
+SQLite. The analyst repairs the candle and derivatives series on startup.
+
+| | survives powering the machine off? |
 |---|---|
-| Pronósticos emitidos con su vector completo | ✅ están en `ForecastRecord` |
-| Resultados resueltos y reporte de cobertura | ✅ se recalculan de la DB |
-| Estado del ACI (`alpha_t`, cobertura acumulada) | ✅ se **deriva** de los resueltos con `replay_cone_state` |
-| Velas y derivados del rango caído | ✅ el analista los repara al arrancar |
-| Barras que ocurrieron con el proceso abajo | ❌ esas no se pronostican nunca |
+| Emitted forecasts with their full feature vector | ✅ they are in `ForecastRecord` |
+| Resolved outcomes and the coverage report | ✅ recomputed from the DB |
+| ACI state (`alpha_t`, cumulative coverage) | ✅ **derived** from the resolved records via `replay_cone_state` |
+| Candles and derivatives from the downtime range | ✅ the analyst repairs them on startup |
+| Bars that happened while the process was down | ❌ those are never forecast |
 
-Dos advertencias que no dependen del software: los snapshots de derivados
-recuperan **~41h por request** y la ventana de Binance es de ~30 días, así que
-una pausa mayor a ~41h deja un hueco de derivados **irrecuperable**. Y la
-suspensión del equipo cuenta como pausa.
+Two warnings that do not depend on the software: derivatives snapshots recover
+**~41h per request** and Binance's window is ~30 days, so a pause longer than
+~41h leaves an **unrecoverable** derivatives gap. And the machine going to
+sleep counts as a pause.
 
-En vivo el default es `price+deriv`, no `full`: `bookDepth` sale del archivo
-diario (~1 día de retraso) y el join es exacto por `open_time`, sin
-forward-fill —rellenar sería inventar liquidez—. `assert_tail_observable`
-falla nombrando las columnas en vez de dejar al analista mudo en silencio.
+Live, the default is `price+deriv`, not `full`: `bookDepth` comes from the
+daily archive (~1 day of lag) and the join is exact on `open_time`, with no
+forward-fill — filling it would be inventing liquidity. `assert_tail_observable`
+fails naming the columns instead of leaving the analyst silently mute.
 
 ---
 
@@ -267,58 +284,62 @@ falla nombrando las columnas en vez de dejar al analista mudo en silencio.
 
 ```bash
 cd backend
-uv run python -m pytest      # NO usar `uv run pytest` en Windows (bug del trampoline)
+uv run python -m pytest      # do NOT use `uv run pytest` on Windows (trampoline bug)
 
-# Con cobertura de las capas puras
+# With coverage of the pure layers
 uv run python -m pytest --cov=bob.signals --cov=bob.models --cov=bob.backtest --cov=bob.data
 ```
 
-**699 tests en verde.** Cobertura ≥ 90% en `signals/`, `models/` y
-`backtest/` — un bug ahí es una probabilidad falsa sobre capital apalancado.
+**699 tests green.** Coverage ≥ 90% in `signals/`, `models/` and `backtest/` —
+a bug there is a false probability applied to leveraged capital.
 
-Dos tests sostienen las invariantes que, si se rompen, corrompen todo en
-silencio (porque los resultados salen **mejores**, no peores):
+Two tests hold up the invariants that, if broken, corrupt everything silently
+(because the results come out **better**, not worse):
 
-- `test_mutar_el_futuro_no_altera_el_pasado` — sin lookahead.
-- `test_escalar_el_precio_no_cambia_los_features` — features adimensionales,
-  que es lo que hace al motor agnóstico del símbolo.
+- `test_mutar_el_futuro_no_altera_el_pasado` — no lookahead.
+- `test_escalar_el_precio_no_cambia_los_features` — dimensionless features,
+  which is what makes the engine symbol-agnostic.
 
 ---
 
-## Estado por fase
+## Status by phase
 
-| Fase | Qué | Estado |
+| Phase | What | Status |
 |---|---|---|
-| 0 | Migración del esqueleto | ✅ |
-| 1 | Pipeline de datos Binance (WS + REST + store + CLI) | ✅ |
-| 2 | Feature engine puro — 55 features de precio | ✅ |
-| 2b | Derivados + microestructura sobre 730 días, perfiles de venue | ✅ |
-| 3 | Modelos puros — HMM, triple-barrier, conformal, proyección | ✅ |
-| 4 | Backtesting engine — **el gate** (corrido 2 veces) | ✅ corrido · ❌ dirección no habilitada |
-| 5 | Live + paper tracking de la proyección | ✅ construida · ⏳ acumulando muestras |
-| 6 | API + Dashboard | ⬜ |
-| 7 | Alertas Telegram + sentimiento | ⬜ |
-| 8 | Outliers Club + multi-símbolo | ⬜ |
-| 9 | Validación end-to-end | ⬜ |
+| 0 | Skeleton migration | ✅ |
+| 1 | Binance data pipeline (WS + REST + store + CLI) | ✅ |
+| 2 | Pure feature engine — 55 price features | ✅ |
+| 2b | Derivatives + microstructure over 730 days, venue profiles | ✅ |
+| 3 | Pure models — HMM, triple-barrier, conformal, projection | ✅ |
+| 4 | Backtesting engine — **the gate** (run twice) | ✅ run · ❌ direction not enabled |
+| 5 | Live + paper tracking of the projection | ✅ built · ⏳ accumulating samples |
+| 6 | API + dashboard | ⬜ |
+| 7 | Telegram alerts + sentiment | ⬜ |
+| 8 | Outliers Club + multi-symbol | ⬜ |
+| 9 | End-to-end validation | ⬜ |
 
 ---
 
-## Documentación
+## Documentation
 
-- `CLAUDE.md` — identidad, arquitectura, KPIs, fases y reglas del proyecto
-- `docs/PROBABILITY_MODEL.md` — deducción del stack de forecasting, el gate y
-  sus resultados, con las alternativas descartadas y los límites conocidos
-- `docs/DATA_SOURCES.md` — endpoints de Binance/CoinGecko/etc. y sus trampas
-- `docs/HANDOFF_FASE1.md` — estado al cierre de Fase 0 y gotchas de entorno
-- `backend/artifacts/*.txt` — los reportes de gate, versionados
+All design documents are in Spanish, the working language of the project.
 
-## Reglas que no se negocian
+- `CLAUDE.md` — identity, architecture, KPIs, phases and project rules
+- `docs/PROBABILITY_MODEL.md` — derivation of the forecasting stack, the gate
+  and its results, with the discarded alternatives and the known limits
+- `docs/DATA_SOURCES.md` — Binance/CoinGecko/etc. endpoints and their traps
+- `docs/RUNBOOK_FASE5.md` — how to run the forward validation run
+- `docs/HANDOFF_FASE1.md` — state at the close of Phase 0 and environment gotchas
+- `backend/artifacts/*.txt` — the gate reports, committed
 
-1. **BOB nunca ejecuta órdenes.** No hay código de ejecución en `main`.
-2. **Ningún KPI probabilístico se muestra como operable sin calibración
-   Y discriminación demostradas.** "Experimental" en gris hasta entonces.
-3. **Pureza por capas**: `signals/`, `models/` y `backtest/` no hacen I/O.
-4. **Sin lookahead.** Cualquier feature o label que use información futura
-   respecto de su timestamp es un bug crítico, y los tests deben cazarlo.
-5. **No inflar el KPI**: nada de redondear hacia arriba, suavizar drawdowns
-   ni ocultar buckets malos.
+## Non-negotiable rules
+
+1. **BOB never places orders.** There is no execution code on `main`. Period.
+2. **No probabilistic KPI is shown as tradeable without demonstrated
+   calibration AND discrimination.** Greyed out and "experimental" until then.
+3. **Layer purity**: `signals/`, `models/` and `backtest/` do no I/O.
+4. **No lookahead.** Any feature or label that uses information from the
+   future relative to its timestamp is a critical bug, and the tests must
+   catch it.
+5. **Do not inflate the KPI**: no rounding up, no smoothing drawdowns, no
+   hiding bad buckets.
