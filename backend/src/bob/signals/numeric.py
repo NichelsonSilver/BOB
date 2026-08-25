@@ -274,11 +274,26 @@ def garman_klass_vol(
 
 
 def zscore(x: FloatArray, window: int) -> FloatArray:
-    """Z-score móvil causal. Sin varianza (serie constante) devuelve 0."""
+    """Z-score móvil causal.
+
+    Distingue dos casos que es tentador colapsar en 0 y que no son el mismo:
+
+    - **Ventana plana** (datos válidos, desviación nula): el punto ES su media,
+      así que 0 es la respuesta correcta y no una imputación.
+    - **Ventana sin datos** (warm-up, o un hueco de la fuente): devuelve NaN.
+      Poner 0 ahí diría "exactamente el promedio" justo donde no se sabe nada,
+      y esa fila entraría al entrenamiento como si fuera una observación.
+
+    Medido sobre 720 días de ETHUSDT 15m, la versión que imputaba 0 afectaba
+    671 filas de warm-up y ninguna llegaba al modelo — pero solo porque otro
+    feature tenía la ventana más larga. Depender de esa coincidencia es lo que
+    esta versión elimina.
+    """
     x = _as_f64(x)
     mean = rolling_mean(x, window)
     std = rolling_std(x, window)
-    return np.where(std > EPS, (x - mean) / np.maximum(std, EPS), 0.0)
+    out = np.where(std > EPS, (x - mean) / np.maximum(std, EPS), 0.0)
+    return np.where(np.isnan(mean), np.nan, out)
 
 
 def safe_div(num: FloatArray, den: FloatArray, fill: float = 0.0) -> FloatArray:
