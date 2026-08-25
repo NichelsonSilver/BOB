@@ -39,7 +39,9 @@ class Settings(BaseSettings):
     #: el camino de baja latencia; "rest", el de polling.
     bob_feed_mode: str = "auto"
     #: Granularidad de los snapshots de OI / ratios (ventana ~30 días).
-    bob_snapshot_period: str = "15m"
+    # Debe coincidir con METRICS_PERIOD de data/download_vision.py: es la
+    # grilla en la que el archivo histórico publica los mismos campos.
+    bob_snapshot_period: str = "5m"
     #: Cadencia del snapshot. Cada request trae ~5 días, así que el solape
     #: cubre cualquier rato que el proceso haya estado caído.
     bob_snapshot_interval_min: int = 30

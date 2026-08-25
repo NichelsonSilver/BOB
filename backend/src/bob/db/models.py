@@ -39,11 +39,19 @@ class CandleRecord(SQLModel, table=True):
 
 
 class DerivativeSnapshot(SQLModel, table=True):
-    """Foto periódica de open interest y posicionamiento (data/snapshots.py).
+    """Punto de open interest y posicionamiento. Único por (symbol, period, timestamp).
 
-    Binance solo conserva ~30 días de esta historia (docs/DATA_SOURCES.md):
-    cada día sin persistir es un día menos de entrenamiento para los features
-    de derivados de la Fase 2b. Única por (symbol, period, timestamp).
+    Dos fuentes escriben acá y el upsert las reconcilia:
+
+    - `data/vision.py` — el archivo diario `futures/um/daily/metrics/` de
+      data.binance.vision, con historia desde 2021-12-01. Es la fuente del
+      histórico para entrenar.
+    - `data/snapshots.py` — los endpoints `/futures/data/*`, que solo
+      conservan ~30 días pero llegan en minutos. Es la fuente del tramo
+      caliente, porque el archivo aparece con ~1 día de retraso.
+
+    La ventana de 30 días es del **endpoint**, no del dato: ver
+    docs/DATA_SOURCES.md.
     """
 
     id: int | None = Field(default=None, primary_key=True)
@@ -57,6 +65,18 @@ class DerivativeSnapshot(SQLModel, table=True):
     long_account_pct: str | None = None
     short_account_pct: str | None = None
     taker_buy_sell_ratio: str | None = None  # volumen taker comprador/vendedor
+
+    # Solo los trae el archivo `metrics/`; los snapshots REST los dejan en None.
+    # "account" cuenta cabezas (una ballena pesa igual que un minorista),
+    # "position" pesa notional — divergen justo cuando el posicionamiento se
+    # concentra, que es la señal interesante.
+    top_trader_account_ratio: str | None = None
+    top_trader_position_ratio: str | None = None
+
+    #: Funding cobrado cada 8h. Vive en su propia grilla (period="funding"),
+    #: no en la de 5m: /fapi/v1/fundingRate SÍ tiene historia completa desde
+    #: 2021 — el límite de 30 días es solo de /futures/data/*.
+    funding_rate: str | None = None
 
     captured_at: datetime = Field(default_factory=_utcnow)
 
@@ -147,3 +167,49 @@ class SentimentSnapshot(SQLModel, table=True):
     value: str
     raw_json: str = "{}"
     captured_at: datetime = Field(default_factory=_utcnow, index=True)
+
+
+class BookDepthBar(SQLModel, table=True):
+    """Profundidad del libro agregada a la grilla del timeframe (data/vision.py).
+
+    El archivo `futures/um/daily/bookDepth/` trae un snapshot cada ~30s con la
+    profundidad **acumulada** hasta ±0,2/1/2/3/4/5% del mid (12 filas por
+    snapshot, verificado). Persistir eso crudo son ~2 GB por año y por símbolo,
+    así que se promedia dentro de cada barra al ingerir y se guardan las sumas
+    por lado — dimensionales, en USDT.
+
+    La conversión a features adimensionales (imbalance, pendiente del libro)
+    vive en `signals/microstructure.py`: la regla 3 de CLAUDE.md se sostiene
+    guardando magnitudes crudas acá y ratios allá.
+
+    El **esquema del archivo cambió**: el nivel ±0,2% existe solo desde
+    ~2026-01-15. Las columnas correspondientes son nullables por eso.
+
+    Único por (symbol, timeframe, open_time).
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    symbol: str = Field(index=True)
+    timeframe: str = Field(index=True)
+    open_time: int = Field(index=True)  # epoch ms UTC, alineado con CandleRecord
+
+    # Notional acumulado hasta cada distancia del mid, promediado en la barra.
+    # Tres niveles y no los doce del archivo: el near-touch (0,2%) es el que
+    # mueve el precio en minutos, 1% es la liquidez que absorbe un impulso, y
+    # 5% es el muro de fondo. Los intermedios (2/3/4%) son casi colineales.
+    bid_notional_1pct: str = "0"
+    ask_notional_1pct: str = "0"
+    bid_notional_5pct: str = "0"
+    ask_notional_5pct: str = "0"
+
+    #: El near-touch (±0,2%) es NULL en el archivo anterior a ~2026-01-15, que
+    #: es cuando Binance lo agregó. NULL y no "0": un libro sin dato y un libro
+    #: vacío cerca del mid son cosas opuestas.
+    bid_notional_02pct: str | None = None
+    ask_notional_02pct: str | None = None
+
+    #: Cuántos snapshots del archivo cayeron dentro de la barra. Con pocos, el
+    #: promedio es ruido: el modelo debe poder descartar la barra.
+    n_snapshots: int = 0
+    #: Cuántos de ellos traían el near-touch. 0 = época sin ese nivel.
+    n_snapshots_near: int = 0

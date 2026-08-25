@@ -336,7 +336,13 @@ class BinanceRestClient:
     async def open_interest_hist(
         self, symbol: str, period: str = "15m", limit: int = 500
     ) -> list[dict[str, Any]]:
-        """⚠️ Binance solo conserva ~30 días. Snapshotear a DB desde ya."""
+        """Binance solo conserva ~30 días en ESTE endpoint.
+
+        Para el histórico largo no se usa acá: el mismo dato está en el archivo
+        diario data.binance.vision (ver data/vision.py), con grilla de 5m desde
+        2021-12-01. Este endpoint cubre el tramo caliente, que el archivo aún
+        no publicó.
+        """
         data = await self._get(
             "/futures/data/openInterestHist",
             {"symbol": symbol.upper(), "period": period, "limit": min(limit, 500)},

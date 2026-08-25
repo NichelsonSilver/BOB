@@ -26,10 +26,15 @@ from bob.data.store import derivatives_coverage, upsert_derivatives
 from bob.db.session import init_db
 from bob.utils.console import enable_utf8_stdout
 
-#: Cada request trae hasta 500 puntos: con period=15m son ~5 días de historia.
-#: Snapshotear cada 30 min deja un solape enorme, y el solape es justamente lo
-#: que hace la ingesta inmune a que el proceso esté caído un rato.
-DEFAULT_PERIOD = "15m"
+#: Grilla de 5 minutos, la MISMA que publica el archivo diario `metrics/`
+#: (data/vision.py). No es un detalle de resolución: si las dos fuentes usaran
+#: periods distintos escribirían dos series que nunca se tocan, y la familia de
+#: derivados se cortaría justo el día en que termina el archivo.
+#:
+#: Cada request trae hasta 500 puntos: a 5m son ~41 horas de historia. Con
+#: snapshots cada 30 min el solape sigue siendo enorme, y el solape es
+#: justamente lo que hace la ingesta inmune a que el proceso esté caído un rato.
+DEFAULT_PERIOD = "5m"
 DEFAULT_LIMIT = 500
 DEFAULT_INTERVAL_S = 1800.0
 
@@ -50,6 +55,12 @@ class DerivativePoint:
     long_account_pct: str | None = None
     short_account_pct: str | None = None
     taker_buy_sell_ratio: str | None = None
+    #: Solo los llena el archivo histórico (data/vision.py); el REST no los da
+    #: en el mismo endpoint y no vale la pena un request extra en vivo.
+    top_trader_account_ratio: str | None = None
+    top_trader_position_ratio: str | None = None
+    #: Solo en las filas de period="funding"; el resto lo deja en None.
+    funding_rate: str | None = None
 
 
 def _ts(row: dict[str, Any]) -> int | None:
