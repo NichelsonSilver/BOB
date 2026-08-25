@@ -14,8 +14,13 @@ import json
 import numpy as np
 import pytest
 
-from bob.data.store import OHLCVSeries
-from bob.models.experiment import ExperimentConfig, run_experiment
+from bob.data.store import BookDepthSeries, DerivativesSeries, OHLCVSeries
+from bob.models.experiment import (
+    ExperimentConfig,
+    assemble_features,
+    assert_columns_trainable,
+    run_experiment,
+)
 from bob.models.labeling import BarrierConfig
 from bob.models.report import render_report, render_summary
 
@@ -241,3 +246,187 @@ class TestReporte:
     def test_es_ascii_seguro_para_consola(self, resultado) -> None:
         """El reporte se escribe a archivo en UTF-8; debe poder codificarse."""
         render_report(resultado).encode("utf-8")
+
+
+class TestEnsambladoDeFamilias:
+    """Fase 2b: como entran derivados y libro a la matriz del experimento."""
+
+    @staticmethod
+    def _serie(n=3000):
+        rng = np.random.default_rng(5)
+        close = 3000.0 * np.exp(np.cumsum(rng.normal(0, 0.002, n)))
+        vol = np.abs(rng.normal(100.0, 10.0, n))
+        return OHLCVSeries(
+            symbol="ETHUSDT",
+            timeframe="15m",
+            open_time=np.arange(n, dtype=np.int64) * 900_000,
+            open=close,
+            high=close * 1.002,
+            low=close * 0.998,
+            close=close,
+            volume=vol,
+            quote_volume=vol * close,
+            taker_buy_volume=vol * 0.55,
+            n_trades=np.full(n, 400, dtype=np.int64),
+        )
+
+    @staticmethod
+    def _derivados(n_pts):
+        rng = np.random.default_rng(9)
+        oi = 2e6 * np.exp(np.cumsum(rng.normal(0, 0.001, n_pts)))
+        return DerivativesSeries(
+            symbol="ETHUSDT",
+            period="5m",
+            timestamp=np.arange(n_pts, dtype=np.int64) * 300_000,
+            open_interest=oi,
+            open_interest_value=oi * 3000.0,
+            long_short_ratio=np.exp(rng.normal(0.4, 0.1, n_pts)),
+            taker_buy_sell_ratio=np.exp(rng.normal(0.0, 0.1, n_pts)),
+            top_trader_account_ratio=np.exp(rng.normal(0.3, 0.1, n_pts)),
+            top_trader_position_ratio=np.exp(rng.normal(0.35, 0.1, n_pts)),
+            funding_rate=np.full(n_pts, np.nan),
+        )
+
+    @staticmethod
+    def _libro(n, con_near):
+        rng = np.random.default_rng(11)
+        bid_1 = np.abs(rng.normal(4.5e7, 4e6, n))
+        ask_1 = np.abs(rng.normal(4.5e7, 4e6, n))
+        near = np.full(n, np.nan)
+        return BookDepthSeries(
+            symbol="ETHUSDT",
+            timeframe="15m",
+            open_time=np.arange(n, dtype=np.int64) * 900_000,
+            bid_02=bid_1 / 9.0 if con_near else near,
+            ask_02=ask_1 / 9.0 if con_near else near,
+            bid_1=bid_1,
+            ask_1=ask_1,
+            bid_5=bid_1 * 4.4,
+            ask_5=ask_1 * 4.4,
+            n_snapshots=np.full(n, 30, dtype=np.int64),
+        )
+
+    def test_sin_series_es_el_baseline_de_fase_2(self):
+        """Sin derivados ni libro, la matriz son las 55 features de precio."""
+        serie = self._serie()
+        X, names, sparse, families = assemble_features(serie, ExperimentConfig())
+
+        assert X.shape == (len(serie), 55)
+        assert sparse == set()
+        assert "derivados" not in families
+        assert "libro" not in families
+
+    def test_las_familias_se_suman_a_la_matriz(self):
+        serie = self._serie()
+        X, names, sparse, families = assemble_features(
+            serie,
+            ExperimentConfig(),
+            derivatives=self._derivados(len(serie) * 3),
+            book=self._libro(len(serie), con_near=True),
+        )
+
+        assert X.shape[1] == len(names)
+        assert X.shape[1] > 55
+        assert len(set(names)) == len(names)  # sin nombres repetidos
+        assert families["derivados"] and families["libro"]
+        # Sin el flag, el near-touch NO entra aunque el libro lo traiga.
+        assert not any("_02" in n for n in names)
+        assert sparse == set()
+
+    def test_el_near_touch_entra_solo_con_su_flag_y_queda_marcado_sparse(self):
+        serie = self._serie()
+        cfg = ExperimentConfig(use_book_near=True)
+        X, names, sparse, families = assemble_features(
+            serie, cfg, book=self._libro(len(serie), con_near=True)
+        )
+
+        assert any("_02" in n for n in names)
+        assert sparse and all("_02" in n or n in sparse for n in sparse)
+        assert sparse < set(names)
+
+    def test_las_columnas_sparse_no_filtran_filas(self):
+        """El punto entero del diseño: exigirlas tiraría el 70% de la muestra.
+
+        Con un libro sin near-touch (el archivo anterior a 2026-01-15) esas
+        columnas son NaN enteras. Si entraran al criterio de finitud, no
+        quedaría ni una fila utilizable.
+        """
+        serie = self._serie()
+        cfg = ExperimentConfig(use_book_near=True)
+        X, names, sparse, _ = assemble_features(
+            serie, cfg, book=self._libro(len(serie), con_near=False)
+        )
+
+        densas = [i for i, n in enumerate(names) if n not in sparse]
+        finite_densas = np.all(np.isfinite(X[:, densas]), axis=1)
+        finite_todas = np.all(np.isfinite(X), axis=1)
+
+        assert finite_densas.sum() > 1000  # el experimento puede correr
+        assert finite_todas.sum() == 0  # y no podría si exigiera las sparse
+
+    def test_el_modelo_logistico_rechaza_columnas_sparse(self):
+        """Falla temprano y explicando, en vez de reventar dentro de sklearn."""
+        serie = self._serie()
+        cfg = ExperimentConfig(model_kind="logistic", use_book_near=True)
+        with pytest.raises(ValueError, match="logístico no admite NaN"):
+            run_experiment(serie, cfg, book=self._libro(len(serie), con_near=True))
+
+    def test_las_familias_apagadas_se_ignoran_aunque_llegue_la_serie(self):
+        serie = self._serie()
+        cfg = ExperimentConfig(use_derivatives=False, use_book=False)
+        X, names, _, families = assemble_features(
+            serie,
+            cfg,
+            derivatives=self._derivados(len(serie) * 3),
+            book=self._libro(len(serie), con_near=True),
+        )
+        assert X.shape[1] == 55
+        assert "derivados" not in families
+
+
+class TestColumnasEntrenables:
+    """Una columna vacia en el primer train rompe sklearn con un error mudo."""
+
+    def test_detecta_la_columna_vacia_en_el_train(self):
+        X = np.random.default_rng(0).normal(size=(1000, 3))
+        X[:600, 2] = np.nan  # existe solo en la segunda mitad
+        with pytest.raises(ValueError, match="sin un solo valor en el primer train"):
+            assert_columns_trainable(X, ["a", "b", "tardia"], 0.35)
+
+    def test_nombra_la_columna_culpable(self):
+        X = np.random.default_rng(0).normal(size=(1000, 2))
+        X[:600, 1] = np.nan
+        with pytest.raises(ValueError, match="near_touch"):
+            assert_columns_trainable(X, ["ok", "near_touch"], 0.35)
+
+    def test_una_columna_con_huecos_pero_presente_pasa(self):
+        """Huecos si, ausencia total no: el GBM parte el NaN como rama propia."""
+        X = np.random.default_rng(0).normal(size=(1000, 2))
+        X[::2, 1] = np.nan  # la mitad de las filas, repartidas
+        assert_columns_trainable(X, ["a", "con_huecos"], 0.35)
+
+    def test_matriz_densa_pasa(self):
+        X = np.random.default_rng(0).normal(size=(1000, 4))
+        assert_columns_trainable(X, list("abcd"), 0.35)
+
+    def test_el_experimento_falla_temprano_y_explicando(self):
+        """Antes reventaba adentro de sklearn tras minutos de computo."""
+        serie = TestEnsambladoDeFamilias._serie()
+        libro = TestEnsambladoDeFamilias._libro(len(serie), con_near=True)
+        # Near-touch presente solo en el ultimo tercio: como en el archivo real.
+        corte = int(len(serie) * 0.7)
+        libro = BookDepthSeries(
+            symbol=libro.symbol,
+            timeframe=libro.timeframe,
+            open_time=libro.open_time,
+            bid_02=np.where(np.arange(len(serie)) >= corte, libro.bid_02, np.nan),
+            ask_02=np.where(np.arange(len(serie)) >= corte, libro.ask_02, np.nan),
+            bid_1=libro.bid_1,
+            ask_1=libro.ask_1,
+            bid_5=libro.bid_5,
+            ask_5=libro.ask_5,
+            n_snapshots=libro.n_snapshots,
+        )
+        cfg = ExperimentConfig(use_book_near=True)
+        with pytest.raises(ValueError, match="use_book_near=False"):
+            run_experiment(serie, cfg, book=libro)

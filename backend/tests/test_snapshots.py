@@ -199,39 +199,67 @@ class TestSnapshotOnce:
 
 
 class TestSnapshotLoop:
+    """El loop se prueba por eventos, nunca por reloj de pared.
+
+    La versión anterior dormía 50 ms y asumía que habían pasado >= 2 ciclos.
+    Con la máquina cargada el loop alcanzaba a dar uno solo y el test fallaba
+    sin que nada estuviera roto — tres falsos positivos en una sesión. Ahora el
+    doble avisa por un Event cuando llegó a las N vueltas y el test espera ESO,
+    con un timeout amplio que solo salta si el loop de verdad se colgó.
+    """
+
+    @staticmethod
+    def _loop_hasta(n_ciclos: int, fake):
+        """Envuelve un doble para que señale cuando completó `n_ciclos`."""
+        listo = asyncio.Event()
+        contador = {"n": 0}
+
+        async def envuelto(symbols, period="15m", limit=500, *, client=None):
+            contador["n"] += 1
+            try:
+                return await fake(contador["n"], symbols)
+            finally:
+                if contador["n"] >= n_ciclos:
+                    listo.set()
+
+        return envuelto, listo, contador
+
     async def test_corre_un_ciclo_y_para_cuando_se_lo_piden(
         self, in_memory_engine, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         ciclos: list[tuple[str, ...]] = []
 
-        async def fake_once(symbols, period="15m", limit=500, *, client=None):
+        async def fake(_n, symbols):
             ciclos.append(tuple(symbols))
             return {}
 
-        monkeypatch.setattr("bob.data.snapshots.snapshot_once", fake_once)
+        envuelto, listo, _ = self._loop_hasta(2, fake)
+        monkeypatch.setattr("bob.data.snapshots.snapshot_once", envuelto)
         stop = asyncio.Event()
         task = asyncio.create_task(snapshot_loop(["ETHUSDT"], "15m", 0.01, stop=stop))
-        await asyncio.sleep(0.05)
+
+        await asyncio.wait_for(listo.wait(), timeout=5.0)
         stop.set()
         await asyncio.wait_for(task, timeout=1.0)
 
         assert len(ciclos) >= 2
+        assert all(c == ("ETHUSDT",) for c in ciclos)
 
     async def test_un_ciclo_que_revienta_no_mata_el_loop(
         self, in_memory_engine, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        intentos = {"n": 0}
-
-        async def fake_once(symbols, period="15m", limit=500, *, client=None):
-            intentos["n"] += 1
-            if intentos["n"] == 1:
+        async def fake(n, _symbols):
+            if n == 1:
                 raise RuntimeError("Binance devolvió basura")
             return {}
 
-        monkeypatch.setattr("bob.data.snapshots.snapshot_once", fake_once)
+        envuelto, listo, intentos = self._loop_hasta(2, fake)
+        monkeypatch.setattr("bob.data.snapshots.snapshot_once", envuelto)
         stop = asyncio.Event()
         task = asyncio.create_task(snapshot_loop(["ETHUSDT"], "15m", 0.01, stop=stop))
-        await asyncio.sleep(0.05)
+
+        # Si el error matara el loop, el segundo ciclo nunca llega y esto expira.
+        await asyncio.wait_for(listo.wait(), timeout=5.0)
         stop.set()
         await asyncio.wait_for(task, timeout=1.0)
 

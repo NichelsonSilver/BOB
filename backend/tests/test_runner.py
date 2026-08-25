@@ -123,6 +123,17 @@ class TestArtifacts:
         assert destino.is_dir()
 
 
+
+def _sin_familias_2b(monkeypatch):
+    """Stub de los loaders de Fase 2b para los tests del CLI.
+
+    Sin esto el runner leeria la DB real del usuario —210k puntos de derivados—
+    y el test dejaria de ser determinista y de correr en aislamiento.
+    """
+    monkeypatch.setattr(runner, "load_derivatives", lambda *a, **k: None)
+    monkeypatch.setattr(runner, "load_book_depth", lambda *a, **k: None)
+
+
 class TestCLI:
     def test_los_defaults_del_cli_son_los_del_modelo(
         self, tmp_path, monkeypatch, resultado
@@ -139,11 +150,12 @@ class TestCLI:
         serie = series_from_klines("TESTUSDT", TF, [Kline.from_row(_row(0))])
         capturado: dict[str, object] = {}
 
-        def run_falso(s, cfg):
+        def run_falso(s, cfg, *extras):
             capturado["cfg"] = cfg
             return resultado
 
         monkeypatch.setattr(sys, "argv", ["runner"])
+        _sin_familias_2b(monkeypatch)
         monkeypatch.setattr(runner, "load_series", lambda s, t: serie)
         monkeypatch.setattr(runner, "run_experiment", run_falso)
         monkeypatch.setattr(runner, "ARTIFACTS_DIR", tmp_path / "artifacts")
@@ -163,6 +175,7 @@ class TestCLI:
         from bob.data.store import series_from_klines
 
         monkeypatch.setattr(sys, "argv", ["runner", "--symbol", "NADAUSDT"])
+        _sin_familias_2b(monkeypatch)
         monkeypatch.setattr(
             runner, "load_series", lambda s, t: series_from_klines(s, t, [])
         )
@@ -177,11 +190,12 @@ class TestCLI:
         )
         capturado: dict[str, object] = {}
 
-        def run_falso(s, cfg):
+        def run_falso(s, cfg, *extras):
             capturado["cfg"] = cfg
             return resultado
 
         monkeypatch.setattr(sys, "argv", ["runner", "--tp", "1.5", "--horizon", "24", "--rolling"])
+        _sin_familias_2b(monkeypatch)
         monkeypatch.setattr(runner, "load_series", lambda s, t: serie)
         monkeypatch.setattr(runner, "run_experiment", run_falso)
         monkeypatch.setattr(runner, "ARTIFACTS_DIR", tmp_path / "artifacts")
@@ -201,8 +215,9 @@ class TestCLI:
         session, _ = db
         serie = series_from_klines("TESTUSDT", TF, [Kline.from_row(_row(0))])
         monkeypatch.setattr(sys, "argv", ["runner"])
+        _sin_familias_2b(monkeypatch)
         monkeypatch.setattr(runner, "load_series", lambda s, t: serie)
-        monkeypatch.setattr(runner, "run_experiment", lambda s, cfg: resultado)
+        monkeypatch.setattr(runner, "run_experiment", lambda s, cfg, *extras: resultado)
         monkeypatch.setattr(runner, "ARTIFACTS_DIR", tmp_path / "artifacts")
         runner.main()
         assert session.exec(select(BacktestRun)).all()

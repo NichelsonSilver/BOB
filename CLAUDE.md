@@ -39,6 +39,73 @@ checkout de distancia. De ese build heredamos y mantenemos en main:
 
 ---
 
+---
+
+## DECISIÓN VIGENTE (2026-08-25) — el producto se apoya en VOLATILIDAD
+
+Decisión explícita de Nichelson al cierre de la Fase 2b, tomada sobre la
+evidencia de dos corridas del gate. **Leer esto antes de retomar cualquier
+fase.**
+
+### Qué se decidió
+
+El producto se construye sobre el **target de volatilidad**, que pasó el gate,
+y **no** sobre el target de dirección, que no lo pasó. En concreto:
+
+- El **KPI 2 (proyección)** es el que sostiene el valor entregado: TP y SL
+  dimensionados por la sigma pronosticada, EV neto de costos, ROE por leverage,
+  **precio de liquidación** y leverage máximo seguro. Todo eso ya existe en
+  `models/projection.py` y se apoya en el target que sí está validado.
+- El **KPI 1 (Seguridad)** NO se muestra como operable. Sigue etiquetado
+  "experimental" en gris, con su precisión histórica real al lado, tal como
+  manda la regla 2. No se emite señal direccional contra él.
+- El **KPI 3 (duración de régimen)** se mantiene como secundario, con banda de
+  incertidumbre, sin cambios.
+
+### Por qué — la evidencia, no la intuición
+
+Dos corridas del walk-forward purgado sobre 69.119 velas de ETHUSDT 15m:
+
+1. **2026-08-24, 55 features de precio**: calibra (4,0pp / 5,1pp) pero **no
+   discrimina** (AUC 0,519 / 0,533; BSS −0,0028 / +0,0005).
+2. **2026-08-25, hasta 96 features** con derivados y libro de la Fase 2b sobre
+   730/730 días: **peor** (AUC 0,509 / 0,515; BSS −0,0049 / −0,0018),
+   monótonamente con el número de features y en las dos direcciones.
+
+La hipótesis que motivó la Fase 2b —"no discrimina porque le faltan datos de
+derivados y microestructura"— quedó **refutada**: los datos ya no faltan y el
+resultado empeoró. Mientras tanto el target de volatilidad pasa el gate con
+p=0.0000 en Diebold-Mariano contra los baselines (`docs/PROBABILITY_MODEL.md`).
+
+Entre las tres salidas que había sobre la mesa —barrer el target, seleccionar
+features, o apoyarse en volatilidad— se eligió la tercera porque es **la única
+con respaldo empírico hoy**. Barrer combinaciones de TP/SL/H corre el riesgo de
+encontrar una que pase por azar; si algún día se retoma, hay que fijar el
+criterio y el número de pruebas ANTES de correrlas.
+
+### Qué implica para las fases siguientes
+
+- **Fase 5** deja de ser "emitir señales direccionales". Pasa a ser: paper
+  tracking del **pronóstico de volatilidad y de los niveles derivados de él**
+  (¿la sigma pronosticada contuvo al precio?, ¿el cono conformal cubrió al
+  nivel nominal?), más el registro de las condiciones de mercado.
+- **Fase 6** (dashboard) construye la página Signal alrededor del KPI 2:
+  niveles, EV, distancia a liquidación y el cono de precio. El gauge de
+  Seguridad se dibuja en gris con su etiqueta de "sin calibrar".
+- El motor direccional **no se borra**. Queda entrenado, versionado y medido;
+  si alguna vez pasa los dos criterios, se enciende. Lo que no se hace es
+  mostrarlo como operable mientras no los pase.
+
+### Lo que NO cambia
+
+La regla 2 sigue siendo la regla 2, y esta decisión es su aplicación literal:
+un KPI probabilístico sin calibración **y** discriminación demostradas no se
+muestra como operable. La Fase 2b no fue en vano —730 días de derivados y de
+libro son infraestructura real y reutilizable— pero su premisa era falsa y
+conviene que quede escrito que lo era.
+
+---
+
 ## LOS TRES KPIs
 
 ### KPI 1 — Seguridad (%) — EL PRINCIPAL
@@ -178,7 +245,8 @@ bob/
 │   │   │   ├── report.py           # Renderiza el reporte a texto
 │   │   │   └── projection.py       # (pendiente) EV con leverage, precio de liq
 │   │   ├── backtest/               # Capa de I/O del experimento
-│   │   │   └── runner.py           # DB → experiment → reporte + BacktestRun
+│   │   │   ├── runner.py           # DB → experiment → reporte + BacktestRun
+│   │   │   └── compare.py          # Ablación entre variantes de features
 │   │   ├── paper/
 │   │   │   └── tracker.py          # Simula forward cada señal emitida, registra outcome
 │   │   ├── live/
@@ -447,19 +515,63 @@ completo.
    volatilidad —que sí pasó el gate— y no en el de dirección
 5. ✅ Cobertura ≥ 94% en todo `models/`
 
-### Fase 4 — Backtesting engine — EL GATE ✅ (corrido)
+### Fase 4 — Backtesting engine — EL GATE ✅ (corrido 2 veces)
 1. ✅ Walk-forward purgado con embargo + métricas + curva de calibración +
    test de Diebold-Mariano contra baselines
 2. ✅ Corrido sobre 24 meses de ETHUSDT 15m
 3. **Criterio de salida (los dos, en TODAS las direcciones)**: error de
-   calibración < 10pp por bucket **y** AUC > 0.55 con BSS > 0. Ver el
-   veredicto en el último `backend/artifacts/*.txt`. Método completo y
-   límites conocidos: `docs/PROBABILITY_MODEL.md`
+   calibración < 10pp por bucket **y** AUC > 0.55 con BSS > 0. Método completo
+   y límites conocidos: `docs/PROBABILITY_MODEL.md`
+4. ✅ **Reejecución con las familias de Fase 2b (2026-08-25)**. `runner.py
+   --features {price|price+deriv|full|full+near}` corre la misma configuración
+   con distintas familias, y `backtest/compare.py` las pone lado a lado. El
+   comparador **importa las constantes del gate** en vez de copiarlas: un
+   comparador con su propio criterio podría decir "habilitado" donde
+   `gate_passed` dice que no
 
-### Fase 5 — Señales en vivo + paper tracking
-1. `live/analyst.py`: loop data → features → modelo → señal
-2. `paper/tracker.py`: outcome forward de cada señal
-3. Correr 72h continuas, comparar precisión forward vs backtest
+**Resultado de la ablación** (69.119 velas, misma semilla, mismos folds):
+
+| variante | feat | AUC long | AUC short | BSS long | BSS short | veredicto |
+|---|---|---|---|---|---|---|
+| `price` | 55 | 0.519 | 0.533 | −0.0028 | +0.0005 | ✗ no habilitado |
+| `price+deriv` | 81 | 0.512 | 0.517 | −0.0035 | −0.0025 | ✗ no habilitado |
+| `full` | 96 | 0.509 | 0.515 | −0.0049 | −0.0018 | ✗ no habilitado |
+
+**Las familias nuevas EMPEORAN la discriminación**, de forma monótona con el
+número de features y en las dos direcciones a la vez. Lectura: dilución de la
+capacidad fija del GBM entre columnas sin señal direccional, no ruido de
+muestreo. Detalle revelador: en `price+deriv` la familia `derivados` marca
+0.00151 de importancia por permutación (segundo lugar, tras `volatilidad`), o
+sea el modelo **sí** las usa — pero en `full` cae a 0.00006 y `libro` sale
+negativa. Importancia por permutación positiva ≠ ganancia fuera de muestra.
+
+**Lo que esto refuta**: la hipótesis que motivó la Fase 2b era que el gate no
+pasaba discriminación *por falta de datos de derivados y microestructura*. Los
+datos ya no faltan —730/730 días— y el gate sigue sin pasar, un poco peor. La
+causa del fallo no es la disponibilidad de datos. Queda como sospechoso la
+**formulación del target**: barreras a ±0,5σ con H=16 sobre 15m puede ser
+sencillamente casi impredecible.
+
+**Control de regresión**: el run `price` de 2026-08-25 reproduce el del
+2026-08-24 **bit a bit** (AUC 0.518701 / 0.532680, BSS −0.002801 / +0.000498).
+Ni el cambio de `zscore` ni el refactor de Fase 2b tocaron el baseline.
+
+**`full+near` no es evaluable con este periodo.** El near-touch arranca el
+2026-01-15, así que en los primeros folds esas 8 columnas son NaN puro y el
+binning de sklearn revienta con `window shape cannot be larger than input array
+shape` — un error que no dice nada de la causa. `assert_columns_trainable` lo
+convierte en un diagnóstico que nombra las columnas y falla en segundos.
+Requiere que el nivel acumule historia para cubrir varios folds.
+
+### Fase 5 — Live + paper tracking (reformulada por la decisión del 25-08)
+1. `live/analyst.py`: loop data → features → modelo → **proyección**. Emite
+   niveles y EV desde el target de volatilidad, no una señal direccional
+2. `paper/tracker.py`: outcome forward de lo que SÍ está validado — ¿la sigma
+   pronosticada contuvo al precio?, ¿el cono conformal cubrió su nivel
+   nominal?, ¿el EV realizado se pareció al proyectado?
+3. El KPI 1 se registra igual en DB con su feature vector completo (regla 10),
+   para poder medirlo forward — pero no se emite ni se muestra como operable
+4. Correr 72h continuas, comparar cobertura forward vs backtest
 
 ### Fase 6 — API + Dashboard (pages 1-4 + settings)
 ### Fase 7 — Alertas Telegram + sentimiento (F&G, CoinGecko)
