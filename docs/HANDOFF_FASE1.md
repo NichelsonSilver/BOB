@@ -33,6 +33,12 @@
   Windows (mismo problema que tuvo THECREW con CrewAI). Si `uv sync` falla
   al agregarlas: `uv python pin 3.12` y resync — nada del código depende
   de 3.14.
+  - **Cerrado en Fase 3**: `scikit-learn` sí tiene wheel y quedó como
+    dependencia; `hmmlearn` no la tiene, pero **no se bajó el intérprete
+    por eso**. El HMM se escribió en numpy, y la razón de fondo terminó
+    siendo otra y más importante que el wheel: la inferencia de `hmmlearn`
+    mira el futuro de cada barra y no sirve como feature. Ver
+    `docs/PROBABILITY_MODEL.md` §9-bis.1.
 - Frontend: `npm` (hay package-lock.json), no pnpm.
 
 ## Fase 1 — Pipeline de datos Binance (el siguiente paso)

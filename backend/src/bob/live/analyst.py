@@ -180,6 +180,40 @@ class LiveAnalyst:
         """
         return self._bundle
 
+    def status(self) -> dict[str, Any]:
+        """Estado operativo del analista, para `/api/health`.
+
+        Existe porque durante una corrida larga la pregunta que importa no es
+        "¿el backend responde?" sino "¿el analista está emitiendo?". Son cosas
+        distintas: el ajuste inicial toma ~80s, un reajuste fallido lo deja
+        sirviendo con el bundle previo, y una familia de features que dejó de
+        llegar lo deja mudo. Sin este bloque, las tres se ven igual desde
+        afuera — un backend en verde que no produce nada.
+        """
+        analysis = self.last_analysis
+        return {
+            "symbol": self.symbol,
+            "timeframe": self.timeframe,
+            "feature_set": self.feature_set,
+            # False durante el arranque: el ajuste corre en background.
+            "fitted": self._bundle is not None,
+            "refitting": self._refit_task is not None and not self._refit_task.done(),
+            "bars_since_fit": self._bars_since_fit,
+            "n_train": self._bundle.n_train if self._bundle else 0,
+            "fit_through_ms": self._bundle.fit_through_ms if self._bundle else None,
+            "model_version": self._bundle.model_version if self._bundle else None,
+            "last_forecast_open_time": analysis.open_time if analysis else None,
+            "last_reference_price": analysis.reference_price if analysis else None,
+            "cone_coverage": {
+                f"{alpha:.2f}": {
+                    "n": cone.n_observed,
+                    "empirical": cone.empirical_coverage,
+                    "alpha_t": cone.alpha_t,
+                }
+                for alpha, cone in (self._bundle.cones.items() if self._bundle else [])
+            },
+        }
+
     # -- Ciclo de vida ---------------------------------------------------- #
 
     async def start(self) -> None:
@@ -288,7 +322,12 @@ class LiveAnalyst:
         """Incorpora la vela y publica el análisis de la barra que acaba de cerrar."""
         async with self._lock:
             if self._inputs is None:
-                logger.warning("analista: llegó una vela antes del ajuste inicial")
+                # No se pierde: el hub la persiste y `_load_and_fit` relee la
+                # serie al terminar de ajustar.
+                logger.info(
+                    "analista: vela recibida durante el ajuste inicial — "
+                    "se recupera de la DB al terminar"
+                )
                 return
             appended = _append_candle(self._inputs.series, kline)
             if appended is None:
@@ -316,7 +355,7 @@ class LiveAnalyst:
         feed).
         """
         try:
-            analysis = await asyncio.to_thread(self._compute_latest)
+            analysis = await asyncio.to_thread(self._compute_and_heal)
         except Exception as exc:  # noqa: BLE001 — el analista no puede tumbar el backend
             logger.exception("analista: fallo al computar el análisis: {}", exc)
             await self._publish(
@@ -333,6 +372,23 @@ class LiveAnalyst:
             await asyncio.to_thread(self._persist, analysis)
         await self._publish("analysis.forecast", self._payload(analysis))
         return analysis
+
+    def _compute_and_heal(self) -> MarketAnalysis | None:
+        """Computa, y si la serie en memoria perdió una vela, la resincroniza.
+
+        El reintento es UNO solo y solo para este fallo: si tras releer la DB
+        la serie sigue sin ser contigua, el hueco es de los datos y no de la
+        memoria, y entonces el error tiene que salir a la superficie en vez de
+        reintentarse en círculos.
+        """
+        try:
+            return self._compute_latest()
+        except ValueError as exc:
+            if "warm-up" not in str(exc):
+                raise
+            logger.warning("analista: serie en memoria desincronizada, releo la DB")
+            self._resync()
+            return self._compute_latest()
 
     def _compute_latest(self) -> MarketAnalysis | None:
         """Parte síncrona y pesada del análisis. Corre en un hilo."""
@@ -412,6 +468,20 @@ class LiveAnalyst:
             book = load_book_depth(self.symbol, self.timeframe)
         return AnalystInputs(series=series, derivatives=deriv, funding=fund, book=book)
 
+    def _resync(self) -> None:
+        """Vuelve a tomar todo de la DB, que es la autoridad.
+
+        Se llama cuando la serie en memoria dejó de ser contigua. Cualquier
+        camino que haga perder una vela —una que cerró mientras se ajustaba,
+        un evento que llegó fuera de orden— se arregla igual: el hub persiste
+        todas las velas cerradas, así que la DB siempre tiene la verdad.
+
+        Pasa por `_load_inputs` y no por una lectura propia a propósito: es la
+        única costura del analista contra el disco, y tener dos caminos de
+        lectura es cómo se termina con uno de los dos sin arreglar.
+        """
+        self._inputs = self._load_inputs()
+
     def _assemble(
         self, inputs: AnalystInputs
     ) -> tuple[np.ndarray, list[str], set[str], dict[str, list[str]]]:
@@ -442,8 +512,21 @@ class LiveAnalyst:
             series.interval_ms,
             self.config,
         )
+        # La serie se relee DESPUÉS de ajustar. El ajuste toma ~90s y las
+        # barras son de 15 min, así que ~1 de cada 10 arranques tiene una vela
+        # cerrando en medio: el hub la persiste, el analista todavía no puede
+        # procesarla, y la serie en memoria queda una barra corta. La siguiente
+        # vela se agregaría dejando un hueco y `_assert_tail_contiguous`
+        # apagaría la emisión hasta el próximo reajuste — 24 horas después.
+        # Releer es un segundo y la DB es la autoridad.
         self._bundle = bundle
-        self._inputs = inputs
+        # Se relee DESPUÉS de ajustar. El ajuste toma ~90s y las barras son de
+        # 15 min, así que ~1 de cada 10 arranques tiene una vela cerrando en
+        # medio: el hub la persiste, el analista todavía no puede procesarla, y
+        # la serie en memoria queda una barra corta. La siguiente vela se
+        # agregaría dejando un hueco y `_assert_tail_contiguous` apagaría la
+        # emisión hasta el próximo reajuste — 24 horas después.
+        self._inputs = self._load_inputs()
         self._bars_since_fit = 0
         logger.info(
             "analista: {} {} listo — variante {}, {} features, {:,} barras",
