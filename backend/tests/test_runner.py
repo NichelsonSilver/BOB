@@ -108,6 +108,30 @@ class TestPersistRun:
         assert set(buckets) == {"long", "short"}
 
 
+class TestRunId:
+    """El nombre del artefacto es cómo se encuentra una cifra citada."""
+
+    def test_lleva_simbolo_timeframe_variante_y_modelo(self, resultado) -> None:
+        from bob.models.experiment import feature_set_name
+
+        variante = feature_set_name(resultado.config)
+        run_id = runner.build_run_id(resultado)
+        assert run_id.startswith(
+            f"TESTUSDT-15m-{variante}-{resultado.config.vol_kind}-"
+        )
+
+    def test_distingue_dos_runs_que_solo_cambian_el_estimador(self, resultado) -> None:
+        """Sin el estimador en el nombre, los dos archivos son indistinguibles."""
+        import dataclasses
+
+        con_xgb = dataclasses.replace(
+            resultado, config=dataclasses.replace(resultado.config, vol_kind="xgb")
+        )
+        assert runner.build_run_id(resultado) != runner.build_run_id(con_xgb)
+        assert f"-{resultado.config.vol_kind}-" in runner.build_run_id(resultado)
+        assert "-xgb-" in runner.build_run_id(con_xgb)
+
+
 class TestArtifacts:
     def test_escribe_reporte_y_json(self, tmp_path, monkeypatch, resultado) -> None:
         monkeypatch.setattr(runner, "ARTIFACTS_DIR", tmp_path / "artifacts")

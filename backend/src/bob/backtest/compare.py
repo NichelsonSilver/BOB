@@ -29,6 +29,8 @@ from bob.models.experiment import (
     GATE_MAX_CALIBRATION_ERROR_PP,
     GATE_MIN_AUC,
     GATE_MIN_BSS,
+    ExperimentConfig,
+    feature_set_name,
 )
 from bob.utils.console import enable_utf8_stdout
 
@@ -83,12 +85,30 @@ class RunSummary:
         return self.calibra and self.discrimina
 
 
-def _variant_from_run_id(run_id: str) -> str:
-    """`ETHUSDT-15m-full-20260825...` -> `full`. Los runs viejos no la llevan."""
-    parts = run_id.split("-")
-    if len(parts) >= 4 and parts[-2] in VARIANT_ORDER:
-        return parts[-2]
-    return "sin-etiqueta"
+def _variant_from_config(config: dict[str, Any], run_id: str) -> str:
+    """Qué familias corrió este run, leído de su config.
+
+    Antes se parseaba por posición del nombre del archivo. Eso funcionaba
+    mientras el nombre tuviera exactamente esa forma: al agregarle el
+    estimador de volatilidad, `parts[-2]` pasó a devolver `xgb` y todos los
+    runs quedaban `sin-etiqueta`. La config está dentro del JSON y es la
+    fuente real — el nombre del archivo es una conveniencia para el humano.
+    El parseo por nombre queda de respaldo para artefactos de un esquema
+    anterior que no traigan config.
+    """
+    try:
+        return feature_set_name(
+            ExperimentConfig(
+                use_derivatives=bool(config["use_derivatives"]),
+                use_book=bool(config["use_book"]),
+                use_book_near=bool(config["use_book_near"]),
+            )
+        )
+    except (KeyError, TypeError):
+        parts = run_id.split("-")
+        if len(parts) >= 4 and parts[-2] in VARIANT_ORDER:
+            return parts[-2]
+        return "sin-etiqueta"
 
 
 def load_run(path: Path) -> RunSummary:
@@ -115,7 +135,7 @@ def load_run(path: Path) -> RunSummary:
         }
 
     return RunSummary(
-        variant=_variant_from_run_id(run_id),
+        variant=_variant_from_config(data.get("config", {}), run_id),
         run_id=run_id,
         n_features=int(data["n_features"]),
         n_bars=int(data["n_bars"]),

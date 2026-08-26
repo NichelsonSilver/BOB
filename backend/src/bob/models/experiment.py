@@ -39,6 +39,7 @@ from bob.models.forecast import (
     ConformalReturnInterval,
     ModelKind,
     VolatilityModel,
+    VolKind,
 )
 from bob.models.labeling import (
     BarrierConfig,
@@ -67,7 +68,7 @@ class ExperimentConfig:
     embargo_frac: float = 0.01
     expanding: bool = True
     model_kind: ModelKind = "gbm"
-    vol_kind: str = "gbm"
+    vol_kind: VolKind = "gbm"
     conformal_alphas: tuple[float, ...] = (0.20, 0.05)
     signal_threshold: float = 0.70
     seed: int = 42
@@ -443,6 +444,14 @@ def assert_columns_trainable(
     son NaN puro. Un feature que no existe en el tramo donde el modelo aprende
     no es un feature con huecos — es un feature que no se puede evaluar con
     este periodo, y conviene que lo diga en esas palabras.
+
+    **Con `vol_kind="xgb"` esta guarda deja de ser una traducción de error y
+    pasa a ser la única protección.** Medido sobre la misma matriz: sklearn
+    levanta el ValueError de arriba, XGBoost ajusta sin quejarse y devuelve
+    predicciones. O sea el fallo ruidoso se vuelve silencioso, y el run
+    terminaría en verde reportando métricas de un modelo que aprendió de una
+    columna vacía. Por eso la comprobación vive acá, antes de elegir
+    estimador, y no depende de que la librería se caiga sola.
     """
     n_train = max(1, int(len(X) * min_train_frac))
     vacias = [
@@ -671,7 +680,7 @@ def run_experiment(
     v_true: list[np.ndarray] = []
 
     for split in vol_splits:
-        vm = VolatilityModel(kind=cfg.vol_kind, seed=cfg.seed).fit(X, y_vol, split.train_idx)  # type: ignore[arg-type]
+        vm = VolatilityModel(kind=cfg.vol_kind, seed=cfg.seed).fit(X, y_vol, split.train_idx)
         ewma_pred = EWMAVolForecaster(horizon=horizon).predict_from_returns(returns)
         garch = GarchVolForecaster(horizon=horizon).fit(returns[split.train_idx])
         garch_pred = garch.predict_from_returns(returns)

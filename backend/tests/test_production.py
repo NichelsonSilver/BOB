@@ -53,6 +53,51 @@ def fitted() -> tuple:
 
 
 # --------------------------------------------------------------------- #
+# Procedencia — de qué modelo salió cada pronóstico
+# --------------------------------------------------------------------- #
+
+
+def test_el_model_version_nombra_el_estimador_de_volatilidad(fitted: tuple) -> None:
+    """`ForecastRecord` guarda este string y es lo único que identifica al modelo.
+
+    Sin el estimador adentro, una muestra forward acumulada a ambos lados de
+    un cambio de modelo queda mezclada, y la cobertura medida no describe a
+    ninguno de los dos. El paper tracking de la Fase 5 se apoya en esto.
+    """
+    bundle, _, _, _, cfg = fitted
+    assert bundle.model_version.endswith(f"+vol={cfg.vol_kind}")
+
+
+def test_el_bundle_ajusta_y_predice_con_xgboost(fitted: tuple) -> None:
+    """El camino de producción con XGBoost, no solo el del experimento.
+
+    El vivo consulta `fit_bundle`, no `run_experiment`: que el estimador
+    funcione en el gate no prueba que funcione en la ruta que emite.
+    """
+    _, X, names, series, cfg = fitted
+    import dataclasses
+
+    bundle = fit_bundle(
+        X,
+        series.close,
+        series.open,
+        series.high,
+        series.low,
+        series.open_time,
+        names,
+        set(),
+        series.interval_ms,
+        dataclasses.replace(cfg, vol_kind="xgb"),
+    )
+    assert bundle.model_version.endswith("+vol=xgb")
+
+    fila = X[bundle.n_train - 1]
+    assert bundle.row_is_usable(fila)
+    sigma = bundle.volatility.predict(fila.reshape(1, -1))[0]
+    assert np.isfinite(sigma) and sigma > 0
+
+
+# --------------------------------------------------------------------- #
 # Causalidad — la invariante que más caro cuesta romper
 # --------------------------------------------------------------------- #
 

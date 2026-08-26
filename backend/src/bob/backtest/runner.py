@@ -42,14 +42,25 @@ _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
 ARTIFACTS_DIR = _BACKEND_DIR / "artifacts"
 
 
+def build_run_id(result: ExperimentResult) -> str:
+    """Nombre del run: símbolo, timeframe, variante de features, modelo, hora.
+
+    El estimador de volatilidad entra en el nombre porque dos runs que solo
+    difieren en él son indistinguibles de otra forma, y el archivo es lo que
+    se abre para verificar una cifra. La variante de features sigue estando,
+    pero quien la lee es `compare.py` desde el JSON, no desde el nombre.
+    """
+    variante = feature_set_name(result.config)
+    return (
+        f"{result.symbol}-{result.timeframe}-{variante}-{result.config.vol_kind}-"
+        f"{datetime.now(UTC):%Y%m%d%H%M%S}"
+    )
+
+
 def persist_run(result: ExperimentResult) -> str:
     """Guarda el run en `BacktestRun`. Devuelve el run_id."""
     init_db()
-    variante = feature_set_name(result.config)
-    run_id = (
-        f"{result.symbol}-{result.timeframe}-{variante}-"
-        f"{datetime.now(UTC):%Y%m%d%H%M%S}"
-    )
+    run_id = build_run_id(result)
 
     # Métricas agregadas: se toma la peor dirección, no el promedio. Un
     # promedio esconde que una de las dos está descalibrada, y el usuario
@@ -140,6 +151,16 @@ def main() -> None:
     parser.add_argument("--folds", type=int, default=exp_defaults.n_splits)
     parser.add_argument("--threshold", type=float, default=exp_defaults.signal_threshold)
     parser.add_argument("--model", default="gbm", choices=["gbm", "logistic"])
+    parser.add_argument(
+        "--vol-model",
+        default=exp_defaults.vol_kind,
+        choices=["gbm", "xgb", "ridge"],
+        help=(
+            "estimador del target de volatilidad (el que pasó el gate): "
+            "gbm = HistGradientBoosting de sklearn, el del gate de Fase 4; "
+            "xgb = XGBoost con los mismos hiperparámetros; ridge = lineal de control"
+        ),
+    )
     parser.add_argument("--rolling", action="store_true", help="train rodante en vez de anclado")
     parser.add_argument(
         "--features",
@@ -169,6 +190,7 @@ def main() -> None:
         ),
         n_splits=args.folds,
         model_kind=args.model,
+        vol_kind=args.vol_model,
         signal_threshold=args.threshold,
         expanding=not args.rolling,
         use_derivatives=use_deriv,
