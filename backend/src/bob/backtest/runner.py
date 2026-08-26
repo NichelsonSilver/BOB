@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from loguru import logger
@@ -40,6 +40,25 @@ from bob.utils.console import enable_utf8_stdout
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
 ARTIFACTS_DIR = _BACKEND_DIR / "artifacts"
+
+
+def _end_time_ms(until: str | None) -> int | None:
+    """Última barra a incluir, en epoch ms UTC. Inclusive en las dos formas.
+
+    Acepta `2026-08-21` (todo ese día) o `2026-08-21T20:30` (esa barra y no
+    la siguiente). La precisión de minutos no es adorno: el run del 25-08
+    cerró en la barra de las 20:30 de un día que la DB después completó hasta
+    las 23:45, así que cortar por fecha deja 13 barras de diferencia y el
+    control bit a bit no cierra. Reproducir un run exige nombrar su última
+    barra, que es justo lo que imprime el reporte.
+    """
+    if until is None:
+        return None
+    if "T" in until:
+        bar = datetime.strptime(until, "%Y-%m-%dT%H:%M").replace(tzinfo=UTC)
+        return int(bar.timestamp() * 1000)
+    day = datetime.strptime(until, "%Y-%m-%d").replace(tzinfo=UTC)
+    return int((day + timedelta(days=1)).timestamp() * 1000) - 1
 
 
 def build_run_id(result: ExperimentResult) -> str:
@@ -172,10 +191,22 @@ def main() -> None:
             "full+near = agrega también el near-touch (cobertura ~30%%)"
         ),
     )
+    parser.add_argument(
+        "--until",
+        default=None,
+        metavar="YYYY-MM-DD[THH:MM]",
+        help=(
+            "corta la serie en esa fecha o barra UTC (inclusive). Existe para "
+            "poder REPRODUCIR un run viejo: la DB crece con el feed en vivo, "
+            "así que sin corte el mismo comando devuelve otra muestra cada día "
+            "y el control de regresión bit a bit deja de ser comprobable"
+        ),
+    )
     parser.add_argument("--no-persist", action="store_true")
     args = parser.parse_args()
 
-    series = load_series(args.symbol, args.timeframe)
+    end_time = _end_time_ms(args.until)
+    series = load_series(args.symbol, args.timeframe, end_time=end_time)
     if len(series) == 0:
         raise SystemExit(
             f"no hay velas de {args.symbol} {args.timeframe} en DB. "

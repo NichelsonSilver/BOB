@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import UTC, datetime
 
 import numpy as np
 import pytest
@@ -108,6 +109,56 @@ class TestPersistRun:
         assert set(buckets) == {"long", "short"}
 
 
+class TestCorteTemporal:
+    """`--until` es lo que hace reproducible un run viejo.
+
+    Sin corte, `load_series` trae todo lo que hay en la DB — y la DB crece
+    sola con el feed en vivo. El mismo comando corrido dos días seguidos
+    entrena sobre muestras distintas, y el control de regresión bit a bit que
+    documenta CLAUDE.md deja de ser comprobable sin que nada falle.
+    """
+
+    def test_incluye_el_dia_completo(self) -> None:
+        ms = runner._end_time_ms("2026-08-21")
+        assert ms is not None
+        fin = datetime.fromtimestamp(ms / 1000, tz=UTC)
+        assert (fin.year, fin.month, fin.day) == (2026, 8, 21)
+        assert (fin.hour, fin.minute) == (23, 59)
+
+    def test_acepta_la_barra_exacta(self) -> None:
+        """Cortar por día deja hasta 95 barras de holgura en 15m: no alcanza."""
+        ms = runner._end_time_ms("2026-08-21T20:30")
+        assert ms is not None
+        bar = datetime.fromtimestamp(ms / 1000, tz=UTC)
+        assert bar.isoformat() == "2026-08-21T20:30:00+00:00"
+
+    def test_la_barra_exacta_es_mas_estricta_que_el_dia(self) -> None:
+        assert runner._end_time_ms("2026-08-21T20:30") < runner._end_time_ms("2026-08-21")
+
+    def test_sin_corte_es_none(self) -> None:
+        assert runner._end_time_ms(None) is None
+
+    def test_una_fecha_invalida_falla_al_parsear(self) -> None:
+        with pytest.raises(ValueError):
+            runner._end_time_ms("21-08-2026")
+
+    def test_recorta_la_serie_de_verdad(self, db) -> None:
+        """El corte tiene que llegar a la query, no quedarse en el parseo."""
+        from bob.data.store import load_series
+
+        base = 1_700_000_000_000 - 1_700_000_000_000 % STEP
+        klines = [Kline.from_row(_row(base + i * STEP)) for i in range(400)]
+        upsert_klines("TESTUSDT", TF, klines)
+
+        corte = datetime.fromtimestamp((base + 199 * STEP) / 1000, tz=UTC)
+        end_ms = runner._end_time_ms(corte.strftime("%Y-%m-%d"))
+        recortada = load_series("TESTUSDT", TF, end_time=end_ms)
+        completa = load_series("TESTUSDT", TF)
+
+        assert len(recortada) < len(completa)
+        assert recortada.open_time[-1] <= (end_ms or 0)
+
+
 class TestRunId:
     """El nombre del artefacto es cómo se encuentra una cifra citada."""
 
@@ -180,7 +231,7 @@ class TestCLI:
 
         monkeypatch.setattr(sys, "argv", ["runner"])
         _sin_familias_2b(monkeypatch)
-        monkeypatch.setattr(runner, "load_series", lambda s, t: serie)
+        monkeypatch.setattr(runner, "load_series", lambda s, t, **kw: serie)
         monkeypatch.setattr(runner, "run_experiment", run_falso)
         monkeypatch.setattr(runner, "ARTIFACTS_DIR", tmp_path / "artifacts")
         monkeypatch.setattr(runner, "persist_run", lambda r: "dry")
@@ -201,7 +252,7 @@ class TestCLI:
         monkeypatch.setattr(sys, "argv", ["runner", "--symbol", "NADAUSDT"])
         _sin_familias_2b(monkeypatch)
         monkeypatch.setattr(
-            runner, "load_series", lambda s, t: series_from_klines(s, t, [])
+            runner, "load_series", lambda s, t, **kw: series_from_klines(s, t, [])
         )
         with pytest.raises(SystemExit, match="bob.data.download"):
             runner.main()
@@ -220,7 +271,7 @@ class TestCLI:
 
         monkeypatch.setattr(sys, "argv", ["runner", "--tp", "1.5", "--horizon", "24", "--rolling"])
         _sin_familias_2b(monkeypatch)
-        monkeypatch.setattr(runner, "load_series", lambda s, t: serie)
+        monkeypatch.setattr(runner, "load_series", lambda s, t, **kw: serie)
         monkeypatch.setattr(runner, "run_experiment", run_falso)
         monkeypatch.setattr(runner, "ARTIFACTS_DIR", tmp_path / "artifacts")
         runner.main()
@@ -240,7 +291,7 @@ class TestCLI:
         serie = series_from_klines("TESTUSDT", TF, [Kline.from_row(_row(0))])
         monkeypatch.setattr(sys, "argv", ["runner"])
         _sin_familias_2b(monkeypatch)
-        monkeypatch.setattr(runner, "load_series", lambda s, t: serie)
+        monkeypatch.setattr(runner, "load_series", lambda s, t, **kw: serie)
         monkeypatch.setattr(runner, "run_experiment", lambda s, cfg, *extras: resultado)
         monkeypatch.setattr(runner, "ARTIFACTS_DIR", tmp_path / "artifacts")
         runner.main()

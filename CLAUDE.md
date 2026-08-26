@@ -175,7 +175,9 @@ durante el trade abierto (si cae bajo un umbral de salida, alerta).
 - **websockets** para streams de Binance
 - **numpy** para el motor numérico (features, HMM, backtest), **scipy** solo
   para optimización y distribuciones, **scikit-learn** para los estimadores
-  de caja (GBM, logística, Ridge, isotónica, KMeans de inicialización).
+  de caja (GBM, logística, Ridge, isotónica, KMeans de inicialización) y
+  **xgboost** como estimador alternativo del target de volatilidad, medido
+  contra sklearn con los mismos hiperparámetros (`--vol-model {gbm,xgb}`).
   Nada de librerías all-in-one de trading.
 - **Los baselines econométricos y el HMM están escritos desde cero**
   (`models/baselines.py`, `models/hmm.py`). **No se usan `statsmodels` ni
@@ -717,6 +719,65 @@ silencio**. `assert_tail_observable` es el gemelo en vivo de
 nombrando las columnas. Default en vivo: `price+deriv` (los derivados sí
 llegan — snapshots cada 30 min, tolerancia de 1h). Usar libro en vivo exige
 antes cablear el stream `@depth`.
+
+### Fase 4-bis — XGBoost en el target de volatilidad ✅ (2026-08-26)
+
+Agregado **antes** de arrancar la corrida de validación de la Fase 5, no
+después, y esa es la parte que importa: `ForecastRecord` guarda la sigma que
+produjo el bundle, así que cambiar de estimador a mitad de la acumulación
+mezcla dos modelos en la misma muestra forward y la invalida. Con 2 registros
+en la DB el cambio era gratis; con 280 habría costado la corrida.
+
+**Resultado: empate, y el empate es el hallazgo.** Sobre las mismas 69.498
+velas, mismos folds, misma semilla:
+
+| variante | estimador | RMSE | QLIKE | R² vs media |
+|---|---|---|---|---|
+| `price` | GBM sklearn | 0.00559 | 0.3974 | +0.399 |
+| `price` | **XGBoost** | 0.00559 | **0.3973** | **+0.400** |
+| `price+deriv` | **GBM sklearn** | **0.00568** | **0.4098** | **+0.391** |
+| `price+deriv` | XGBoost | 0.00570 | 0.4160 | +0.388 |
+
+Los dos le ganan a EWMA, GARCH(1,1) y HAR-RV con Diebold-Mariano p<0.0001.
+Con los mismos hiperparámetros, dos boostings por histograma competentes caen
+dentro del 0,3% y cuál gana **se da vuelta con el feature set**. La ventaja
+sobre los baselines viene de las features y del diseño del target, no de la
+librería. **El default sigue en `gbm`**: no hay razón medida para moverlo y es
+el estimador con el que corrió el gate.
+
+Invariante que salió de regalo: el target de dirección es **bit a bit
+idéntico** entre los dos, en las dos variantes. Debía serlo —`vol_kind` solo
+toca el target 2— y ahora está medido en vez de asumido.
+
+**Dos hallazgos con consecuencia:**
+
+**(a) `assert_columns_trainable` deja de traducir un error y pasa a ser la
+única protección.** Medido sobre la misma matriz: sklearn levanta
+`ValueError` cuando una columna no tiene un solo valor finito en el train,
+**XGBoost ajusta y predice sin decir nada**. El fallo ruidoso se vuelve
+silencioso y el run terminaría en verde reportando métricas de un modelo que
+aprendió de una columna vacía. Cubierto con un test que ejercita las dos
+librerías lado a lado.
+
+**(b) El control de regresión bit a bit se estaba degradando solo.**
+`load_series` lee todo lo que hay en la DB, y la DB crece con el feed en vivo:
+el mismo comando corrido dos días seguidos entrena sobre muestras distintas
+sin que nada falle. Reproducir un run exige **nombrar su última barra**, y por
+eso `--until` acepta `YYYY-MM-DD` o `YYYY-MM-DDTHH:MM`. La precisión de
+minutos no es capricho: el run del 25-08 cerró en la barra de las 20:30 de un
+día que la DB después completó hasta las 23:45, y cortar por fecha sola deja
+13 barras de más — suficiente para mover el error de calibración de la
+dirección short de 5,1pp a 10,3pp. Con el corte exacto, el run del 26-08
+reproduce el artefacto del 25-08 **bit a bit** (AUC 0.518701 / 0.532680, BSS
+−0.002801 / +0.000498, RMSE 0.00558709, QLIKE 0.39626506) **atravesando el
+refactor de XGBoost**, que es la prueba de que el refactor es neutro.
+
+Procedencia, que es lo que hace medible la Fase 5: el reporte etiqueta la fila
+del target 2 con el modelo que la produjo, el `model_version` del bundle lleva
+el estimador (`bob-forecast-0.1.0+vol=xgb`) y viaja a `ForecastRecord`,
+`analyst.status()` lo expone, y el `run_id` lleva variante **y** estimador.
+Como eso rompía el parseo por posición del nombre, `compare.py` lee la
+variante de la config del JSON, que es la fuente real.
 
 ### Fase 6 — API + Dashboard (pages 1-4 + settings)
 ### Fase 7 — Alertas Telegram + sentimiento (F&G, CoinGecko)
