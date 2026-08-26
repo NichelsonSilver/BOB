@@ -26,7 +26,7 @@ KPI may be shown as tradeable. The result, measured and reproducible:
 | Target | Gate | Status |
 |---|---|---|
 | **Direction** — `P(TP before SL)` | Calibrates (4.0pp / 5.1pp) but **does NOT discriminate** (AUC 0.519 / 0.533; BSS −0.0028 / +0.0005) | ❌ **Not enabled.** Shown greyed out, labelled "experimental". No directional signals are emitted. |
-| **Future realized volatility** | OOS R² **+0.400** vs the mean and **+0.374** vs EWMA; Diebold-Mariano against EWMA and HAR-RV at **p < 0.0001** | ✅ **Validated.** This is what the product rests on. |
+| **Future realized volatility** | OOS R² **+0.400** vs the mean and **+0.375** vs EWMA; QLIKE **0.3973** vs 0.6702 (EWMA), 0.5339 (GARCH(1,1)) and 0.5072 (HAR-RV); Diebold-Mariano against EWMA and HAR-RV at **p < 0.0001** | ✅ **Validated.** This is what the product rests on. |
 | **Price cone** (CQR + ACI) | Empirical coverage 94.8% at 95% nominal (deviation −0.2pp) and 79.9% at 80% (−0.1pp) | ✅ **Validated.** |
 
 **Both gate criteria are mandatory, not alternatives:**
@@ -74,6 +74,10 @@ cat backend/artifacts/ETHUSDT-15m-price-20260825150516.txt
 cat backend/artifacts/ETHUSDT-15m-price+deriv-20260825151728.txt
 cat backend/artifacts/ETHUSDT-15m-full-20260825153235.txt
 
+# The estimator benchmark for the volatility target (2026-08-26)
+cat backend/artifacts/ETHUSDT-15m-price-gbm-20260826135740.txt
+cat backend/artifacts/ETHUSDT-15m-price-xgb-20260826140451.txt
+
 # The variant comparator, which imports the gate thresholds from
 # ExperimentResult itself instead of copying them
 cd backend && uv run python -m bob.backtest.compare
@@ -81,8 +85,8 @@ cd backend && uv run python -m bob.backtest.compare
 
 And to reproduce from scratch (data download + experiment). All randomness in
 a run flows through a single `seed` in `ExperimentConfig`, fixed at 42, so two
-runs with the same configuration produce reports that are **identical line by
-line** except for the runtime and the run id:
+runs over **the same bars** produce reports that are identical line by line
+except for the runtime and the run id:
 
 ```bash
 cd backend
@@ -91,9 +95,68 @@ uv run python -m bob.data.download_vision --symbol ETHUSDT --timeframe 15m --day
 uv run python -m bob.backtest.runner --symbol ETHUSDT --timeframe 15m --folds 6 --features price
 ```
 
-Verified, not merely claimed: the `price` run of 2026-08-25 reproduces the one
-from 2026-08-24 **bit for bit** (AUC 0.518701 / 0.532680, BSS −0.002801 /
-+0.000498) despite the refactor in between.
+**`--until` is what makes an old run reproducible**, and it is not optional
+for that purpose. The database grows on its own while the live feed runs, and
+`load_series` reads whatever is in it, so the same command run on two
+different days trains on two different samples — the reproducibility control
+degrades silently, with nothing failing. Reproducing a run means naming its
+last bar, which is precisely what its report prints:
+
+```bash
+# reproduces the run of 2026-08-25 exactly: same 69,119 bars
+uv run python -m bob.backtest.runner --features price --vol-model gbm     --until 2026-08-21T20:30
+```
+
+Minute precision matters here rather than being pedantry: that run ended on
+the 20:30 bar of a day the database later filled out to 23:45. Cutting by
+calendar date alone leaves 13 extra bars — enough to move the calibration
+error of the short direction from 5.1pp to 10.3pp.
+
+Verified, not merely claimed: with that cut, the run of 2026-08-26 reproduces
+the artifact of 2026-08-25 **bit for bit** (AUC 0.518701 / 0.532680, BSS
+−0.002801 / +0.000498, volatility RMSE 0.00558709, QLIKE 0.39626506) across
+the XGBoost refactor in between.
+
+### Two boosting implementations, one number
+
+The volatility estimator can be run as scikit-learn's
+`HistGradientBoostingRegressor` (`--vol-model gbm`, the default and what the
+Phase 4 gate ran) or as **XGBoost** with the same hyperparameters
+(`--vol-model xgb`). Both were run over the same 69,498 bars, same folds, same
+seed:
+
+| Feature set | Estimator | RMSE | QLIKE | R² vs mean | DM vs EWMA / HAR |
+|---|---|---|---|---|---|
+| `price` | sklearn GBM | 0.00559 | 0.3974 | +0.399 | p<0.0001 / p<0.0001 |
+| `price` | **XGBoost** | 0.00559 | **0.3973** | **+0.400** | p<0.0001 / p<0.0001 |
+| `price+deriv` | **sklearn GBM** | **0.00568** | **0.4098** | **+0.391** | p<0.0001 / p<0.0001 |
+| `price+deriv` | XGBoost | 0.00570 | 0.4160 | +0.388 | p<0.0001 / p<0.0001 |
+
+**The result is a tie**, and the tie is the finding: with identical
+hyperparameters, two competent histogram-boosting implementations land within
+0.3% of each other, and which one wins flips with the feature set. The edge
+over the baselines comes from the features and the target design, not from the
+library. The default stays on sklearn — there is no measured reason to move
+it, and it is the estimator the gate ran with.
+
+A useful invariant fell out of it: the direction target (Target 1) is
+**bit-for-bit identical** across the two, in both feature sets. It should be —
+`vol_kind` touches only Target 2 — and now that is measured rather than
+assumed.
+
+Two implementation notes worth keeping:
+
+* The hyperparameter translation is not literal. `max_leaf_nodes` becomes
+  `max_leaves`, which XGBoost honours only under `grow_policy="lossguide"`
+  (its default grows by depth), and `min_samples_leaf` becomes
+  `min_child_weight`, which is the sum of leaf hessians — equal to the sample
+  count under squared loss, and *not* equal under any other loss.
+* `assert_columns_trainable` stops being an error translator and becomes the
+  only protection. Measured on the same matrix: sklearn raises `ValueError`
+  when a column has no finite value in the training window, **XGBoost fits and
+  predicts without saying anything**. The loud failure goes quiet, and the run
+  would finish green reporting metrics for a model that learned from an empty
+  column.
 
 ### The ablation that refuted the working hypothesis
 
@@ -140,6 +203,7 @@ anything.
 | Triple-barrier, purged walk-forward + embargo, uniqueness weights | Own | numpy |
 | Conformal CQR + ACI | Own | numpy |
 | GBM, logistic regression, Ridge, isotonic, StandardScaler | **scikit-learn** | scikit-learn |
+| Volatility estimator, alternative — same hyperparameters, selected with `--vol-model xgb` | **XGBoost** | xgboost |
 
 **Neither `statsmodels` nor `arch` is used.** They are not in
 `backend/pyproject.toml` nor in the environment. Nor is `hmmlearn`: beyond not
