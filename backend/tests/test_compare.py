@@ -15,12 +15,17 @@ import pytest
 from bob.backtest.compare import (
     VARIANT_ORDER,
     RunSummary,
-    _variant_from_run_id,
+    _variant_from_config,
     latest_by_variant,
     load_run,
     render_comparison,
 )
-from bob.models.experiment import GATE_MAX_CALIBRATION_ERROR_PP, GATE_MIN_AUC, GATE_MIN_BSS
+from bob.models.experiment import (
+    FEATURE_SETS,
+    GATE_MAX_CALIBRATION_ERROR_PP,
+    GATE_MIN_AUC,
+    GATE_MIN_BSS,
+)
 
 
 def _direccion(auc: float, bss: float, calib_pp: float) -> dict:
@@ -48,7 +53,10 @@ def _artefacto(
     n_features: int = 55,
     familias: dict | None = None,
     ts: str = "20260825120000",
+    vol_kind: str = "gbm",
+    con_config: bool = True,
 ):
+    use_deriv, use_book, use_near = FEATURE_SETS[variante]
     data = {
         "symbol": "ETHUSDT",
         "timeframe": "15m",
@@ -63,7 +71,14 @@ def _artefacto(
         "family_importance": familias or {"momentum": 0.001},
         "importance_top": [["rsi_14", 0.002], ["atr_pct", 0.001]],
     }
-    path = tmp_path / f"ETHUSDT-15m-{variante}-{ts}.json"
+    if con_config:
+        data["config"] = {
+            "use_derivatives": use_deriv,
+            "use_book": use_book,
+            "use_book_near": use_near,
+            "vol_kind": vol_kind,
+        }
+    path = tmp_path / f"ETHUSDT-15m-{variante}-{vol_kind}-{ts}.json"
     path.write_text(json.dumps(data), encoding="utf-8")
     return path
 
@@ -74,13 +89,33 @@ def _artefacto(
 
 
 @pytest.mark.parametrize("variante", VARIANT_ORDER)
-def test_la_variante_sale_del_run_id(variante):
-    assert _variant_from_run_id(f"ETHUSDT-15m-{variante}-20260825120000") == variante
+def test_la_variante_sale_de_la_config(variante, tmp_path):
+    run = load_run(_artefacto(tmp_path, variante))
+    assert run.variant == variante
+
+
+@pytest.mark.parametrize("variante", VARIANT_ORDER)
+def test_el_estimador_de_volatilidad_en_el_nombre_no_confunde_la_variante(
+    variante, tmp_path
+):
+    """La regresión que introdujo `--vol-model`.
+
+    El nombre pasó de `...-price-2026...` a `...-price-xgb-2026...`, y el
+    parseo por posición leía `xgb` como variante. Leerla de la config
+    inmuniza al comparador contra el formato del nombre.
+    """
+    run = load_run(_artefacto(tmp_path, variante, vol_kind="xgb"))
+    assert run.variant == variante
+
+
+def test_los_runs_viejos_sin_config_caen_al_nombre():
+    """Respaldo para artefactos de un esquema anterior."""
+    assert _variant_from_config({}, "ETHUSDT-15m-full-20260825120000") == "full"
 
 
 def test_los_runs_viejos_sin_etiqueta_no_rompen():
     """El run del 2026-08-24 no lleva variante: se agrupa aparte, no se pierde."""
-    assert _variant_from_run_id("ETHUSDT-15m-20260824143247") == "sin-etiqueta"
+    assert _variant_from_config({}, "ETHUSDT-15m-20260824143247") == "sin-etiqueta"
 
 
 # --------------------------------------------------------------------------- #

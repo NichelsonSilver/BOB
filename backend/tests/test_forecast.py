@@ -147,6 +147,72 @@ class TestVolatilityModel:
             VolatilityModel().predict(np.zeros((3, 4)))
 
 
+class TestVolatilityModelXGBoost:
+    """XGBoost como estimador alternativo del target que SÍ pasó el gate."""
+
+    def test_encuentra_la_estructura(self, problema_regresion) -> None:
+        X, y = problema_regresion
+        train, test = np.arange(2800), np.arange(2800, 4000)
+        m = VolatilityModel(kind="xgb", seed=0).fit(X, y, train)
+        assert regression_metrics(y[test], m.predict(X[test])).r2 > 0.3
+
+    def test_forecast_siempre_positivo(self, problema_regresion) -> None:
+        """La corrección de Jensen se aplica igual: se entrena en log."""
+        X, y = problema_regresion
+        m = VolatilityModel(kind="xgb", seed=0).fit(X, y, np.arange(2800))
+        assert np.all(m.predict(X[2800:]) > 0)
+
+    def test_es_reproducible(self, problema_regresion) -> None:
+        """Bit a bit, no `allclose`.
+
+        El proyecto tiene un control de regresión que compara corridas del
+        gate hechas en días distintos exigiendo igualdad exacta. Un estimador
+        que solo es reproducible dentro de una tolerancia lo vuelve inútil.
+        """
+        X, y = problema_regresion
+        train = np.arange(2800)
+        a = VolatilityModel(kind="xgb", seed=7).fit(X, y, train).predict(X[2800:])
+        b = VolatilityModel(kind="xgb", seed=7).fit(X, y, train).predict(X[2800:])
+        assert np.array_equal(a, b)
+
+    def test_compite_con_el_gbm_de_sklearn(self, problema_regresion) -> None:
+        """Mismos hiperparámetros -> mismo orden de magnitud de error.
+
+        No se exige que gane: cuál gana lo decide el gate sobre datos reales,
+        no un problema sintético. Lo que se exige es que la traducción de
+        hiperparámetros sea fiel — si `max_leaves` no se estuviera aplicando,
+        XGBoost correría con capacidad muy distinta y el RMSE se separaría.
+        """
+        X, y = problema_regresion
+        train, test = np.arange(2800), np.arange(2800, 4000)
+        sk = VolatilityModel(kind="gbm", seed=0).fit(X, y, train).predict(X[test])
+        xg = VolatilityModel(kind="xgb", seed=0).fit(X, y, train).predict(X[test])
+        rmse_sk = regression_metrics(y[test], sk).rmse
+        rmse_xg = regression_metrics(y[test], xg).rmse
+        assert 0.5 < rmse_xg / rmse_sk < 2.0
+
+    def test_no_revienta_con_columna_vacia_y_por_eso_hace_falta_la_guarda(
+        self, problema_regresion
+    ) -> None:
+        """El hallazgo que obliga a `assert_columns_trainable` a existir.
+
+        sklearn levanta ValueError cuando una columna no tiene un solo valor
+        finito en el train; XGBoost ajusta y predice sin decir nada. El fallo
+        ruidoso se vuelve silencioso, así que la guarda de `experiment.py`
+        pasa de traducir un error a ser la única protección.
+        """
+        X, y = problema_regresion
+        X = X.copy()
+        X[:, -1] = np.nan
+        train = np.arange(2800)
+
+        with pytest.raises(ValueError):
+            VolatilityModel(kind="gbm", seed=0).fit(X, y, train)
+
+        pred = VolatilityModel(kind="xgb", seed=0).fit(X, y, train).predict(X[2800:])
+        assert np.all(np.isfinite(pred))
+
+
 class TestConformalReturnInterval:
     @pytest.fixture(scope="class")
     def datos(self):

@@ -22,6 +22,16 @@ from bob.models.metrics import ProbabilityMetrics
 
 LINE = "=" * 78
 
+#: Nombre legible del estimador de volatilidad. El reporte es lo que se cita
+#: fuera del repo, así que la fila del target 2 tiene que decir qué modelo
+#: produjo ese RMSE: una tabla que dice "GBM" mientras corrió XGBoost es una
+#: cifra no verificable, que es justo lo que este proyecto no publica.
+VOL_LABELS: dict[str, str] = {
+    "gbm": "GBM sklearn",
+    "xgb": "XGBoost",
+    "ridge": "Ridge",
+}
+
 
 def _fmt(value: float, spec: str = ".4f", nan: str = "n/d") -> str:
     return nan if value is None or not np.isfinite(value) else format(value, spec)
@@ -65,7 +75,8 @@ def render_report(result: ExperimentResult) -> str:
         f"  validación      : walk-forward purgado, {cfg.n_splits} folds, "
         f"embargo {cfg.embargo_frac:.1%}"
     )
-    add(f"  modelo          : {cfg.model_kind} + calibración isotónica OOF")
+    add(f"  modelo dir.     : {cfg.model_kind} + calibración isotónica OOF")
+    add(f"  modelo vol.     : {VOL_LABELS.get(cfg.vol_kind, cfg.vol_kind)}")
     add(f"  runtime         : {result.runtime_s:.1f}s")
     add("")
 
@@ -152,7 +163,7 @@ def render_report(result: ExperimentResult) -> str:
     add(f"  {'modelo':<22} {'RMSE':>10} {'R² vs media':>13} {'R² vs EWMA':>12} {'QLIKE':>10}")
     add(f"  {'-' * 22} {'-' * 10} {'-' * 13} {'-' * 12} {'-' * 10}")
     for name, reg in (
-        ("GBM (features)", v.model),
+        (f"{VOL_LABELS.get(cfg.vol_kind, cfg.vol_kind)} (features)", v.model),
         ("EWMA RiskMetrics", v.ewma),
         ("GARCH(1,1)", v.garch),
         ("HAR-RV", v.har),

@@ -285,6 +285,11 @@ class ForecastBundle:
     cones: dict[float, OnlineConformalCone]
     barrier: dict[str, BarrierProbabilityModel]
 
+    #: Se completa en `fit_bundle` con el estimador que produjo la sigma. No
+    #: es cosmético: `ForecastRecord` guarda este string y es lo único que
+    #: dice qué modelo emitió cada pronóstico. Sin él, una muestra forward
+    #: acumulada antes y después de cambiar de estimador queda mezclada y la
+    #: cobertura medida no describe a ninguno de los dos.
     model_version: str = MODEL_VERSION
 
     def row_is_usable(self, x: np.ndarray) -> bool:
@@ -426,7 +431,7 @@ def fit_bundle(
             f"{MIN_FIT_ROWS}): descargar más historia antes de correr en vivo"
         )
 
-    volatility = VolatilityModel(kind=cfg.vol_kind, seed=cfg.seed).fit(X, y_vol, vol_fit)  # type: ignore[arg-type]
+    volatility = VolatilityModel(kind=cfg.vol_kind, seed=cfg.seed).fit(X, y_vol, vol_fit)
 
     ret_fit = np.flatnonzero(finite_rows & np.isfinite(y_ret))
     cones: dict[float, OnlineConformalCone] = {}
@@ -462,6 +467,7 @@ def fit_bundle(
         fit_through,
     )
     return ForecastBundle(
+        model_version=f"{MODEL_VERSION}+vol={cfg.vol_kind}",
         config=cfg,
         feature_names=list(feature_names),
         dense_idx=dense_idx,

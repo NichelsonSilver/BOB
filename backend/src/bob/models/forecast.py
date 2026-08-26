@@ -34,12 +34,21 @@ from sklearn.ensemble import (
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.preprocessing import StandardScaler
+from xgboost import XGBRegressor
 
 from bob.models.validation import purged_walk_forward
 
 EPS = 1e-12
 
 ModelKind = Literal["logistic", "gbm"]
+
+#: Estimadores admitidos para el target de volatilidad (el que SÍ pasó el
+#: gate). `ridge` es el lineal de control; `gbm` es el HistGradientBoosting de
+#: sklearn con el que se corrió el gate de la Fase 4; `xgb` es XGBoost con los
+#: mismos hiperparámetros, agregado para medir si el cambio de implementación
+#: mueve el número. Es un Literal y no un `str` para que mypy cace un valor
+#: inventado antes de que el experimento corra 8 minutos y falle al final.
+VolKind = Literal["ridge", "gbm", "xgb"]
 
 
 def _gbm_classifier(seed: int) -> HistGradientBoostingClassifier:
@@ -76,6 +85,45 @@ def _gbm_regressor(
         max_bins=128,
         early_stopping=False,
         random_state=seed,
+    )
+
+
+def _xgb_regressor(seed: int) -> XGBRegressor:
+    """XGBoost con los MISMOS hiperparámetros que `_gbm_regressor`.
+
+    El objetivo es aislar la variable: si el número se mueve, que sea por la
+    implementación del boosting y no porque uno de los dos corre con más
+    capacidad. La traducción no es literal porque las APIs nombran distinto lo
+    mismo:
+
+    * `max_leaf_nodes` -> `max_leaves`, que solo se respeta con
+      `grow_policy="lossguide"` (el default de XGBoost crece por profundidad).
+      `max_depth=0` saca el tope de profundidad para que mande el de hojas.
+    * `min_samples_leaf` -> `min_child_weight`, que es la suma de hessianos de
+      la hoja. Con pérdida cuadrática el hessiano vale 1 por muestra, así que
+      la suma ES el conteo y los dos parámetros significan lo mismo. Con otra
+      pérdida no lo serían.
+    * `l2_regularization` -> `reg_lambda`, `max_bins` -> `max_bin`.
+
+    `n_jobs=1` es deliberado. Medido en esta máquina, 1 y 4 hilos dan
+    predicciones byte-idénticas, pero XGBoost no promete reproducibilidad
+    entre distintos conteos de hilos y el proyecto tiene un control de
+    regresión bit a bit que depende de eso. El ajuste toma ~2s sobre 40k
+    barras: fijarlo no cuesta nada y saca una fuente de irreproducibilidad
+    entre máquinas con distinto número de núcleos.
+    """
+    return XGBRegressor(
+        n_estimators=250,
+        learning_rate=0.05,
+        max_leaves=15,
+        max_depth=0,
+        grow_policy="lossguide",
+        min_child_weight=100,
+        reg_lambda=1.0,
+        max_bin=128,
+        tree_method="hist",
+        random_state=seed,
+        n_jobs=1,
     )
 
 
@@ -214,7 +262,7 @@ class VolatilityModel:
     una regresión en niveles no garantiza.
     """
 
-    kind: Literal["ridge", "gbm"] = "gbm"
+    kind: VolKind = "gbm"
     seed: int = 42
 
     _model: object | None = field(default=None, repr=False)
@@ -232,9 +280,11 @@ class VolatilityModel:
             model: object = Ridge(alpha=1.0, random_state=self.seed)
             model.fit(self._scaler.transform(X_tr), y_tr)  # type: ignore[attr-defined]
         else:
+            # Los dos boostings son invariantes a escala y tratan el NaN como
+            # rama propia, así que no llevan scaler ni imputación.
             self._scaler = None
-            model = _gbm_regressor(self.seed)
-            model.fit(X_tr, y_tr)  # type: ignore[attr-defined]
+            model = _xgb_regressor(self.seed) if self.kind == "xgb" else _gbm_regressor(self.seed)
+            model.fit(X_tr, y_tr)
 
         self._model = model
         fitted = self._predict_log(X_tr)

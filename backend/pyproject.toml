@@ -17,6 +17,7 @@ dependencies = [
     # Fase 3 agrega: hmmlearn (HMM gaussiano) + scikit-learn (calibración isotónica)
     "scikit-learn>=1.5",
     "scipy>=1.14",
+    "xgboost>=2.1",
 ]
 
 [project.optional-dependencies]
@@ -46,11 +47,11 @@ asyncio_mode = "auto"
 strict = true
 plugins = ["pydantic.mypy"]
 
-# scipy y scikit-learn no publican stubs ni py.typed. No se relaja la
-# estrictez del codigo propio: solo se acepta que estas dos librerias
+# scipy, scikit-learn y xgboost no publican stubs utilizables bajo strict. No
+# se relaja la estrictez del codigo propio: solo se acepta que estas librerias
 # entren como Any en su frontera.
 [[tool.mypy.overrides]]
-module = ["scipy.*", "sklearn.*"]
+module = ["scipy.*", "sklearn.*", "xgboost.*"]
 ignore_missing_imports = true
 
 [tool.ruff]

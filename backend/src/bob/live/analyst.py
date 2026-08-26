@@ -195,6 +195,10 @@ class LiveAnalyst:
             "symbol": self.symbol,
             "timeframe": self.timeframe,
             "feature_set": self.feature_set,
+            #: Qué estimador de volatilidad está emitiendo. Va al lado del
+            #: feature_set porque los dos definen a qué corrida pertenece la
+            #: muestra forward que se está acumulando.
+            "vol_kind": self.config.vol_kind,
             # False durante el arranque: el ajuste corre en background.
             "fitted": self._bundle is not None,
             "refitting": self._refit_task is not None and not self._refit_task.done(),
