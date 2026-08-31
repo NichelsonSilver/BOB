@@ -40,7 +40,7 @@ DERIV_CLIFF_HOURS = 41.0
 def _utc(ms: float | None) -> str:
     if ms is None:
         return "—"
-    return dt.datetime.fromtimestamp(ms / 1000, dt.timezone.utc).strftime(
+    return dt.datetime.fromtimestamp(ms / 1000, dt.UTC).strftime(
         "%Y-%m-%d %H:%M UTC"
     )
 
