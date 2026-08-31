@@ -100,6 +100,11 @@ DEFAULT_FEATURE_SET = "price+deriv"
 #: por día, así que una semana es una página y sobra para cubrir cualquier
 #: pausa razonable; el upsert es idempotente y reescribir lo mismo no cuesta.
 FUNDING_LOOKBACK_MS = 7 * 86_400_000
+#: A partir de qué antigüedad se vuelve a pedir el funding por REST.
+#: Binance lo publica cada 8h y la tolerancia de staleness del feature es
+#: de 8h exactas, así que pedirlo al filo es llegar tarde: 4h da holgura
+#: de una publicación entera y cuesta ~6 requests por día.
+FUNDING_REFRESH_MS = 4 * 3_600_000
 
 
 @dataclass(frozen=True)
@@ -343,6 +348,7 @@ class LiveAnalyst:
                 book=self._inputs.book,
             )
             self._bars_since_fit += 1
+            await self._refresh_context()
 
         await self.analyze_latest()
         self._maybe_schedule_refit()
@@ -463,6 +469,20 @@ class LiveAnalyst:
                 f"no hay velas persistidas de {self.symbol} {self.timeframe}: "
                 "correr `python -m bob.data.download` antes del vivo"
             )
+        deriv, fund, book = self._load_context()
+        return AnalystInputs(series=series, derivatives=deriv, funding=fund, book=book)
+
+    def _load_context(
+        self,
+    ) -> tuple[DerivativesSeries | None, DerivativesSeries | None, BookDepthSeries | None]:
+        """Lee del disco las tres series que NO son la de velas.
+
+        Separada de `_load_inputs` porque tienen cadencias distintas: la serie
+        de velas se mantiene incremental en memoria (el hub la va extendiendo)
+        y estas tres las escribe otro proceso —el loop de snapshots del feed—
+        cada 30 minutos. Releerlas es barato y es lo único que las trae.
+        """
+        init_db()
         deriv = fund = None
         book = None
         if self.config.use_derivatives:
@@ -470,7 +490,65 @@ class LiveAnalyst:
             fund = load_derivatives(self.symbol, "funding")
         if self.config.use_book:
             book = load_book_depth(self.symbol, self.timeframe)
-        return AnalystInputs(series=series, derivatives=deriv, funding=fund, book=book)
+        return deriv, fund, book
+
+    async def _refresh_context(self) -> None:
+        """Vuelve a leer derivados, funding y libro antes de analizar la barra.
+
+        Existe por un bug que dejaba al analista mudo sin decir nada.
+        `on_closed_candle` extendía la serie de velas pero construía el
+        `AnalystInputs` nuevo **arrastrando** las otras tres de la barra
+        anterior, y esas solo se releían en `_load_inputs`, o sea al ajustar y
+        al reajustar. El feed escribía los snapshots al disco cada 30 min y el
+        analista no los veía nunca: las series quedaban congeladas en la foto
+        del arranque mientras el reloj avanzaba, y cada familia iba cruzando su
+        tolerancia de staleness por orden de exigencia —taker, después funding,
+        después OI— hasta que `row_is_usable` rechazaba la barra entera.
+
+        El efecto medido: un pronóstico al arrancar y después silencio hasta el
+        reajuste. Con `refit_every_bars=96` eso es ~1 pronóstico por día en vez
+        de 96, y la corrida de la Fase 5 no termina nunca. No fallaba ruidoso
+        porque el error que sí emite —"no se pronostica sobre un hueco"— es el
+        correcto: la barra de verdad no tenía los features. Lo que estaba mal
+        era la razón por la que no los tenía.
+        """
+        if self._inputs is None:
+            return
+        if self.config.use_derivatives:
+            await self._maybe_ingest_funding()
+        deriv, fund, book = await asyncio.to_thread(self._load_context)
+        self._inputs = AnalystInputs(
+            series=self._inputs.series, derivatives=deriv, funding=fund, book=book
+        )
+
+    async def _maybe_ingest_funding(self) -> None:
+        """Trae funding nuevo por REST si el que hay se está por vencer.
+
+        Nadie más lo hace: `snapshot_once` escribe la grilla de 5m pero no el
+        funding, y la reingesta de `_repair` corre solo en el arranque y en el
+        reajuste. Entre dos reajustes el funding se vence solo — que es la
+        mitad de por qué el analista se quedaba sin `funding_bps`.
+        """
+        if self._inputs is None:
+            return
+        fund = self._inputs.funding
+        ahora = int(self._inputs.series.open_time[-1])
+        ultimo = (
+            int(fund.timestamp[-1])
+            if fund is not None and len(fund.timestamp) > 0
+            else 0
+        )
+        if ahora - ultimo < FUNDING_REFRESH_MS:
+            return
+        try:
+            report = await ingest_funding(
+                self.symbol, max(ultimo - FUNDING_LOOKBACK_MS, 0)
+            )
+            logger.info(
+                "analista: funding refrescado — {} fila(s)", report.rows_written
+            )
+        except Exception as exc:  # noqa: BLE001 — sin red se sigue con lo que hay
+            logger.warning("analista: no se pudo refrescar el funding ({})", exc)
 
     def _resync(self) -> None:
         """Vuelve a tomar todo de la DB, que es la autoridad.
