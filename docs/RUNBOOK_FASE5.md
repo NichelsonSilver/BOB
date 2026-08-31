@@ -367,3 +367,6 @@ suavizarlo.
 | El analista no emite y no hay error | Revisar `analyst.bars_since_fit` y el log del feed | — |
 | La corrida murió y el equipo estaba desenchufado | Standby en batería (default: 4 min) | `powercfg /change standby-timeout-dc 0` |
 | El reporte final mezcla dos `model_version` | Se tocó código del pronóstico a mitad de corrida | La muestra no sirve; ver §4 de "Antes de empezar" |
+| `no se pronostica sobre un hueco` y en la DB el dato **sí está** | Bug de frescura, no corte de datos | Comparar el log contra `derivativesnapshot`: si el dato está escrito, el problema es del analista, no de Binance. Los dos casos conocidos se cerraron el 31-08 |
+| Emisión exactamente al 50%, una barra sí y una no | Fila parcial en la punta de la grilla de derivados | Cerrado por `_common_cutoff`. Si reaparece: `SELECT ... WHERE open_interest IS NOT NULL AND taker_buy_sell_ratio IS NULL` |
+| Un pronóstico al arrancar y después silencio | El contexto no se refresca entre reajustes | Cerrado por `_refresh_context`. Verificar que aparezcan barras **consecutivas**, no solo que emita |

@@ -637,7 +637,63 @@ Reformulada por la decisión del 25-08: se emite **proyección**, no dirección.
    que no produce nada. Expone `fitted`, `refitting`, `bars_since_fit`,
    `n_train`, `last_forecast_open_time` y la cobertura del cono con su
    `alpha_t`
-8. ⏳ **Pendiente**: acumular ~280 pronósticos resueltos (≈72h de mercado, no
+8. ✅ **Dos bugs de frescura de datos, encontrados al arrancar la corrida real
+   (2026-08-31)**. Los dos dejaban al analista sin emitir, ninguno lo hacía en
+   silencio —el error `no se pronostica sobre un hueco` salía correcto— y
+   justamente por eso eran difíciles: el mensaje describía el síntoma real (la
+   barra no tenía los features densos) y no la causa, así que eran
+   indistinguibles de un corte de datos de Binance. La única forma de
+   separarlos fue mirar la DB al lado del log y ver que el dato **sí estaba
+   escrito**. Se encontraron uno detrás del otro: el primero tapaba al segundo,
+   porque mientras todo fallaba siempre no se veía el patrón intermitente
+   de abajo.
+
+   **(a) `live/analyst.py` — la vela avanzaba en memoria y el contexto no.**
+   `on_closed_candle` extendía la serie de velas pero construía el
+   `AnalystInputs` nuevo **arrastrando** derivados, funding y libro de la barra
+   anterior. Esas tres solo se releían en `_load_inputs`, o sea al ajustar y al
+   reajustar: con `refit_every_bars=96`, cada 24h. El feed escribía snapshots
+   correctos al disco cada 30 min y el analista no los veía nunca. Las series
+   quedaban congeladas en la foto del arranque mientras el reloj corría, y cada
+   familia iba cruzando su tolerancia de staleness por orden de exigencia
+   —taker a los 15 min, funding a los 30, OI a la hora—. Medido: **1 pronóstico
+   al arrancar y silencio hasta el reajuste**, o sea ~1 por día en vez de 96;
+   las 280 muestras habrían tomado nueve meses. Arreglado con `_refresh_context`
+   en cada vela cerrada, más `_maybe_ingest_funding`: el funding tenía un
+   agravante propio —`snapshot_once` no lo escribe y `ingest_funding` solo corría
+   en `_repair`—, así que con publicación cada 8h y tolerancia de 8h exactas se
+   vencía solo entre reajustes.
+
+   **(b) `data/snapshots.py` — la fila parcial en la punta de la grilla.** Los
+   cinco endpoints de `/futures/data/*` no publican al mismo tiempo:
+   `takerlongshortRatio` va un bucket de 5m detrás de `openInterestHist`. Cada
+   ciclo escribía una fila con OI y con taker en NULL, y esa fila rompía la
+   alineación aguas arriba — `align_to_bars` toma el último punto **por
+   timestamp**, así que devolvía el NaN de la fila nueva en vez del valor bueno
+   de cinco minutos antes. La tolerancia de staleness ni llegaba a ejecutarse:
+   mide la EDAD del punto, no si el punto tiene dato. Firma inconfundible en
+   producción: **exactamente 50% de emisión, una barra sí y una no cada 30
+   minutos**, que es el intervalo del snapshot. La barra posterior a un ciclo
+   veía la grilla completa; la siguiente ya tenía la fila parcial dentro de la
+   ventana observable.
+
+   Se arregló en la capa de I/O y **no** en `align_to_bars`, que era la otra
+   opción sobre la mesa. La propagación de NaN de esa función es deliberada y
+   tiene test propio (`test_align_propaga_los_nan_del_origen`): un punto sin
+   dato debe seguir sin dato. Lo que estaba mal era escribir como "punto sin
+   dato" un punto que el endpoint todavía no había publicado. `fetch_derivatives`
+   corta ahora la grilla en el último instante donde los cinco ya publicaron
+   (`_common_cutoff`); cuesta ~5 min de frescura en OI contra una tolerancia de
+   1h. La alternativa —que `align_to_bars` arrastrara el último valor bueno— era
+   defendible pero movía la matriz de entrenamiento en ~95 filas de 212.182, y
+   el arreglo en I/O deja el módulo puro y los artefactos del gate intactos.
+
+   Medida que decidió entre las dos: en 212.182 filas históricas hay **una sola**
+   fila parcial de taker, y era la de ese mismo día. El archivo diario puebla
+   todas las columnas; las filas parciales solo las genera el camino REST en
+   vivo, así que el problema era del vivo y ahí se arregló.
+
+9. ⏳ **Pendiente**: acumular ~280 pronósticos resueltos (≈72h de mercado, no
    necesariamente corridas) y comparar cobertura forward vs backtest
 
 **Correr la validación: qué sobrevive a una pausa y qué no.**
