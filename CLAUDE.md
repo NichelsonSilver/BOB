@@ -281,6 +281,10 @@ bob/
 │   │   │   └── ws.py               # Broadcast al frontend
 │   │   └── utils/
 │   ├── artifacts/                  # Reportes de gate VERSIONADOS (.txt legible + .json)
+│   ├── scripts/                    # Operación de la corrida (no son parte del motor)
+│   │   ├── preflight.py            # ¿puede emitir hoy? Sin pagar el ajuste de 80s
+│   │   ├── watch_run.py            # Vigilante desatendido: 1 línea por chequeo a logs/
+│   │   └── purge_stale_forecasts.py # Homogeneidad de model_version antes de acumular
 │   └── tests/                      # signals/, models/, backtest/ con cobertura ≥ 90%
 │
 ├── frontend/
