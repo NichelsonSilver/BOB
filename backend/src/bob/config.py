@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     bob_host: str = "0.0.0.0"
     bob_port: int = 8000
     bob_log_level: str = "INFO"
+    #: Archivo al que además se escribe el log (vacío = solo consola). Existe
+    #: por las corridas largas de la Fase 5: el scrollback de una terminal no
+    #: sobrevive tres días, y el log es la única fuente que dice a qué hora
+    #: dejó de emitir el analista. Redirigir la consola con `2>&1` no sirve en
+    #: PowerShell 5.1 —envuelve cada línea de stderr en un ErrorRecord—, así
+    #: que el sink lo pone la app. Rota a los 50 MB y retiene 7 días.
+    bob_log_file: str = ""
 
     # Watchlist — símbolos de Binance Futures, separados por coma en .env
     bob_watchlist: str = "ETHUSDT"

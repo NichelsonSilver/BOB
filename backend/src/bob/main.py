@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -20,8 +21,31 @@ from bob.models.projection import LeverageProfile
 from bob.paper.tracker import tracker_loop
 
 
+def _configure_file_log() -> None:
+    """Agrega un sink de archivo si `BOB_LOG_FILE` está seteado.
+
+    No reemplaza a la consola: la agrega. En una corrida de días hacen falta
+    las dos cosas — ver el arranque en vivo y poder reconstruir después a qué
+    hora se cayó algo.
+    """
+    if not settings.bob_log_file:
+        return
+    path = Path(settings.bob_log_file)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    logger.add(
+        path,
+        level=settings.bob_log_level,
+        rotation="50 MB",
+        retention="7 days",
+        encoding="utf-8",
+        enqueue=True,  # el analista loguea desde hilos de to_thread
+    )
+    logger.info("log en archivo: {}", path)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    _configure_file_log()
     logger.info(
         "BOB starting | watchlist={} | timeframe={} | threshold={}",
         settings.watchlist,
