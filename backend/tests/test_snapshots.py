@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 
+import numpy as np
 import pytest
 from httpx import AsyncClient, MockTransport, Request, Response
 from sqlmodel import Session, SQLModel, create_engine
@@ -174,7 +175,22 @@ class TestFetch:
 
 
 class TestSnapshotOnce:
-    async def test_persiste_la_watchlist(self, in_memory_engine) -> None:
+    async def test_persiste_la_watchlist_hasta_el_endpoint_mas_lento(
+        self, in_memory_engine
+    ) -> None:
+        """La grilla se corta donde termina el endpoint que va más atrás.
+
+        El handler reproduce el caso real: OI ya publicó T0 y T0+STEP, taker
+        solo T0. Medido en vivo el 31-08, `takerlongshortRatio` va un bucket de
+        5m detrás de `openInterestHist`, y ese desfase es permanente — no un
+        incidente.
+
+        Escribir igual la fila de T0+STEP, con OI y taker en NULL, es lo que
+        rompía al analista: `align_to_bars` toma el último punto por timestamp,
+        así que devolvía el NaN de la fila nueva en vez del valor bueno de T0 y
+        la familia taker moría en la última barra. El costo del corte son ~5
+        minutos de frescura en OI contra una tolerancia de staleness de 1h.
+        """
         def handler(request: Request) -> Response:
             if "openInterestHist" in request.url.path:
                 return Response(200, json=[_oi_row(T0), _oi_row(T0 + STEP)])
@@ -186,8 +202,36 @@ class TestSnapshotOnce:
         written = await snapshot_once(["ethusdt"], "15m", client=client)
         await client.aclose()
 
-        assert written == {"ETHUSDT": 2}
-        assert derivatives_coverage("ETHUSDT", "15m")["n_points"] == 2
+        assert written == {"ETHUSDT": 1}
+        assert derivatives_coverage("ETHUSDT", "15m")["n_points"] == 1
+
+    async def test_no_escribe_filas_parciales(self, in_memory_engine) -> None:
+        """Ninguna fila persistida puede tener OI y no tener taker.
+
+        Es la invariante que el corte existe para sostener, dicha sobre lo que
+        queda en la DB y no sobre el conteo: un conteo correcto por casualidad
+        no dice nada.
+        """
+        def handler(request: Request) -> Response:
+            if "openInterestHist" in request.url.path:
+                return Response(
+                    200, json=[_oi_row(T0), _oi_row(T0 + STEP), _oi_row(T0 + 2 * STEP)]
+                )
+            if "globalLongShortAccountRatio" in request.url.path:
+                return Response(200, json=[_ls_row(T0), _ls_row(T0 + STEP)])
+            return Response(200, json=[_taker_row(T0)])
+
+        client = _client(handler)
+        await snapshot_once(["ethusdt"], "15m", client=client)
+        await client.aclose()
+
+        from bob.data.store import load_derivatives
+
+        serie = load_derivatives("ETHUSDT", "15m")
+        con_oi = np.isfinite(serie.open_interest)
+        con_taker = np.isfinite(serie.taker_buy_sell_ratio)
+        assert con_oi.sum() > 0
+        assert not np.any(con_oi & ~con_taker), "quedó una fila con OI y sin taker"
 
     async def test_un_simbolo_caido_no_frena_a_los_demas(self, in_memory_engine) -> None:
         """La ventana de 30 días corre para todos: si ETH falla, BTC igual se

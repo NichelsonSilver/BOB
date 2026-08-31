@@ -180,7 +180,44 @@ async def fetch_derivatives(
     taker = await client.taker_ratio(symbol, period=period, limit=limit)
     top_acc = await client.top_account_ratio(symbol, period=period, limit=limit)
     top_pos = await client.top_position_ratio(symbol, period=period, limit=limit)
-    return merge_derivative_rows(oi, ls, taker, top_acc, top_pos)
+
+    puntos = merge_derivative_rows(oi, ls, taker, top_acc, top_pos)
+    corte = _common_cutoff(oi, ls, taker, top_acc, top_pos)
+    if corte is None:
+        return puntos
+    return [p for p in puntos if p.timestamp <= corte]
+
+
+def _common_cutoff(*grupos: Sequence[dict[str, Any]]) -> int | None:
+    """El instante hasta el cual los cinco endpoints ya publicaron.
+
+    Los cinco no publican al mismo tiempo: medido en vivo, `takerlongshortRatio`
+    va un bucket de 5m detrás de `openInterestHist`. Sin este corte, cada ciclo
+    escribía una fila con OI y con taker en NULL, y esa fila parcial rompía la
+    alineación aguas arriba: `align_to_bars` toma el último punto **por
+    timestamp**, así que devolvía el NaN de la fila nueva en vez del valor bueno
+    de cinco minutos antes, y la familia taker entera moría en la última barra.
+    El analista quedaba sin poder emitir de forma intermitente, y encima la
+    tolerancia de staleness —que existe justamente para arrastrar el último
+    valor bueno— no llegaba a ejecutarse, porque mide la EDAD del punto y no si
+    el punto tiene dato.
+
+    Se arregla acá y no en `align_to_bars` a propósito: la propagación de NaN de
+    esa función es deliberada y tiene test propio (`test_align_propaga_los_nan_
+    del_origen`); un punto sin dato debe seguir sin dato. Lo que estaba mal era
+    escribir un punto que el endpoint todavía no había publicado como si fuera
+    un punto sin dato. La grilla se corta donde termina el más lento y listo.
+
+    Cuesta ~5 minutos de frescura en OI, irrelevante contra una tolerancia de
+    1h. Un grupo vacío se ignora: un endpoint que no devolvió nada es otra
+    falla —sus columnas quedan NaN en todo el rango— y truncar no la arregla.
+    """
+    topes: list[int] = []
+    for grupo in grupos:
+        ts = [t for t in (_ts(row) for row in grupo) if t is not None]
+        if ts:
+            topes.append(max(ts))
+    return min(topes) if topes else None
 
 
 async def snapshot_once(
