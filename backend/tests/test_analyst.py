@@ -642,3 +642,46 @@ async def test_si_la_serie_en_memoria_se_desincroniza_se_recupera_sola(
     )
     assert await analyst.analyze_latest() is None
     assert "warm-up" in rec.of("analysis.error")[-1]["detail"]
+
+
+@pytest.mark.asyncio
+async def test_cada_vela_relee_el_contexto_del_disco(listo, in_memory_engine) -> None:
+    """El bug del 31-08: la vela avanzaba en memoria y el contexto no.
+
+    `on_closed_candle` extendía la serie de velas pero construía el
+    `AnalystInputs` nuevo **arrastrando** derivados, funding y libro de la
+    barra anterior. Esas tres solo se releían en `_load_inputs`, o sea al
+    ajustar y al reajustar: con `refit_every_bars=96`, cada 24 horas. El feed
+    escribía los snapshots al disco cada 30 minutos y el analista no los veía
+    nunca — las series quedaban congeladas en la foto del arranque mientras el
+    reloj corría, y cada familia iba cruzando su tolerancia de staleness por
+    orden de exigencia (taker, funding, OI) hasta que `row_is_usable` rechazaba
+    la barra entera.
+
+    No fallaba en silencio: el error que emitía —"no se pronostica sobre un
+    hueco"— era el correcto, porque la barra realmente no tenía los features.
+    Lo que estaba mal era la razón por la que no los tenía, y eso lo volvía
+    indistinguible de un corte de datos de verdad. Medido en vivo: un
+    pronóstico al arrancar y silencio hasta el reajuste.
+    """
+    analyst, rec, series = listo
+    await analyst.start()
+
+    centinela = object()
+    llamadas: list[int] = []
+
+    def _contexto_nuevo():
+        llamadas.append(1)
+        return centinela, centinela, centinela
+
+    analyst._load_context = _contexto_nuevo  # type: ignore[method-assign]
+
+    siguiente = int(series.open_time[-1]) + TF_MS
+    await analyst.on_closed_candle(_kline(siguiente, close=float(series.close[-1])))
+
+    assert llamadas, "la vela nueva no volvió a leer el contexto del disco"
+    assert analyst._inputs is not None
+    # Lo que falla contra el código viejo: arrastraba el de la barra anterior.
+    assert analyst._inputs.derivatives is centinela
+    assert analyst._inputs.funding is centinela
+    assert analyst._inputs.book is centinela
