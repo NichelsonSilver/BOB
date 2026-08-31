@@ -26,30 +26,108 @@ CLAUDE.md):
 
 **Criterio de término**: `n_resolved >= 280` en el reporte del tracker.
 
+### Cuánto tarda, y por qué son 74 h y no 70
+
+Un pronóstico sale con cada vela cerrada (15 min) y **se resuelve 16 barras
+después** (H = 16 → 4 h). Así que el reloj tiene dos tramos que se suman:
+
+```
+280 barras × 15 min          = 70 h   emitir el pronóstico n.º 280
++ 16 barras × 15 min         =  4 h   esperar a que ESE madure
+                               ----
+                               74 h   de mercado, sin pausas
+```
+
+Las 4 h de cola son las que se olvidan: cuando el último pronóstico se emite
+todavía no hay 280 resueltos, faltan las 16 barras de su horizonte. Cada pausa
+del proceso se suma encima, porque las barras que ocurrieron con el backend
+abajo no se pronostican nunca.
+
+Arrancando el **2026-08-31 ~03:30 UTC** (23:30 del 30-08 hora de Chile) y sin
+pausas, el objetivo se alcanza cerca del **2026-09-03 ~05:30 UTC**, o sea la
+madrugada del miércoles 3 hora local. Con pausas nocturnas de 8 h, un día más
+por cada noche. El `ETA` de `watch_run.py` recalcula esto solo sobre el ritmo
+observado.
+
 ---
 
 ## Antes de empezar (una sola vez)
 
-**1. La suspensión de Windows tiene que estar apagada.** Si el equipo se
-duerme, el feed se corta igual que si lo apagaras — y sin aviso.
+**1. La suspensión de Windows tiene que estar apagada — en AC *y* en batería.**
+Si el equipo se duerme, el feed se corta igual que si lo apagaras, y sin aviso.
 
 ```powershell
 powercfg /change standby-timeout-ac 0
-powercfg /query SCHEME_CURRENT SUB_SLEEP STANDBYIDLE | Select-String "Current AC Power Setting Index"
+powercfg /change standby-timeout-dc 0
+powercfg /query SCHEME_CURRENT SUB_SLEEP STANDBYIDLE | Select-String "Power Setting Index"
 ```
 
-Tiene que decir `0x00000000`. *(Verificado el 25-08: ya estaba en 0.)*
+Las **dos** líneas tienen que decir `0x00000000`.
+
+> ⚠️ **La de batería es la que muerde.** Medido el 2026-08-30: AC estaba en 0
+> (bien) pero **DC estaba en `0x000000f0` = 4 minutos**. O sea que basta
+> desenchufar el equipo cuatro minutos para que la corrida muera, y el síntoma
+> es el mismo que el de apagarlo: ninguno. Es el mismo pisotón que en NODO
+> vació la ventana de scraping —`DisallowStartIfOnBatteries` en `True`— y por
+> la misma razón: los defaults de energía de Windows están escritos para
+> ahorrar batería, no para sostener una medición. Si no querés tocar el perfil
+> de energía, la alternativa es dejarlo enchufado y no desenchufarlo.
 
 **2. Poner los datos al día y confirmar que no hay huecos.**
 
 ```powershell
 cd C:\Users\niche\proyectos\bob\backend
 uv run python -m bob.data.download --symbol ETHUSDT --timeframe 15m --repair
+uv run python -m bob.data.snapshots --symbol ETHUSDT --period 5m
 ```
 
-Esperado: `completitud 100.00%`, `huecos 0`. El analista también repara al
-arrancar, así que este paso es una comprobación, no un requisito — pero
-conviene verlo antes de dejar corriendo algo por días.
+Esperado en el primero: `completitud 100.00%`, `huecos 0`. El segundo cierra el
+hueco de derivados de la pausa anterior — el analista también lo hace al
+arrancar, pero conviene cerrarlo antes de empezar a contar, porque es el único
+que tiene fecha de vencimiento (ver el acantilado de ~41 h más abajo).
+
+**3. Correr el preflight.** Es la comprobación que decide si la corrida va a
+producir algo, y cuesta 10 segundos:
+
+```powershell
+uv run python scripts/preflight.py
+```
+
+Ejercita el mismo camino que el arranque real —carga, ensambla la matriz y
+corre `assert_tail_observable`— y **se detiene justo antes del ajuste**, que es
+la parte que tarda 80 s y la única que no hace falta para responder la
+pregunta. Sale con código 0 si se puede arrancar.
+
+Existe porque el fallo que ataja es invisible desde afuera: un backend con
+`status: ok`, feed conectado y `fitted: true` que no emite **nunca**, porque
+una familia de features llega con retraso y deja la cola en NaN. Sin esto se
+descubre horas después, notando que el contador de resueltos no sube.
+
+**4. Que la muestra forward sea de un solo modelo.** El tracker **no segrega
+por `model_version`**: si en `ForecastRecord` conviven dos versiones, las
+promedia en silencio y el reporte final describe una mezcla de dos modelos que
+no existe en ninguna parte.
+
+```powershell
+uv run python scripts/purge_stale_forecasts.py            # simula
+uv run python scripts/purge_stale_forecasts.py --apply    # respalda a logs/ y borra
+```
+
+Compara lo que hay en la tabla contra la versión que **emitiría el código de
+hoy** (no contra "la más reciente de la tabla": antes de arrancar, la versión
+nueva todavía no existe ahí, y ese default conservaría justo la vieja). Si
+coinciden, no hace nada.
+
+Es la misma regla que obligó a meter XGBoost antes de arrancar la acumulación y
+no después (Fase 4-bis): tocar el código del que depende el pronóstico a mitad
+de la corrida mezcla dos modelos en la misma muestra y la invalida. Corolario
+operativo: **mientras la corrida acumula, no se toca `models/` ni `live/`.**
+
+*Ejemplo real del 2026-08-30*: quedaban 2 pronósticos del 25-08 etiquetados
+`bob-forecast-0.1.0`, sin el sufijo `+vol=`, emitidos antes de que el refactor
+de Fase 4-bis cambiara `production.py`, `forecast.py` y `analyst.py`. Dos de
+280 es 0,7% de la muestra, pero la etiqueta decía la verdad: eran de un código
+que ya no existe.
 
 ---
 
@@ -93,6 +171,62 @@ Dos mensajes que **son normales y no indican problema**:
   otros por la misma conexión. El híbrido está previsto y funciona.
 - `analista: vela recibida durante el ajuste inicial — se recupera de la DB al
   terminar`. El ajuste tarda más que el hueco entre velas; la vela no se pierde.
+
+---
+
+### Guardar el log en un archivo
+
+El scrollback de una terminal no sobrevive tres días, y el log es la única
+fuente que dice *a qué hora* pasó algo. Setear `BOB_LOG_FILE` agrega un sink de
+archivo **sin sacar el de consola** — lo ves en vivo y queda en disco
+(`logs/` está en `.gitignore`; rota a los 50 MB, retiene 7 días):
+
+```powershell
+cd C:\Users\niche\proyectos\bob\backend
+$env:BOB_LOG_FILE = "logs\backend.log"
+uv run python -m uvicorn bob.main:app --host 127.0.0.1 --port 8000
+```
+
+> El sink lo pone la aplicación a propósito, en vez de redirigir la consola.
+> `... 2>&1 | Tee-Object` **no sirve en PowerShell 5.1**: loguru escribe a
+> stderr y PowerShell envuelve cada línea de un ejecutable nativo en un
+> `ErrorRecord`, así que el log entero sale en rojo, con formato de excepción,
+> y `$?` queda en `$false` aunque el proceso esté perfecto. Se ve como una
+> catástrofe que no ocurrió.
+
+---
+
+## Vigilar la corrida (segunda terminal)
+
+Una corrida de ~72 h no tiene a nadie mirando `/api/health`. Este script lo
+mira solo y escribe una línea por chequeo:
+
+```powershell
+cd C:\Users\niche\proyectos\bob\backend
+uv run python scripts/watch_run.py --every-min 10
+```
+
+Es de solo lectura: consulta la DB y hace un GET al health, no toca nada.
+Vigila cinco cosas, en orden de gravedad:
+
+1. **Staleness de derivados** — el único fallo irreversible. Avisa a las 24 h,
+   con 17 h de margen para reaccionar, no cuando ya se perdió.
+2. **El analista dejó de emitir** — `fitted` en false pasado el arranque, o el
+   último pronóstico congelado más de 2 barras.
+3. **El feed se cayó.**
+4. **`gap` creciendo** — corte de feed dentro de un horizonte.
+5. **Mezcla de `model_version`** — contaminación de la muestra.
+
+Y calcula el ETA con el **ritmo real observado**, no con el nominal: si hubo
+pausas, la cuenta ya las incluye.
+
+Salida de un tick:
+
+```
+2026-08-31 03:30:03 UTC | resueltos 41/280 abiertos 16 gap 0 | fitted=True
+refit=False bars_since_fit=12 | ult.pronostico 08-31 03:00 vela 08-31 03:00
+deriv 08-31 03:20 | feed=True | ETA 09-03 05:31 UTC
+```
 
 ---
 
@@ -231,3 +365,5 @@ suavizarlo.
 | `analysis.error` con `warm-up` | Huecos de velas en la ventana de contexto | `uv run python -m bob.data.download --symbol ETHUSDT --timeframe 15m --repair` |
 | `descartados por huecos` creciendo | Cortes de feed dentro de horizontes | `--repair`; los `gap` se re-examinan solos |
 | El analista no emite y no hay error | Revisar `analyst.bars_since_fit` y el log del feed | — |
+| La corrida murió y el equipo estaba desenchufado | Standby en batería (default: 4 min) | `powercfg /change standby-timeout-dc 0` |
+| El reporte final mezcla dos `model_version` | Se tocó código del pronóstico a mitad de corrida | La muestra no sirve; ver §4 de "Antes de empezar" |
