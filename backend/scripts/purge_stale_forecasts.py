@@ -116,7 +116,7 @@ def _version_actual() -> str:
 def _utc(ms: int | None) -> str:
     if ms is None:
         return "—"
-    return dt.datetime.fromtimestamp(ms / 1000, dt.timezone.utc).strftime("%m-%d %H:%M")
+    return dt.datetime.fromtimestamp(ms / 1000, dt.UTC).strftime("%m-%d %H:%M")
 
 
 if __name__ == "__main__":

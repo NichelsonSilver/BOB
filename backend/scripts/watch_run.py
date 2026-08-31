@@ -61,7 +61,7 @@ MINUTES = {"1m": 1, "3m": 3, "5m": 5, "15m": 15, "30m": 30, "1h": 60, "4h": 240}
 def _utc(ms: float | None) -> str:
     if ms is None:
         return "—"
-    return dt.datetime.fromtimestamp(ms / 1000, dt.timezone.utc).strftime("%m-%d %H:%M")
+    return dt.datetime.fromtimestamp(ms / 1000, dt.UTC).strftime("%m-%d %H:%M")
 
 
 def _age_hours(ms: float | None, now_ms: float) -> float | None:
@@ -110,6 +110,21 @@ def read_db(db: Path, symbol: str, timeframe: str) -> dict:
             "SELECT MAX(timestamp) FROM derivativesnapshot WHERE symbol = ?",
             (symbol,),
         ).fetchone()[0]
+        # Ventana reciente para el ritmo: lo que se proyecta es el ritmo de
+        # AHORA, no el promedio de toda la corrida.
+        recientes = [
+            r[0]
+            for r in cur.execute(
+                "SELECT open_time FROM forecastrecord "
+                "WHERE symbol = ? AND timeframe = ? ORDER BY open_time DESC LIMIT 24",
+                (symbol, timeframe),
+            ).fetchall()
+        ]
+        horizon_bars = cur.execute(
+            "SELECT MAX(horizon_bars) FROM forecastrecord "
+            "WHERE symbol = ? AND timeframe = ?",
+            (symbol, timeframe),
+        ).fetchone()[0]
     finally:
         con.close()
 
@@ -122,7 +137,23 @@ def read_db(db: Path, symbol: str, timeframe: str) -> dict:
         "versions": versions,
         "last_candle": last_candle,
         "last_deriv": last_deriv,
+        "recientes": recientes,
+        "horizon_bars": horizon_bars,
     }
+
+
+def _ritmo_emision(recientes: list[int]) -> float | None:
+    """Pronósticos por hora, medidos sobre la ventana reciente.
+
+    Reciente y no toda la historia a propósito: una hora mala al principio de
+    la corrida no debería seguir contaminando la estimación tres días después.
+    """
+    if len(recientes) < 2:
+        return None
+    span_h = (max(recientes) - min(recientes)) / 3_600_000
+    if span_h <= 0:
+        return None
+    return (len(recientes) - 1) / span_h
 
 
 def check(
@@ -192,21 +223,29 @@ def check(
             f"en la misma corrida: {state['versions']}"
         )
 
-    # Avance y ETA sobre el ritmo real.
+    # Avance y ETA. El ritmo que manda es el de EMISIÓN, no el de resolución.
+    # Todo pronóstico emitido resuelve un horizonte después salvo que caiga en
+    # un gap, así que resolver no es un cuello de botella: es un retraso fijo.
+    # Medir `resueltos/hora` mezclaba las dos cosas y daba un número sin
+    # sentido —con 1 resuelto en 5,7h proyectaba dos meses y saltaba dos días
+    # entre chequeos consecutivos— y encima arrastraba para siempre las horas
+    # en que el analista estuvo mudo, que son justo las que uno acaba de
+    # arreglar. La proyección honesta es: cuánto falta emitir al ritmo actual,
+    # más el horizonte que el último tiene que esperar.
     resolved = state["resolved"]
     faltan = max(0, target - resolved)
     eta = "—"
-    if prev is not None and state["first_emit"] is not None and resolved > 0:
-        horas = (now_ms - state["first_emit"]) / 3_600_000
-        if horas > 0.5:
-            ritmo = resolved / horas  # resueltos por hora, medido
-            if ritmo > 0:
-                eta_dt = dt.datetime.now(dt.timezone.utc) + dt.timedelta(
-                    hours=faltan / ritmo
-                )
-                eta = eta_dt.strftime("%m-%d %H:%M UTC")
+    ritmo = _ritmo_emision(state["recientes"])
+    if faltan == 0:
+        eta = "objetivo alcanzado"
+    elif ritmo:
+        h_horizonte = (state["horizon_bars"] or 0) * bar_min / 60
+        eta_dt = dt.datetime.now(dt.UTC) + dt.timedelta(
+            hours=faltan / ritmo + h_horizonte
+        )
+        eta = f"{eta_dt:%m-%d %H:%M UTC} ({ritmo:.1f}/h)"
 
-    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    stamp = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     linea = (
         f"{stamp} | resueltos {resolved}/{target} abiertos {state['open']} "
         f"gap {state['gap']} | fitted={analyst.get('fitted')} "
@@ -230,6 +269,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--once", action="store_true", help="un chequeo y termina")
     args = p.parse_args(argv)
 
+    # La consola de Windows sale en cp1252 y las flechas y guiones largos de
+    # las líneas revientan al redirigir a un archivo — que es exactamente lo
+    # que se hace con un vigilante desatendido. Interactivo funcionaba, así
+    # que el fallo aparecía recién al dejarlo corriendo en serio.
+    for flujo in (sys.stdout, sys.stderr):
+        if hasattr(flujo, "reconfigure"):
+            flujo.reconfigure(encoding="utf-8", errors="replace")
+
     db = Path(args.db)
     if not db.exists():
         print(f"no existe la DB: {db}", file=sys.stderr)
@@ -249,7 +296,7 @@ def main(argv: list[str] | None = None) -> int:
                 db, args.url, args.symbol, args.timeframe, args.target, prev
             )
         except sqlite3.Error as exc:  # DB ocupada por un commit del backend
-            linea, alertas = f"{dt.datetime.now(dt.timezone.utc)} | DB ocupada: {exc}", []
+            linea, alertas = f"{dt.datetime.now(dt.UTC)} | DB ocupada: {exc}", []
 
         print(linea)
         with log.open("a", encoding="utf-8") as fh:
