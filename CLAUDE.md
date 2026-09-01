@@ -693,7 +693,41 @@ Reformulada por la decisión del 25-08: se emite **proyección**, no dirección.
    todas las columnas; las filas parciales solo las genera el camino REST en
    vivo, así que el problema era del vivo y ahí se arregló.
 
-9. ⏳ **Pendiente**: acumular ~280 pronósticos resueltos (≈72h de mercado, no
+9. ✅ **La reparación de velas se reintenta hasta que vuelva la red
+   (2026-09-01)**. Tercer bug de la misma familia y el más barato de todos:
+   `_repair` corría **una sola vez** al arrancar y su fallo se descartaba con
+   un WARNING. Encontrado al reanudar la corrida después de una mudanza —el
+   backend levantó a los segundos de encender el equipo en una red nueva, los
+   cuatro intentos de `repair_series` murieron con `getaddrinfo failed`, y un
+   minuto después la red volvió y el poll REST escribió la vela en curso. Las
+   dos barras del apagón quedaron como hueco interior **permanente**:
+   `--resume` avanza desde la última vela en DB y nunca vuelve a mirar hacia
+   atrás. El analista no emitió una sola barra hasta correr `--repair` a mano.
+
+   La ironía es la que ordena el arreglo: el arranque tras mover el equipo es
+   a la vez el momento en que la red es menos probable que esté y el único en
+   que la reparación es imprescindible. Una sola pasada, justo ahí, es la peor
+   política posible. Ahora el fallo se **recuerda** (`_candle_repair_pending`)
+   y se reintenta en cada vela cerrada; si la reparación escribe, se
+   resincroniza de la DB, porque escribió en el **medio** de la serie y
+   agregarle la barra nueva encima arrastraría el hueco.
+
+   Las otras dos series de `_repair` ya tenían reintento y por eso nunca
+   mostraron el problema: los derivados los reescribe el scheduler del feed y
+   `_refresh_context` los relee en cada barra; el funding lo reingesta
+   `_maybe_ingest_funding` al acercarse a su tolerancia. Las velas eran la
+   única sin camino de vuelta.
+
+   **Lo que el preflight no puede ver**: cuando se corrió, la serie terminaba
+   en la última vela previa al apagón y **no había ningún hueco interior** —
+   lo creó el poll REST después, al escribir la primera vela post-arranque. El
+   preflight mira el pasado; ese hueco se abre en el futuro. Es un punto ciego
+   estructural del chequeo, no un defecto de él, y la única defensa posible
+   está del lado del analista. `analyst.status()` expone
+   `candle_repair_pending` para que `/api/health` distinga "hueco que se
+   arregla solo en la próxima barra" de "corte de datos de Binance".
+
+10. ⏳ **Pendiente**: acumular ~280 pronósticos resueltos (≈72h de mercado, no
    necesariamente corridas) y comparar cobertura forward vs backtest
 
 **Correr la validación: qué sobrevive a una pausa y qué no.**
@@ -716,8 +750,9 @@ no razonando**:
 1. **El hueco de velas era permanente.** El feed reconecta y escribe la vela
    actual, así que `download --resume` reanuda desde ahí y salta el rango
    caído para siempre. `data/download.repair_series` pide los huecos
-   interiores uno por uno; el analista lo llama al arrancar y hay
-   `--repair` en la CLI. No es cosmético: las ventanas de `features.py`
+   interiores uno por uno; el analista lo llama al arrancar —y lo **reintenta
+   barra a barra si se quedó sin red**, ver el punto 9— y hay `--repair` en
+   la CLI. No es cosmético: las ventanas de `features.py`
    cuentan **barras, no tiempo**, así que a partir de un hueco todas las
    features de contexto describen una ventana que no existió —
    `_assert_tail_contiguous` se niega a emitir sobre eso.

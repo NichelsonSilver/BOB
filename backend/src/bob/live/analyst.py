@@ -170,6 +170,10 @@ class LiveAnalyst:
         self._bundle: ForecastBundle | None = None
         self._inputs: AnalystInputs | None = None
         self._bars_since_fit = 0
+        #: La reparación de velas falló y hay que reintentarla en la próxima
+        #: barra. Ver `_repair_candles`: es el único de los tres arreglos de
+        #: `_repair` que no tenía camino de reintento propio.
+        self._candle_repair_pending = False
         self._lock = asyncio.Lock()
         self._refit_task: asyncio.Task[None] | None = None
         self.last_analysis: MarketAnalysis | None = None
@@ -208,6 +212,11 @@ class LiveAnalyst:
             "fitted": self._bundle is not None,
             "refitting": self._refit_task is not None and not self._refit_task.done(),
             "bars_since_fit": self._bars_since_fit,
+            #: True cuando la reparación de velas se quedó sin red y todavía
+            #: no pudo reintentarse. Mientras esté en True el analista puede
+            #: estar mudo por un hueco que se arregla solo en la próxima
+            #: barra — que es distinto de un corte de datos de Binance.
+            "candle_repair_pending": self._candle_repair_pending,
             "n_train": self._bundle.n_train if self._bundle else 0,
             "fit_through_ms": self._bundle.fit_through_ms if self._bundle else None,
             "model_version": self._bundle.model_version if self._bundle else None,
@@ -256,20 +265,12 @@ class LiveAnalyst:
 
         Un fallo de red acá no impide arrancar: se sigue con lo que haya en DB
         y las guardas de observabilidad y contigüidad deciden si esa serie
-        sirve para pronosticar.
+        sirve para pronosticar. Pero tampoco se descarta — el de velas queda
+        pendiente y se reintenta barra a barra (`_repair_candles`).
         """
         if not self._repair_on_fit:
             return
-        try:
-            resultado = await repair_series(self.symbol, self.timeframe)
-            if resultado["gaps_found"] or resultado["extended"]:
-                logger.info(
-                    "analista: velas al día — {} hueco(s) cerrados, {} nuevas",
-                    resultado["filled"],
-                    resultado["extended"],
-                )
-        except Exception as exc:  # noqa: BLE001 — sin red se sigue con la DB
-            logger.warning("analista: no se pudieron reparar las velas ({})", exc)
+        await self._repair_candles()
 
         if not self.config.use_derivatives:
             return
@@ -289,6 +290,71 @@ class LiveAnalyst:
             logger.info("analista: funding al día — {} fila(s)", report.rows_written)
         except Exception as exc:  # noqa: BLE001
             logger.warning("analista: no se pudo poner al día el funding ({})", exc)
+
+    async def _repair_candles(self) -> bool:
+        """Pone al día la serie de velas. Devuelve False si la red no dejó.
+
+        El fallo se **recuerda** en `_candle_repair_pending` en vez de
+        descartarse, y esa es toda la diferencia con la versión anterior.
+
+        El incidente que lo motivó (2026-09-01, mudanza de casa): el backend
+        arrancó a los pocos segundos de encender el equipo en una red nueva,
+        cuando el DNS todavía no resolvía. Los cuatro intentos de
+        `repair_series` murieron con `getaddrinfo failed`, se logueó un
+        WARNING y la corrida siguió. Cuando la red volvió —un minuto después—
+        el poll REST escribió la vela en curso, y las dos barras del apagón
+        quedaron como hueco interior **para siempre**: `--resume` avanza desde
+        la última vela en DB y no vuelve a mirar hacia atrás. El analista no
+        emitió una sola barra hasta que se corrió el `--repair` a mano.
+
+        La ironía es la que ordena el diseño: el arranque tras mover el equipo
+        es a la vez el momento en que la red es menos probable que esté, y el
+        único en que esta reparación es imprescindible. Una sola pasada, justo
+        ahí, es la peor política posible.
+
+        Las otras dos series de `_repair` ya tenían su reintento y por eso
+        nunca mostraron el problema: los derivados los reescribe el scheduler
+        del feed cada 30 min y `_refresh_context` los relee en cada barra; el
+        funding lo reingesta `_maybe_ingest_funding` cuando se acerca a su
+        tolerancia. Las velas eran la única sin camino de vuelta.
+
+        Un éxito de red cierra lo pendiente aunque queden huecos sin llenar:
+        que Binance no devuelva un rango es un hecho de los datos —lo reporta
+        `repair_series` y lo vigila `_assert_tail_contiguous`—, y reintentarlo
+        cada 15 minutos sería rafaguear REST contra la regla 7.
+        """
+        try:
+            resultado = await repair_series(self.symbol, self.timeframe)
+        except Exception as exc:  # noqa: BLE001 — sin red se sigue con la DB
+            self._candle_repair_pending = True
+            logger.warning(
+                "analista: no se pudieron reparar las velas ({}) — "
+                "pendiente, se reintenta en la próxima barra",
+                exc,
+            )
+            return False
+
+        self._candle_repair_pending = False
+        if resultado["gaps_found"] or resultado["extended"]:
+            logger.info(
+                "analista: velas al día — {} hueco(s) cerrados, {} nuevas",
+                resultado["filled"],
+                resultado["extended"],
+            )
+        return True
+
+    async def _retry_candle_repair(self) -> bool:
+        """Reintenta la reparación pendiente. True si además resincronizó.
+
+        Si la reparación escribió velas, lo hizo **en el medio** de la serie:
+        la de memoria quedó vieja y agregarle la barra nueva encima
+        arrastraría el hueco. Por eso se relee de la DB, que es la autoridad,
+        con el mismo `_resync` que usa `_compute_and_heal`.
+        """
+        if not await self._repair_candles():
+            return False
+        await asyncio.to_thread(self._resync)
+        return True
 
     def _replay_cone_state(self) -> None:
         """Devuelve al cono el estado de ACI que ya había ganado (ver tracker)."""
@@ -338,15 +404,30 @@ class LiveAnalyst:
                     "se recupera de la DB al terminar"
                 )
                 return
+            # Si la reparación del arranque se quedó sin red, este es el
+            # reintento: la barra nueva es la señal de que el reloj avanzó y
+            # la red bien puede haber vuelto.
+            resincronizado = False
+            if self._candle_repair_pending:
+                resincronizado = await self._retry_candle_repair()
+
             appended = _append_candle(self._inputs.series, kline)
             if appended is None:
-                return  # vela repetida o fuera de orden: el hub ya la reportó
-            self._inputs = AnalystInputs(
-                series=appended,
-                derivatives=self._inputs.derivatives,
-                funding=self._inputs.funding,
-                book=self._inputs.book,
-            )
+                # Vela repetida o fuera de orden: el hub ya la reportó. Salvo
+                # que venga de resincronizar, donde la DB puede traerla ya
+                # escrita: entonces no es un duplicado sino la misma barra por
+                # el otro camino, y hay que analizarla igual.
+                if not resincronizado or (
+                    int(self._inputs.series.open_time[-1]) != kline.open_time
+                ):
+                    return
+            else:
+                self._inputs = AnalystInputs(
+                    series=appended,
+                    derivatives=self._inputs.derivatives,
+                    funding=self._inputs.funding,
+                    book=self._inputs.book,
+                )
             self._bars_since_fit += 1
             await self._refresh_context()
 
