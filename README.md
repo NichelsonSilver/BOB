@@ -183,6 +183,77 @@ The volatility target, by contrast, holds up across all three variants
 
 ---
 
+## Results and diagnostics
+
+The figures below are **drawn from the committed artifact**
+`backend/artifacts/ETHUSDT-15m-full-20260825153235.json` — the `full` run,
+96 features, 69,119 bars — and nothing is recomputed to produce them. Regenerate
+them from the same file at any time:
+
+```bash
+cd backend
+uv pip install -e ".[viz]"                   # optional group; NOT a core dependency
+uv run python scripts/plot_diagnostics.py \
+    artifacts/ETHUSDT-15m-full-20260825153235.json
+```
+
+The script reads only the artifact and **fails naming the missing field** rather
+than drawing an empty chart. Every figure carries its run id, date range and
+sample count in the footer: a figure without provenance is not evidence.
+
+### The directional target — ❌ did not pass the gate
+
+![Reliability diagram of the directional target](docs/figures/reliability_direction.png)
+
+Predicted probability vs observed frequency, per 10pp bucket, for both
+directions. **The model calibrates and does not discriminate**: the points sit
+on the diagonal (calibration error 5.8pp long / 1.7pp short, under the 10pp
+threshold) but they never leave a narrow band around the base rate — AUC 0.509
+and 0.515 against a threshold of 0.55, with negative BSS. The inset shows the
+full 0–100% range, which is where the collapse is visible. **The gate requires
+both criteria, so this target is not enabled**: it is displayed greyed out and
+labelled "experimental", and BOB emits no directional signals from it. Buckets
+with n<20 (hollow circle) are reported but excluded from the criterion.
+
+![Permutation importance of the directional target](docs/figures/permutation_importance_direction.png)
+
+Top 20 features by permutation importance — **also the directional target**
+(Δ Brier over the last `long` fold), not the volatility one: the committed
+artifacts contain no permutation importance for the volatility target, and
+labelling this figure as such would credit the target that passed with the
+evidence of the one that did not. It describes what a model that still fails to
+discriminate was leaning on, and it is the same trap as the ablation above:
+positive permutation importance is not out-of-sample gain.
+
+### The volatility target and the cone — ✅ validated
+
+![Mincer-Zarnowitz regression of the volatility target](docs/figures/mincer_zarnowitz_volatility.png)
+
+Mincer-Zarnowitz: the fitted α (bias) and β (efficiency) of each model. The GBM
+lands at α≈0 with β=1.06, essentially on the diagonal; EWMA and GARCH stay at
+β≈0.53, attenuating more than half the signal. These are the **fitted
+regression lines**, not a scatter — the artifact stores (α, β), not per-sample
+predictions, and drawing a point cloud would be inventing one.
+
+![RMSE and QLIKE against the econometric baselines](docs/figures/baselines_volatility.png)
+
+RMSE and QLIKE against the three baselines, with the Diebold-Mariano p-values
+annotated. The GBM wins on both metrics, with **p < 0.0001 against EWMA and
+HAR-RV**. DM against GARCH was not run in this experiment, and the bar says so
+instead of leaving the gap silent. An interactive version with per-model hover
+detail is at [`docs/figures/baselines_volatility.html`](docs/figures/baselines_volatility.html)
+(self-contained, ~4 MB — open it locally; GitHub will not render it inline).
+
+![Conformal coverage vs nominal](docs/figures/conformal_coverage.png)
+
+Empirical coverage of the price cone against the nominal level. **CQR + ACI
+tracks the nominal to within 0.2pp** at both levels; the Gaussian ±zσ band
+under-covers by 4.1pp at 95%, which is the expensive error — it promises a cone
+the price crosses more often than stated — and its Winkler score (0.084 vs
+0.057) prices that in.
+
+---
+
 ## How the models are implemented
 
 An explicit design decision: **the econometric baselines and the inference
@@ -395,6 +466,8 @@ All design documents are in Spanish, the working language of the project.
 - `docs/RUNBOOK_FASE5.md` — how to run the forward validation run
 - `docs/HANDOFF_FASE1.md` — state at the close of Phase 0 and environment gotchas
 - `backend/artifacts/*.txt` — the gate reports, committed
+- `docs/figures/` — the diagnostic figures, regenerated from those artifacts
+  by `backend/scripts/plot_diagnostics.py`
 
 ## Non-negotiable rules
 
