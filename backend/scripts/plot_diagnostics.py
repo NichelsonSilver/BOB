@@ -53,6 +53,12 @@ from matplotlib.axes import Axes  # noqa: E402
 from matplotlib.figure import Figure  # noqa: E402
 from matplotlib.patches import Rectangle  # noqa: E402
 
+# La variante se lee de la CONFIG del artefacto, no del nombre del archivo, y
+# se reutiliza el helper de compare.py en vez de reimplementarlo: ya aprendio
+# que parsear por posicion del nombre se rompe (al agregar el estimador de
+# volatilidad, `parts[-2]` empezo a devolver `xgb`). Dos implementaciones de
+# esto divergen; una sola, no.
+from bob.backtest.compare import _variant_from_config  # noqa: E402
 from bob.models.experiment import (  # noqa: E402
     GATE_MAX_CALIBRATION_ERROR_PP,
     GATE_MIN_AUC,
@@ -241,8 +247,14 @@ def _show(path: Path) -> str:
         return str(path)
 
 
-def _save(fig: Figure, outdir: Path, name: str, dpi: int) -> None:
-    path = outdir / name
+def _save(fig: Figure, outdir: Path, stem: str, meta: dict[str, Any], dpi: int) -> None:
+    """Guarda como `<stem>_<variante>.png`.
+
+    El sufijo no es cosmetico: dibujar dos runs en el mismo directorio sin el
+    lo unico que deja es el ultimo, y con los dos README apuntando al mismo
+    archivo nadie se entera de cual esta viendo.
+    """
+    path = outdir / f"{stem}_{meta['slug']}.png"
     fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor=SURFACE)
     plt.close(fig)
     print(f"  OK  {_show(path)}")
@@ -281,20 +293,26 @@ def _draw_reliability_panel(
             zorder=4,
         )
         if zoomed:
-            # Alternar arriba/abajo: los buckets caen casi encima uno del otro,
-            # y en una sola banda vertical los rotulos se pisan.
-            for i, (x, y, n, bucket) in enumerate(zip(xs, ys, ns, solid, strict=True)):
+            # Tabla en la esquina, no un rotulo por punto: la cantidad de
+            # buckets depende del run —2 en `full`, 5 en `price+deriv`— y
+            # cualquier esquema de offsets por punto se pisa en cuanto hay mas
+            # de dos. El triangulo bajo la diagonal siempre esta vacio.
+            lines = ["dijo   acertó          n     error"]
+            for x, y, n, bucket in zip(xs, ys, ns, solid, strict=True):
                 err = _finite(need(bucket, "error_pp", where=where), f"{where}.error_pp")
-                above = i % 2 == 1
-                ax.annotate(
-                    f"dijo {x:.0%} → acertó {y:.0%}\nn={n:,} · error {err:.1f}pp",
-                    (x, y),
-                    textcoords="offset points",
-                    xytext=(0, 20 if above else -34),
-                    ha="center",
-                    fontsize=8,
-                    color=INK_2,
-                )
+                lines.append(f"{x:>4.0%} → {y:>5.0%}   {n:>8,}   {err:>5.1f}pp")
+            ax.text(
+                0.985,
+                0.03,
+                "\n".join(lines),
+                transform=ax.transAxes,
+                fontsize=8,
+                color=INK_2,
+                family="monospace",  # columnas que tienen que alinearse
+                ha="right",
+                va="bottom",
+                linespacing=1.5,
+            )
 
     for bucket in thin:
         x = _finite(need(bucket, "mean_predicted", where=where), where)
@@ -362,11 +380,15 @@ def plot_reliability(doc: dict[str, Any], meta: dict[str, Any], outdir: Path, dp
             va="bottom",
         )
         ax.text(
-            zlo + (zhi - zlo) * 0.02,
-            base_rate + (zhi - zlo) * 0.015,
+            # A la derecha: por la izquierda el recuadro de contexto se le monta
+            # encima cuando la tasa base cae en la banda alta del eje, que es lo
+            # que pasa en `price+deriv` short.
+            zhi - (zhi - zlo) * 0.02,
+            base_rate + (zhi - zlo) * 0.012,
             f"tasa base {base_rate:.1%}",
             color=MUTED,
             fontsize=8.5,
+            ha="right",
         )
 
         axins = ax.inset_axes((0.06, 0.61, 0.34, 0.35))
@@ -443,7 +465,7 @@ def plot_reliability(doc: dict[str, Any], meta: dict[str, Any], outdir: Path, dp
         f"Buckets fijos de 10pp; el área del punto es el n del bucket. Los buckets con "
         f"n<{MIN_BUCKET_N} (círculo hueco) se reportan pero no entran al criterio de calibración.",
     )
-    _save(fig, outdir, "reliability_direction.png", dpi)
+    _save(fig, outdir, "reliability_direction", meta, dpi)
 
 
 # ==========================================================================
@@ -561,7 +583,7 @@ def plot_mincer_zarnowitz(
         f"El eje llega a 3·σ̄ con σ̄={sigma_bar:.5f}, deducida del ancho medio de la banda "
         "gaussiana al 95% (ancho = 2zσ).",
     )
-    _save(fig, outdir, "mincer_zarnowitz_volatility.png", dpi)
+    _save(fig, outdir, "mincer_zarnowitz_volatility", meta, dpi)
 
 
 # ==========================================================================
@@ -673,7 +695,7 @@ def plot_baselines(doc: dict[str, Any], meta: dict[str, Any], outdir: Path, dpi:
         f"{int(need(doc, 'volatility', 'n_samples', where='baselines')):,} predicciones "
         "out-of-sample.",
     )
-    _save(fig, outdir, "baselines_volatility.png", dpi)
+    _save(fig, outdir, "baselines_volatility", meta, dpi)
 
 
 # ==========================================================================
@@ -798,7 +820,7 @@ def plot_coverage(doc: dict[str, Any], meta: dict[str, Any], outdir: Path, dpi: 
         "95%): menor es mejor.",
     )
     _footer(ax, meta, f"{rows[0][1]:,} predicciones out-of-sample.")
-    _save(fig, outdir, "conformal_coverage.png", dpi)
+    _save(fig, outdir, "conformal_coverage", meta, dpi)
 
 
 # ==========================================================================
@@ -847,7 +869,7 @@ def plot_importance(doc: dict[str, Any], meta: dict[str, Any], outdir: Path, dpi
         title_size=12.5,
     )
     _footer(ax, meta, "Permutación sobre datos de TEST (3 repeticiones), nunca de train.")
-    _save(fig, outdir, "permutation_importance_direction.png", dpi)
+    _save(fig, outdir, "permutation_importance_direction", meta, dpi)
 
 
 # ==========================================================================
@@ -963,7 +985,7 @@ def plot_baselines_interactive(
         font={"size": 10.5, "color": MUTED},
     )
 
-    path = outdir / "baselines_volatility.html"
+    path = outdir / f"baselines_volatility_{meta['slug']}.html"
     fig.write_html(str(path), include_plotlyjs=plotly_js, full_html=True)
     size_mb = path.stat().st_size / 1e6
     modo = "autocontenido" if plotly_js == "inline" else "plotly.js desde CDN"
@@ -971,7 +993,638 @@ def plot_baselines_interactive(
 
 
 # ==========================================================================
+# (f) Estabilidad por fold — lo que el pooled esconde
+# ==========================================================================
+DIR_COLOR = {"long": "#2a78d6", "short": "#eb6834"}
+
+
+def _folds_by_direction(doc: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    folds = need(doc, "folds", where="folds")
+    if not isinstance(folds, list) or not folds:
+        raise ArtifactError("folds: viene vacio o no es una lista")
+    out: dict[str, list[dict[str, Any]]] = {}
+    for row in folds:
+        out.setdefault(str(need(row, "direction", where="folds")), []).append(row)
+    return out
+
+
+def _upper_first(text: str) -> str:
+    """Mayuscula inicial sin tocar el resto: `.capitalize()` convertiria AUC en Auc."""
+    return text[:1].upper() + text[1:]
+
+
+def _crossings(
+    by_dir: dict[str, list[dict[str, Any]]], dirs: list[str], key: str, threshold: float
+) -> list[tuple[int, str]]:
+    """(numero de fold, direccion) de los folds que cruzan el umbral por su cuenta."""
+    out: list[tuple[int, str]] = []
+    for direction in dirs:
+        for i, row in enumerate(by_dir[direction], start=1):
+            if _finite(need(row, key, where="folds"), f"folds.{key}") > threshold:
+                out.append((i, direction))
+    return out
+
+
+def _crossing_phrase(items: list[tuple[int, str]], verbo: str) -> str | None:
+    if not items:
+        return None
+    folds = sorted({i for i, _ in items})
+    dirs = sorted({d for _, d in items})
+    cual = f"el fold {folds[0]}" if len(folds) == 1 else "los folds " + ", ".join(map(str, folds))
+    donde = "en las dos direcciones" if len(dirs) > 1 else f"en {dirs[0]}"
+    return f"{cual} {verbo} {donde}"
+
+
+def plot_fold_stability(doc: dict[str, Any], meta: dict[str, Any], outdir: Path, dpi: int) -> None:
+    by_dir = _folds_by_direction(doc)
+    dirs = [d for d in ("long", "short") if d in by_dir]
+    if not dirs:
+        raise ArtifactError("folds: no hay filas de 'long' ni de 'short'")
+
+    fig, axes = plt.subplots(1, 2, figsize=(13.4, 5.8))
+    panels = (
+        (axes[0], "auc", "AUC por fold", GATE_MIN_AUC, "umbral del gate", True),
+        (
+            axes[1],
+            "calibration_error_pp",
+            "Error de calibración por fold (pp)",
+            GATE_MAX_CALIBRATION_ERROR_PP,
+            "umbral del gate",
+            False,
+        ),
+    )
+
+    for ax, key, nice, threshold, thr_label, higher_is_better in panels:
+        for direction in dirs:
+            rows = by_dir[direction]
+            xs = list(range(1, len(rows) + 1))
+            ys = [_finite(need(r, key, where="folds"), f"folds.{key}") for r in rows]
+            ax.plot(xs, ys, color=DIR_COLOR[direction], lw=2.0, zorder=3, label=direction)
+            ax.scatter(
+                xs,
+                ys,
+                s=110,
+                color=DIR_COLOR[direction],
+                edgecolor=SURFACE,
+                linewidth=2.0,
+                zorder=4,
+            )
+            # El fold que cruza el umbral por su cuenta se marca. Es el punto
+            # de la figura: con ese fold solo, el gate se declararia aprobado.
+            for x, y in zip(xs, ys, strict=True):
+                crosses = y > threshold if higher_is_better else y > threshold
+                if not crosses:
+                    continue
+                ax.scatter([x], [y], s=300, facecolor="none", edgecolor=CRITICAL, lw=1.8, zorder=5)
+                ax.annotate(
+                    f"{y:.3f} ({direction})" if higher_is_better else f"{y:.1f}pp ({direction})",
+                    (x, y),
+                    textcoords="offset points",
+                    # long abajo, short arriba: en el fold 6 los dos valores
+                    # caen casi en el mismo punto y en una sola banda se pisan.
+                    xytext=(0, 16 if direction == "short" else -26),
+                    ha="center",
+                    fontsize=8.5,
+                    color=CRITICAL,
+                    fontweight="bold",
+                )
+
+            pooled_node = need(doc, "directions", direction, "model", where="folds")
+            pooled = _finite(
+                need(
+                    pooled_node,
+                    "auc" if key == "auc" else "mean_calibration_error_pp",
+                    where="folds",
+                ),
+                "pooled",
+            )
+            ax.axhline(pooled, color=DIR_COLOR[direction], lw=1.0, ls=(0, (2, 3)), zorder=2)
+            ax.annotate(
+                f"pooled {direction} = {pooled:.3f}"
+                if key == "auc"
+                else f"pooled {direction} = {pooled:.1f}pp",
+                (len(rows) + 0.06, pooled),
+                fontsize=8,
+                color=DIR_COLOR[direction],
+                va="center",
+                annotation_clip=False,
+            )
+
+        ax.axhline(threshold, color=CRITICAL, lw=1.4, ls=(0, (5, 4)), zorder=2)
+        ax.annotate(
+            f"{thr_label} ({threshold:.2f})"
+            if higher_is_better
+            else f"{thr_label} ({threshold:.0f}pp)",
+            (0.62, threshold),
+            fontsize=8.5,
+            color=CRITICAL,
+            va="bottom",
+        )
+        if higher_is_better:
+            ax.axhline(0.5, color=MUTED, lw=1.0, zorder=1)
+            ax.annotate("0.50 = moneda al aire", (0.62, 0.5), fontsize=8, color=MUTED, va="top")
+
+        seen = [
+            _finite(need(r, key, where="folds"), key)
+            for direction in dirs
+            for r in by_dir[direction]
+        ] + [threshold]
+        span = (max(seen) - min(seen)) or 1.0
+        # El error de calibracion no puede ser negativo: un eje que baja a -2pp
+        # sugiere un rango que no existe.
+        floor = min(seen) - span * 0.22
+        ax.set_ylim(max(floor, 0.0) if key != "auc" else floor, max(seen) + span * 0.20)
+
+        n_folds = len(by_dir[dirs[0]])
+        ax.set_xticks(list(range(1, n_folds + 1)))
+        ax.set_xticklabels(
+            [
+                f"{i}\n{need(by_dir[dirs[0]][i - 1], 'test_from', where='folds')[:7]}"
+                for i in range(1, n_folds + 1)
+            ],
+            fontsize=8.5,
+        )
+        ax.set_xlim(0.55, n_folds + 0.45)
+        ax.set_xlabel("fold de test (inicio del bloque)")
+        ax.annotate(
+            nice,
+            xy=(0, 1),
+            xycoords="axes fraction",
+            textcoords="offset points",
+            xytext=(0, 8),
+            ha="left",
+            va="bottom",
+            fontsize=11,
+            color=INK,
+            annotation_clip=False,
+        )
+        ax.grid(axis="x", visible=False)
+        ax.set_axisbelow(True)
+        ax.legend(loc="lower left" if higher_is_better else "upper left", ncol=2, fontsize=9.5)
+
+    # El texto se DEDUCE de los cruces medidos. Escrito a mano describia el run
+    # `full` y quedaba falso en `price+deriv`, donde ningun fold falla la
+    # calibracion — un pie de figura que miente sobre su propia figura.
+    cruces = {
+        "AUC": _crossings(by_dir, dirs, "auc", GATE_MIN_AUC),
+        "calib": _crossings(by_dir, dirs, "calibration_error_pp", GATE_MAX_CALIBRATION_ERROR_PP),
+    }
+    frases = [
+        p
+        for p in (
+            _crossing_phrase(cruces["AUC"], "supera el AUC exigido"),
+            _crossing_phrase(cruces["calib"], "falla la calibración"),
+        )
+        if p
+    ]
+    if len(frases) == 2:
+        subtitulo = "Los dos umbrales del gate se cruzan — cada uno en un fold distinto"
+    elif len(frases) == 1:
+        subtitulo = "Un umbral del gate se cruza en un fold suelto"
+    else:
+        subtitulo = "Ningún fold cruza los umbrales por su cuenta, pero el rango es amplio"
+    detalle = (
+        (
+            _upper_first(", y ".join(frases)) + ": quedarse con un fold solo deja declarar\n"
+            "aprobado o reprobado lo que uno quiera."
+        )
+        if frases
+        else "Ninguno cruza un umbral por su cuenta, pero el rango entre el mejor y el peor\n"
+        "fold es varias veces la distancia que separa al pooled de su umbral."
+    )
+
+    fig.subplots_adjust(right=0.87, wspace=0.30)
+    _header(
+        axes[0],
+        "El número pooled esconde la varianza entre folds\n" + subtitulo,
+        "Cada fold es un período de mercado distinto y el modelo se comporta distinto "
+        "en cada uno.\n"
+        + detalle
+        + "\nPor eso el gate se evalúa sobre las predicciones pooled de todos los folds, "
+        "y no sobre el mejor de ellos.",
+        pad=32,
+    )
+    _footer(axes[0], meta, "Círculo rojo = el fold cruza ese umbral por su cuenta.")
+    _save(fig, outdir, "fold_stability", meta, dpi)
+
+
+# ==========================================================================
+# (g) Qué compra y qué cuesta la calibración isotónica
+# ==========================================================================
+def plot_calibration_effect(
+    doc: dict[str, Any], meta: dict[str, Any], outdir: Path, dpi: int
+) -> None:
+    dirs = need(doc, "directions", where="isotonica")
+    order = [d for d in ("long", "short") if d in dirs]
+    if not order:
+        raise ArtifactError("isotonica: 'directions' no trae ni 'long' ni 'short'")
+
+    fig, raw_axes = plt.subplots(1, len(order), figsize=(12.6, 6.2))
+    axes = list(raw_axes) if len(order) > 1 else [raw_axes]
+
+    for ax, direction in zip(axes, order, strict=True):
+        where = f"isotonica[{direction}]"
+        ax.plot([0, 1], [0, 1], color=AXIS, lw=1.4, zorder=1)
+        ax.text(
+            0.985,
+            0.99,
+            "calibración ideal",
+            color=MUTED,
+            fontsize=8,
+            rotation=45,
+            rotation_mode="anchor",
+            ha="right",
+            va="bottom",
+        )
+
+        notes: list[str] = []
+        for key, label, color in (
+            ("uncalibrated", "sin calibrar", GAUSS_COLOR),
+            ("model", "con isotónica", CQR_COLOR),
+        ):
+            node = need(dirs, direction, key, where=where)
+            buckets = [
+                b
+                for b in need(node, "buckets", where=where)
+                if int(need(b, "n", where=where)) >= MIN_BUCKET_N
+            ]
+            if not buckets:
+                raise ArtifactError(f"{where}.{key}: ningun bucket llega a n>={MIN_BUCKET_N}")
+            xs = [_finite(need(b, "mean_predicted", where=where), where) for b in buckets]
+            ys = [_finite(need(b, "observed_rate", where=where), where) for b in buckets]
+            ax.plot(xs, ys, color=color, lw=2.2, zorder=3, label=label)
+            ax.scatter(xs, ys, s=90, color=color, edgecolor=SURFACE, linewidth=2.0, zorder=4)
+            worst = max(_finite(need(b, "error_pp", where=where), where) for b in buckets)
+            auc = _finite(need(node, "auc", where=where), f"{where}.auc")
+            notes.append(f"{label}:  AUC {auc:.3f}   ·   peor bucket {worst:.1f}pp")
+
+        ax.set_xlim(-0.02, 1.02)
+        ax.set_ylim(-0.02, 1.02)
+        ax.set_aspect("equal")
+        ax.set_xlabel("probabilidad predicha")
+        ax.set_ylabel("frecuencia observada")
+        ax.legend(loc="lower right", fontsize=9.5)
+        ax.annotate(
+            f"{direction.upper()}\n" + "\n".join(notes),
+            xy=(0.5, 1),
+            xycoords="axes fraction",
+            textcoords="offset points",
+            xytext=(0, 10),
+            ha="center",
+            va="bottom",
+            fontsize=10,
+            color=INK,
+            annotation_clip=False,
+        )
+
+    _header(
+        axes[0],
+        "Qué compra la calibración isotónica, y qué cuesta\n"
+        "Arregla la fiabilidad y degrada el ranking — las dos cosas, medidas",
+        "Sin calibrar, el modelo promete hasta 72% donde acierta 45%. La isotónica lo devuelve "
+        "a la diagonal, que es lo que\nhace verificable la frase «cuando digo 70%, acierto 70%». "
+        "El precio: siendo monótona no debería tocar el AUC, pero\naplana tramos enteros, y los "
+        "empates que crea cuestan resolución de ranking. Ninguna de las dos versiones\n"
+        "discrimina lo suficiente, así que el veredicto no cambia — pero el costo queda escrito.",
+        pad=54,
+    )
+    _footer(
+        axes[0],
+        meta,
+        f"Solo buckets con n>={MIN_BUCKET_N}, los mismos que usa el criterio de calibración.",
+    )
+    _save(fig, outdir, "calibration_effect", meta, dpi)
+
+
+# ==========================================================================
+# (h) La brecha de EV — por qué no se emite ninguna señal
+# ==========================================================================
+def plot_ev_gap(doc: dict[str, Any], meta: dict[str, Any], outdir: Path, dpi: int) -> None:
+    dirs = need(doc, "directions", where="brecha-ev")
+    order = [d for d in ("long", "short") if d in dirs]
+    if not order:
+        raise ArtifactError("brecha-ev: 'directions' no trae ni 'long' ni 'short'")
+
+    fig, ax = plt.subplots(figsize=(11.0, 3.9))
+    for lane, direction in enumerate(order):
+        where = f"brecha-ev[{direction}]"
+        model = need(dirs, direction, "model", where=where)
+        base = _finite(need(model, "base_rate", where=where), f"{where}.base_rate")
+        ceiling = max(
+            _finite(need(b, "mean_predicted", where=where), where)
+            for b in need(model, "buckets", where=where)
+            if int(need(b, "n", where=where)) >= MIN_BUCKET_N
+        )
+        breakeven = _finite(
+            need(dirs, direction, "breakeven_prob", where=where), f"{where}.breakeven_prob"
+        )
+        n_signals = int(need(dirs, direction, "trading", "n_signals", where=where))
+
+        ax.plot(
+            [ceiling, breakeven],
+            [lane, lane],
+            color=CRITICAL,
+            lw=8,
+            alpha=0.18,
+            zorder=2,
+            solid_capstyle="butt",
+        )
+        ax.annotate(
+            f"brecha {(breakeven - ceiling) * 100:.1f}pp — {n_signals} señales emitidas",
+            ((ceiling + breakeven) / 2, lane - 0.20),
+            ha="center",
+            va="bottom",
+            fontsize=9.5,
+            color=CRITICAL,
+        )
+
+        for value, label, color, marker in (
+            (base, "tasa base", MUTED, "o"),
+            (ceiling, "techo del modelo", CQR_COLOR, "o"),
+            (breakeven, "equilibrio de EV", INK, "D"),
+        ):
+            ax.scatter(
+                [value],
+                [lane],
+                s=170,
+                color=color,
+                marker=marker,
+                edgecolor=SURFACE,
+                linewidth=2.0,
+                zorder=4,
+                label=label if lane == 0 else None,
+            )
+            ax.annotate(
+                f"{value:.1%}",
+                (value, lane + 0.16),
+                ha="center",
+                va="top",
+                fontsize=9,
+                color=color if color != MUTED else INK_2,
+            )
+
+    ax.set_yticks(list(range(len(order))))
+    ax.set_yticklabels([d.upper() for d in order], fontsize=11)
+    ax.set_ylim(len(order) - 0.35, -0.45)
+    ax.set_xlim(0.38, 0.70)
+    ax.xaxis.set_major_formatter(lambda v, _pos: f"{v:.0%}")
+    ax.set_xlabel("probabilidad de que el setup toque TP antes que SL")
+    ax.grid(axis="y", visible=False)
+    ax.set_axisbelow(True)
+    ax.legend(loc="lower left", ncol=3, fontsize=9.5)
+    _header(
+        ax,
+        "Por qué no se emite ninguna señal: el techo del modelo no llega al equilibrio\n"
+        "No es que el umbral esté mal puesto — es que nada lo cruza",
+        "El equilibrio es la probabilidad a la que el EV neto de costos vale cero: por debajo, "
+        "operar pierde plata en\nesperanza. La probabilidad más alta que el modelo llega a emitir "
+        "queda por debajo, así que ningún setup es\noperable a ningún umbral que respete el EV. "
+        "Bajar el umbral no crea señales buenas: crea señales de EV negativo.",
+    )
+    _footer(
+        ax,
+        meta,
+        "Techo = media del bucket más alto con n>=20. El equilibrio incluye fees, slippage y "
+        "funding estimado.",
+    )
+    _save(fig, outdir, "ev_gap", meta, dpi)
+
+
+# ==========================================================================
+# (i) Diseño del walk-forward purgado
+# ==========================================================================
+def plot_walkforward(doc: dict[str, Any], meta: dict[str, Any], outdir: Path, dpi: int) -> None:
+    import datetime as dt
+
+    by_dir = _folds_by_direction(doc)
+    rows = by_dir.get("long") or next(iter(by_dir.values()))
+
+    def iso(text: Any) -> dt.date:
+        return dt.date.fromisoformat(str(text)[:10])
+
+    # Eje en dias desde el inicio del run, no en fechas de matplotlib:
+    # `matplotlib.dates` no esta tipada y el proyecto corre mypy en strict.
+    # Las marcas llevan la fecha real, asi que no se pierde nada.
+    origin = iso(need(doc, "date_from", where="walk-forward"))
+
+    def day(text: Any) -> float:
+        return float((iso(text) - origin).days)
+
+    start = 0.0
+    fig, ax = plt.subplots(figsize=(11.6, 5.0))
+
+    for i, row in enumerate(rows):
+        t0 = day(need(row, "test_from", where="walk-forward"))
+        t1 = day(need(row, "test_to", where="walk-forward"))
+        n_train = int(need(row, "n_train", where="walk-forward"))
+        n_test = int(need(row, "n_test", where="walk-forward"))
+        ax.barh(i, t0 - start, left=start, height=0.62, color=DIMMED, zorder=3)
+        ax.barh(i, t1 - t0, left=t0, height=0.62, color=CQR_COLOR, zorder=3)
+        ax.annotate(
+            f"train {n_train:,}",
+            ((start + t0) / 2, i),
+            ha="center",
+            va="center",
+            fontsize=8.5,
+            color=INK_2,
+        )
+        ax.annotate(
+            f"test {n_test:,}",
+            (t1, i),
+            textcoords="offset points",
+            xytext=(8, 0),
+            va="center",
+            fontsize=8.5,
+            color=CQR_COLOR,
+        )
+
+    ax.set_yticks(list(range(len(rows))))
+    ax.set_yticklabels([f"fold {i + 1}" for i in range(len(rows))], fontsize=10)
+    ax.set_ylim(len(rows) - 0.4, -0.6)
+    ticks = [0.0] + [day(need(r, "test_from", where="walk-forward")) for r in rows]
+    ticks.append(day(need(rows[-1], "test_to", where="walk-forward")))
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(
+        [(origin + dt.timedelta(days=int(t))).strftime("%Y-%m") for t in ticks],
+        fontsize=8.5,
+        rotation=30,
+        ha="right",
+    )
+    ax.set_xlabel("tiempo (marcas = frontera de cada bloque de test)")
+    ax.grid(axis="y", visible=False)
+    ax.set_axisbelow(True)
+    _header(
+        ax,
+        "Diseño del walk-forward: ventana expansiva, test siempre en el futuro\n"
+        f"{len(rows)} folds · el train crece de "
+        f"{int(need(rows[0], 'n_train', where='walk-forward')):,} a "
+        f"{int(need(rows[-1], 'n_train', where='walk-forward')):,} barras · test fijo en "
+        f"{int(need(rows[0], 'n_test', where='walk-forward')):,}",
+        "Cada modelo se entrena solo con barras anteriores a su bloque de test, y las métricas "
+        "del gate se calculan\nconcatenando los test de los seis folds: ninguna predicción "
+        "reportada la vio su propio modelo al entrenar.",
+    )
+    _footer(
+        ax,
+        meta,
+        "El train se dibuja hasta el inicio de su test; `n_train` es menor que las barras de ese "
+        "tramo por la purga, el\nembargo y el warm-up de las ventanas largas. El artefacto no "
+        "guarda el ancho de la purga, así que no se dibuja a escala.",
+    )
+    _save(fig, outdir, "walkforward_design", meta, dpi)
+
+
+# ==========================================================================
+# (j) Ablación entre variantes — CROSS-RUN
+# ==========================================================================
+_ABLATION_ORDER = ("price", "price+deriv", "full", "full+near")
+
+
+def plot_ablation(docs: list[tuple[Path, dict[str, Any]]], outdir: Path, dpi: int) -> None:
+    """Compara variantes. Exige que sean comparables, o se niega.
+
+    Dos runs sobre muestras distintas no son una ablacion: son dos
+    experimentos. Es exactamente la degradacion silenciosa que documenta el
+    README —`load_series` lee lo que haya en la DB, y la DB crece sola—, asi
+    que aca se verifica en vez de asumirse.
+    """
+    runs = []
+    for path, doc in docs:
+        cfg = need(doc, "config", where=f"ablacion[{path.name}]")
+        runs.append(
+            {
+                "variant": _variant_from_config(cfg, path.stem),
+                "run_id": path.stem,
+                "n_bars": int(need(doc, "n_bars", where="ablacion")),
+                "n_features": int(need(doc, "n_features", where="ablacion")),
+                "seed": need(cfg, "seed", where="ablacion"),
+                "n_splits": need(cfg, "n_splits", where="ablacion"),
+                "barrier": json.dumps(need(cfg, "barrier", where="ablacion"), sort_keys=True),
+                "doc": doc,
+            }
+        )
+
+    for field in ("n_bars", "seed", "n_splits", "barrier"):
+        values = {r[field] for r in runs}
+        if len(values) > 1:
+            detalle = ", ".join(f"{r['run_id']}={r[field]}" for r in runs)
+            raise ArtifactError(
+                f"ablacion: los runs no son comparables, difieren en '{field}' ({detalle}). "
+                "Una ablacion exige la misma muestra, la misma semilla y las mismas barreras; "
+                "si no, la diferencia que se ve no es la de las familias de features."
+            )
+    if len({r["variant"] for r in runs}) != len(runs):
+        raise ArtifactError(
+            "ablacion: hay dos runs de la misma variante — no hay nada que comparar"
+        )
+
+    runs.sort(
+        key=lambda r: (
+            _ABLATION_ORDER.index(str(r["variant"]))
+            if r["variant"] in _ABLATION_ORDER
+            else len(_ABLATION_ORDER)
+        )
+    )
+    labels = [f"{r['variant']}\n{r['n_features']} features" for r in runs]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.4, 5.6))
+    for ax, key, nice, threshold, fmt in (
+        (axes[0], "auc", "AUC out-of-sample", GATE_MIN_AUC, "{:.3f}"),
+        (axes[1], "brier_skill_score", "Brier skill score", GATE_MIN_BSS, "{:+.4f}"),
+    ):
+        seen: list[float] = [threshold]
+        for direction in ("long", "short"):
+            ys = [
+                _finite(
+                    need(r["doc"], "directions", direction, "model", key, where="ablacion"),
+                    f"ablacion.{key}",
+                )
+                for r in runs
+            ]
+            xs = list(range(len(runs)))
+            ax.plot(xs, ys, color=DIR_COLOR[direction], lw=2.2, zorder=3, label=direction)
+            ax.scatter(
+                xs, ys, s=120, color=DIR_COLOR[direction], edgecolor=SURFACE, lw=2.0, zorder=4
+            )
+            seen.extend(ys)
+            for x, y in zip(xs, ys, strict=True):
+                ax.annotate(
+                    fmt.format(y),
+                    (x, y),
+                    textcoords="offset points",
+                    xytext=(0, 12 if direction == "short" else -20),
+                    ha="center",
+                    fontsize=9,
+                    color=INK_2,
+                )
+
+        span = (max(seen) - min(seen)) or 1.0
+        ax.set_ylim(min(seen) - span * 0.26, max(seen) + span * 0.16)
+        ax.axhline(threshold, color=CRITICAL, lw=1.4, ls=(0, (5, 4)), zorder=2)
+        ax.annotate(
+            f"umbral del gate ({fmt.format(threshold)})",
+            (-0.42, threshold),
+            fontsize=8.5,
+            color=CRITICAL,
+            va="bottom",
+        )
+        ax.set_xticks(list(range(len(runs))))
+        ax.set_xticklabels(labels, fontsize=9.5)
+        ax.set_xlim(-0.45, len(runs) - 0.55)
+        ax.annotate(
+            nice,
+            xy=(0, 1),
+            xycoords="axes fraction",
+            textcoords="offset points",
+            xytext=(0, 8),
+            ha="left",
+            va="bottom",
+            fontsize=11,
+            color=INK,
+            annotation_clip=False,
+        )
+        ax.grid(axis="x", visible=False)
+        ax.set_axisbelow(True)
+        ax.legend(loc="lower left", ncol=2, fontsize=9.5)
+
+    fig.subplots_adjust(wspace=0.22)
+    _header(
+        axes[0],
+        "Agregar derivados y libro EMPEORA la discriminación\n"
+        "La hipótesis que motivó la Fase 2b queda refutada con sus propios datos",
+        "La Fase 2b se hizo bajo la premisa de que el gate no pasaba discriminación por FALTA de "
+        "datos de derivados y\nmicroestructura. Se consiguieron 730/730 días de los dos, y el "
+        "resultado empeora — de forma monótona con el\nnúmero de features y en las dos "
+        "direcciones a la vez. Misma muestra, mismos folds, misma semilla: lo único que\ncambia "
+        "son las familias. La causa del fallo no era la disponibilidad de datos.",
+        pad=32,
+    )
+    base = runs[0]["doc"]
+    axes[0].annotate(
+        f"{int(need(base, 'n_bars', where='ablacion')):,} velas · "
+        f"{need(base, 'date_from', where='ablacion')} .. "
+        f"{need(base, 'date_to', where='ablacion')} · "
+        f"semilla {runs[0]['seed']} · {runs[0]['n_splits']} folds purgados\n"
+        + " · ".join(str(r["run_id"]) for r in runs),
+        xy=(0, 0),
+        xycoords="axes fraction",
+        textcoords="offset points",
+        xytext=(0, -64),
+        fontsize=7,
+        color=MUTED,
+        ha="left",
+        va="top",
+        annotation_clip=False,
+    )
+    path = outdir / "ablation_variants.png"
+    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor=SURFACE)
+    plt.close(fig)
+    print(f"  OK  {_show(path)}")
+
+
+# ==========================================================================
 def _meta(doc: dict[str, Any], artifact: Path) -> dict[str, Any]:
+    variant = _variant_from_config(need(doc, "config", where="cabecera"), artifact.stem)
     return {
         "symbol": need(doc, "symbol", where="cabecera"),
         "timeframe": need(doc, "timeframe", where="cabecera"),
@@ -981,7 +1634,23 @@ def _meta(doc: dict[str, Any], artifact: Path) -> dict[str, Any]:
         "n_features": int(need(doc, "n_features", where="cabecera")),
         "n_splits": int(need(doc, "config", "n_splits", where="cabecera")),
         "run_id": artifact.stem,
+        "variant": variant,
+        # `price+deriv` en un nombre de archivo obliga a %2B en el markdown del
+        # README y el link se ve roto. El guion es equivalente y legible.
+        "slug": variant.replace("+", "-"),
     }
+
+
+def _load(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        raise ArtifactError(f"no existe el artefacto '{path}'")
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ArtifactError(f"'{path}' no es JSON valido: {exc}") from exc
+    if not isinstance(doc, dict):
+        raise ArtifactError(f"'{path}' no es un objeto JSON")
+    return doc
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1003,23 +1672,29 @@ def main(argv: list[str] | None = None) -> int:
             "~4 MB por archivo; cdn lo deja en ~30 KB pero exige internet para abrirlo."
         ),
     )
+    parser.add_argument(
+        "--ablation",
+        type=Path,
+        nargs="+",
+        metavar="ARTEFACTO",
+        help=(
+            "artefactos a comparar entre si en la figura de ablacion, nombrados "
+            "explicitamente. Se niega a comparar runs con distinta muestra, semilla, "
+            "folds o barreras: eso no seria una ablacion."
+        ),
+    )
     args = parser.parse_args(argv)
 
-    if not args.artifact.is_file():
-        raise ArtifactError(f"no existe el artefacto '{args.artifact}'")
-    try:
-        doc = json.loads(args.artifact.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ArtifactError(f"'{args.artifact}' no es JSON valido: {exc}") from exc
-    if not isinstance(doc, dict):
-        raise ArtifactError(f"'{args.artifact}' no es un objeto JSON")
-
+    doc = _load(args.artifact)
     meta = _meta(doc, args.artifact)
     args.outdir.mkdir(parents=True, exist_ok=True)
     _style()
 
     print(f"\n  artefacto : {args.artifact}")
-    print(f"  run       : {meta['symbol']} {meta['timeframe']} · {meta['n_features']} features")
+    print(
+        f"  run       : {meta['symbol']} {meta['timeframe']} · variante {meta['variant']} · "
+        f"{meta['n_features']} features"
+    )
     print(f"  salida    : {args.outdir}\n")
 
     plot_reliability(doc, meta, args.outdir, args.dpi)
@@ -1027,9 +1702,19 @@ def main(argv: list[str] | None = None) -> int:
     plot_baselines(doc, meta, args.outdir, args.dpi)
     plot_coverage(doc, meta, args.outdir, args.dpi)
     plot_importance(doc, meta, args.outdir, args.dpi)
+    plot_fold_stability(doc, meta, args.outdir, args.dpi)
+    plot_calibration_effect(doc, meta, args.outdir, args.dpi)
+    plot_ev_gap(doc, meta, args.outdir, args.dpi)
+    plot_walkforward(doc, meta, args.outdir, args.dpi)
     plot_baselines_interactive(doc, meta, args.outdir, args.plotly_js)
 
-    print("\n  listo — 5 PNG + 1 HTML interactivo\n")
+    n_png = 9
+    if args.ablation:
+        print()
+        plot_ablation([(p, _load(p)) for p in args.ablation], args.outdir, args.dpi)
+        n_png += 1
+
+    print(f"\n  listo — {n_png} PNG + 1 HTML interactivo\n")
     return 0
 
 

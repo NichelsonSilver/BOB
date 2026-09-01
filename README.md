@@ -193,17 +193,39 @@ them from the same file at any time:
 ```bash
 cd backend
 uv pip install -e ".[viz]"                   # optional group; NOT a core dependency
+
+# One run -> 9 PNG + 1 interactive HTML, each suffixed with the run's variant
 uv run python scripts/plot_diagnostics.py \
     artifacts/ETHUSDT-15m-full-20260825153235.json
+
+# The cross-run ablation figure, naming the runs to compare explicitly
+uv run python scripts/plot_diagnostics.py \
+    artifacts/ETHUSDT-15m-full-20260825153235.json \
+    --ablation artifacts/ETHUSDT-15m-price-20260825150516.json \
+               artifacts/ETHUSDT-15m-price+deriv-20260825151728.json \
+               artifacts/ETHUSDT-15m-full-20260825153235.json
 ```
 
-The script reads only the artifact and **fails naming the missing field** rather
-than drawing an empty chart. Every figure carries its run id, date range and
-sample count in the footer: a figure without provenance is not evidence.
+Four properties are what make these figures evidence rather than decoration:
+
+- The script reads only the artifact and **fails naming the missing field**
+  rather than drawing an empty chart.
+- Every figure carries its **run id, date range and sample count** in the
+  footer, and its filename carries the variant — two runs never overwrite each
+  other, and no figure is ambiguous about which run produced it.
+- Captions that make a claim about the data **derive it from the data**. The
+  fold-stability subtitle, for one, states which folds cross which threshold by
+  measuring it, so it stays true when pointed at a different run.
+- `--ablation` **refuses to compare runs** that differ in sample, seed, folds or
+  barriers. Runs over different samples are not an ablation, and that
+  degradation is otherwise silent.
+
+The same figures exist for the `price+deriv` run (81 features — the variant that
+runs live) under the `_price-deriv` suffix.
 
 ### The directional target — ❌ did not pass the gate
 
-![Reliability diagram of the directional target](docs/figures/reliability_direction.png)
+![Reliability diagram of the directional target](docs/figures/reliability_direction_full.png)
 
 Predicted probability vs observed frequency, per 10pp bucket, for both
 directions. **The model calibrates and does not discriminate**: the points sit
@@ -215,7 +237,37 @@ both criteria, so this target is not enabled**: it is displayed greyed out and
 labelled "experimental", and BOB emits no directional signals from it. Buckets
 with n<20 (hollow circle) are reported but excluded from the criterion.
 
-![Permutation importance of the directional target](docs/figures/permutation_importance_direction.png)
+![AUC and calibration error per fold](docs/figures/fold_stability_full.png)
+
+**What the pooled number hides.** AUC and calibration error fold by fold. The
+spread straddles both gate thresholds: fold 6 (Jun–Aug 2026) clears AUC 0.55 in
+*both* directions, and fold 3 (Nov 2025–Jan 2026) fails the 10pp calibration
+bound in *both*. Keeping the last fold alone would let you declare the gate
+passed; keeping fold 3 alone would let you declare calibration failed. That the
+two directions move together says this is a period effect and not noise in one
+of them — and it is why the gate is evaluated on the pooled out-of-sample
+predictions of all folds rather than on the best one.
+
+![Effect of isotonic calibration](docs/figures/calibration_effect_full.png)
+
+**What isotonic calibration buys and what it costs — both measured.**
+Uncalibrated, the model promises up to 72% where it hits 45%, worst bucket
+36.6pp. Isotonic pulls it back onto the diagonal, which is what makes "when I
+say 70%, I'm right 70%" verifiable. The price: being a monotone transform it
+should not touch AUC, but it flattens whole segments, and the ties that creates
+cost ranking resolution — 0.528 → 0.509 long, 0.531 → 0.515 short. Neither
+version discriminates enough, so the verdict does not change; the cost goes on
+the record anyway.
+
+![The EV gap](docs/figures/ev_gap_full.png)
+
+**Why zero signals are emitted.** Break-even — the probability at which EV net
+of fees, slippage and funding is zero — sits at 61.8%. The highest probability
+the model ever emits is 52.2% long and 51.4% short, leaving a gap of about 10pp.
+No setup is tradeable at any threshold that respects EV, and lowering the
+threshold does not create good signals: it creates negative-EV ones.
+
+![Permutation importance of the directional target](docs/figures/permutation_importance_direction_full.png)
 
 Top 20 features by permutation importance — **also the directional target**
 (Δ Brier over the last `long` fold), not the volatility one: the committed
@@ -227,7 +279,7 @@ positive permutation importance is not out-of-sample gain.
 
 ### The volatility target and the cone — ✅ validated
 
-![Mincer-Zarnowitz regression of the volatility target](docs/figures/mincer_zarnowitz_volatility.png)
+![Mincer-Zarnowitz regression of the volatility target](docs/figures/mincer_zarnowitz_volatility_full.png)
 
 Mincer-Zarnowitz: the fitted α (bias) and β (efficiency) of each model. The GBM
 lands at α≈0 with β=1.06, essentially on the diagonal; EWMA and GARCH stay at
@@ -235,22 +287,43 @@ lands at α≈0 with β=1.06, essentially on the diagonal; EWMA and GARCH stay a
 regression lines**, not a scatter — the artifact stores (α, β), not per-sample
 predictions, and drawing a point cloud would be inventing one.
 
-![RMSE and QLIKE against the econometric baselines](docs/figures/baselines_volatility.png)
+![RMSE and QLIKE against the econometric baselines](docs/figures/baselines_volatility_full.png)
 
 RMSE and QLIKE against the three baselines, with the Diebold-Mariano p-values
 annotated. The GBM wins on both metrics, with **p < 0.0001 against EWMA and
 HAR-RV**. DM against GARCH was not run in this experiment, and the bar says so
 instead of leaving the gap silent. An interactive version with per-model hover
-detail is at [`docs/figures/baselines_volatility.html`](docs/figures/baselines_volatility.html)
+detail is at [`baselines_volatility_full.html`](docs/figures/baselines_volatility_full.html)
 (self-contained, ~4 MB — open it locally; GitHub will not render it inline).
 
-![Conformal coverage vs nominal](docs/figures/conformal_coverage.png)
+![Conformal coverage vs nominal](docs/figures/conformal_coverage_full.png)
 
 Empirical coverage of the price cone against the nominal level. **CQR + ACI
 tracks the nominal to within 0.2pp** at both levels; the Gaussian ±zσ band
 under-covers by 4.1pp at 95%, which is the expensive error — it promises a cone
 the price crosses more often than stated — and its Winkler score (0.084 vs
 0.057) prices that in.
+
+### Method, and the ablation
+
+![Walk-forward design](docs/figures/walkforward_design_full.png)
+
+The validation design itself: an expanding training window (21,774 → 55,470
+bars) against a fixed 6,740-bar test block that is always in the future. Every
+model sees only bars earlier than its own test block, and the gate metrics
+concatenate the six test blocks — no reported prediction was seen at training
+time by the model that made it. The purge and the embargo are not drawn to
+scale: the artifact does not store their width, and the footer says so.
+
+![Ablation across feature variants](docs/figures/ablation_variants.png)
+
+**The ablation that refuted the Phase 2b hypothesis**, over the same sample, the
+same folds and the same seed — the only thing that changes is the feature
+families. AUC falls monotonically with the feature count in both directions, and
+BSS with it. Phase 2b was carried out on the premise that discrimination failed
+for *lack* of derivatives and microstructure data; 730/730 days of both were
+obtained and the result got slightly worse. The cause of the failure was not
+data availability.
 
 ---
 
