@@ -298,7 +298,11 @@ Get-NetTCPConnection -LocalPort 8000 -State Listen | ForEach-Object { Stop-Proce
 Exactamente el mismo comando de arranque. El analista repara solo:
 
 - cierra los **huecos de velas** del rango caído (`repair_series` pide los
-  huecos interiores uno por uno, porque la descarga incremental los saltaría);
+  huecos interiores uno por uno, porque la descarga incremental los saltaría).
+  Si esa reparación se queda sin red —típico al arrancar recién encendido el
+  equipo, o en una red nueva— **queda pendiente y se reintenta en cada barra
+  cerrada** hasta que la red vuelva; mientras tanto `/api/health` lo dice en
+  `analyst.candle_repair_pending`;
 - pone al día **derivados** (un request trae ~41h de grilla de 5m);
 - pone al día **funding** (su tolerancia de staleness es de 8h exactas);
 - reconstruye el **estado del ACI** del cono desde los registros resueltos, así
@@ -363,6 +367,7 @@ suavizarlo.
 | `analyst.fitted` sigue en `false` tras 5 min | El ajuste falló | Buscar `no pudo arrancar` en el log |
 | `analysis.error` con `columna(s) densas por debajo del 70%` | Una familia de features dejó de llegar | El mensaje nombra las columnas; casi siempre se arregla con `--repair` + reinicio |
 | `analysis.error` con `warm-up` | Huecos de velas en la ventana de contexto | `uv run python -m bob.data.download --symbol ETHUSDT --timeframe 15m --repair` |
+| `analysis.error` con `warm-up` **desde el arranque**, y en el log `no se pudieron reparar las velas` | El backend arrancó antes que la red (equipo recién encendido, red nueva) | Desde el 01-09 se arregla solo en la barra siguiente. Verificar `analyst.candle_repair_pending`: si sigue en `true` barra tras barra, la red no volvió |
 | `descartados por huecos` creciendo | Cortes de feed dentro de horizontes | `--repair`; los `gap` se re-examinan solos |
 | El analista no emite y no hay error | Revisar `analyst.bars_since_fit` y el log del feed | — |
 | La corrida murió y el equipo estaba desenchufado | Standby en batería (default: 4 min) | `powercfg /change standby-timeout-dc 0` |

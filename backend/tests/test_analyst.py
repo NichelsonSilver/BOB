@@ -537,6 +537,162 @@ async def test_sin_red_la_reparacion_no_impide_arrancar(
     assert len(rec.of("analysis.forecast")) == 1
 
 
+@pytest.mark.asyncio
+async def test_la_reparacion_sin_red_queda_pendiente_y_se_reintenta(
+    listo, in_memory_engine, monkeypatch
+) -> None:
+    """El incidente del 01-09: una sola pasada de reparación, justo cuando no
+    hay red, deja un hueco permanente.
+
+    Secuencia real: el equipo se movió de casa, el backend arrancó a los
+    segundos de encenderlo y `repair_series` murió cuatro veces con
+    `getaddrinfo failed`. Un minuto después la red volvió, el poll REST
+    escribió la vela en curso, y las dos barras del apagón quedaron como hueco
+    interior **para siempre** — `--resume` avanza desde la última vela en DB y
+    no vuelve a mirar hacia atrás. El analista no emitió una sola barra hasta
+    que se corrió el `--repair` a mano.
+
+    Lo que este test fija es que el fallo se recuerde: la barra siguiente
+    reintenta, y si la red volvió, el hueco se cierra solo.
+    """
+    from bob.live import analyst as mod
+    from bob.live.analyst import AnalystInputs
+
+    analyst, rec, series = listo
+    db = {"series": _concat_sin(series, len(series) - 100)}
+    monkeypatch.setattr(
+        LiveAnalyst,
+        "_load_inputs",
+        lambda self: AnalystInputs(
+            series=db["series"], derivatives=None, funding=None, book=None
+        ),
+    )
+
+    hay_red = {"v": False}
+    intentos: list[int] = []
+
+    async def _repair(symbol, timeframe):
+        intentos.append(1)
+        if not hay_red["v"]:
+            raise OSError("[Errno 11001] getaddrinfo failed")
+        db["series"] = series  # el hueco quedó cerrado en la DB
+        return {"gaps_found": 1, "filled": 1, "extended": 0, "gaps_remaining": 0}
+
+    monkeypatch.setattr(mod, "repair_series", _repair)
+    analyst._repair_on_fit = True
+
+    await analyst.start()
+
+    # Sin red no se reparó, y la guarda de contigüidad hace lo correcto: se
+    # niega a pronosticar sobre una ventana que no existió.
+    assert len(rec.of("analysis.forecast")) == 0
+    assert "warm-up" in rec.of("analysis.error")[-1]["detail"]
+    # Y queda anotado, que es lo que faltaba: `/api/health` puede distinguir
+    # esto de un corte de datos de Binance.
+    assert analyst.status()["candle_repair_pending"] is True
+
+    # Vuelve la red. La barra siguiente dispara el reintento.
+    hay_red["v"] = True
+    await analyst.on_closed_candle(
+        _kline(int(series.open_time[-1]) + TF_MS, close=float(series.close[-1]))
+    )
+
+    assert len(intentos) == 2, "la barra nueva no reintentó la reparación"
+    assert analyst.status()["candle_repair_pending"] is False
+    assert len(rec.of("analysis.forecast")) == 1
+
+
+@pytest.mark.asyncio
+async def test_mientras_no_vuelva_la_red_la_reparacion_sigue_pendiente(
+    listo, in_memory_engine, monkeypatch
+) -> None:
+    """Un reintento que vuelve a fallar no consume el pendiente.
+
+    Importa porque la red puede tardar más que una barra en volver —o no
+    volver nunca, si el corte es de Binance—. El analista sigue sin emitir,
+    que es lo correcto, pero lo dice: `candle_repair_pending` queda en True y
+    `/api/health` distingue "hueco que se arregla solo" de "corte de datos".
+    """
+    from bob.live import analyst as mod
+    from bob.live.analyst import AnalystInputs
+
+    analyst, rec, series = listo
+    rota = _concat_sin(series, len(series) - 100)
+    monkeypatch.setattr(
+        LiveAnalyst,
+        "_load_inputs",
+        lambda self: AnalystInputs(
+            series=rota, derivatives=None, funding=None, book=None
+        ),
+    )
+
+    intentos: list[int] = []
+
+    async def _cae(symbol, timeframe):
+        intentos.append(1)
+        raise OSError("[Errno 11001] getaddrinfo failed")
+
+    monkeypatch.setattr(mod, "repair_series", _cae)
+    analyst._repair_on_fit = True
+    await analyst.start()
+
+    await analyst.on_closed_candle(
+        _kline(int(rota.open_time[-1]) + TF_MS, close=float(rota.close[-1]))
+    )
+
+    assert len(intentos) == 2, "la barra nueva tiene que reintentar igual"
+    assert analyst.status()["candle_repair_pending"] is True
+    assert len(rec.of("analysis.forecast")) == 0
+    assert "warm-up" in rec.of("analysis.error")[-1]["detail"]
+
+
+@pytest.mark.asyncio
+async def test_tras_reparar_la_vela_ya_escrita_no_se_toma_por_duplicada(
+    listo, in_memory_engine, monkeypatch
+) -> None:
+    """`repair_series` también extiende hacia adelante, así que puede traer de
+    la DB la misma barra que acaba de disparar el reintento.
+
+    Contra la serie resincronizada esa vela ya no avanza y `_append_candle`
+    devuelve None — el camino del duplicado. Pero no es un duplicado: es la
+    misma barra por el otro camino, y salir ahí dejaría al analista mudo una
+    barra más por una razón inventada.
+    """
+    from bob.live import analyst as mod
+    from bob.live.analyst import AnalystInputs
+
+    analyst, rec, series = listo
+    db = {"series": _concat_sin(series, len(series) - 100)}
+    monkeypatch.setattr(
+        LiveAnalyst,
+        "_load_inputs",
+        lambda self: AnalystInputs(
+            series=db["series"], derivatives=None, funding=None, book=None
+        ),
+    )
+
+    hay_red = {"v": False}
+
+    async def _repair(symbol, timeframe):
+        if not hay_red["v"]:
+            raise OSError("sin conexión")
+        db["series"] = series
+        return {"gaps_found": 1, "filled": 1, "extended": 1, "gaps_remaining": 0}
+
+    monkeypatch.setattr(mod, "repair_series", _repair)
+    analyst._repair_on_fit = True
+    await analyst.start()
+    assert len(rec.of("analysis.forecast")) == 0
+
+    hay_red["v"] = True
+    # Misma barra que la última de la serie reparada.
+    await analyst.on_closed_candle(
+        _kline(int(series.open_time[-1]), close=float(series.close[-1]))
+    )
+
+    assert len(rec.of("analysis.forecast")) == 1
+
+
 # --------------------------------------------------------------------- #
 # Estado operativo — la pregunta de una corrida larga
 # --------------------------------------------------------------------- #
