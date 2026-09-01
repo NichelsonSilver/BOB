@@ -31,6 +31,15 @@ dev = [
 linux = [
     "uvloop>=0.20",
 ]
+# Solo para `scripts/plot_diagnostics.py`, que dibuja los artefactos ya
+# versionados. NO entran a las dependencias core a proposito: el motor
+# numerico es numpy puro y el backend tiene que poder levantar sin nada de
+# esto instalado. Se instalan aparte con `uv pip install -e ".[viz]"`.
+viz = [
+    "matplotlib>=3.9",
+    "seaborn>=0.13",
+    "plotly>=5.24",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -51,7 +60,7 @@ plugins = ["pydantic.mypy"]
 # se relaja la estrictez del codigo propio: solo se acepta que estas librerias
 # entren como Any en su frontera.
 [[tool.mypy.overrides]]
-module = ["scipy.*", "sklearn.*", "xgboost.*"]
+module = ["scipy.*", "sklearn.*", "xgboost.*", "seaborn.*", "plotly.*"]
 ignore_missing_imports = true
 
 [tool.ruff]
