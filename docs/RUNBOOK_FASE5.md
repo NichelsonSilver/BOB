@@ -24,7 +24,28 @@ CLAUDE.md):
 2. ¿El cono conformal cubrió al precio en su nivel nominal?
 3. ¿El EV proyectado se pareció al retorno neto realizado?
 
-**Criterio de término**: `n_resolved >= 280` en el reporte del tracker.
+**Criterio de término**: son **dos**, y el 04-09 se descubrió que no se
+alcanzan al mismo tiempo.
+
+| pregunta | n necesario | estado |
+|---|---|---|
+| ¿la sigma se pareció a lo que hubo? | ~280 | ✅ **cerrado a n=288** |
+| ¿el cono cubrió a su nivel nominal? | ~1.150 | ⏳ en curso |
+
+El 280 original estaba dimensionado para la volatilidad, donde alcanzó de
+sobra. Para el cono está **sub-potenciado**, y por una razón estructural: los
+pronósticos se solapan. Con H=16, dos consecutivos comparten 15 de 16 barras
+de horizonte, y la autocorrelación lag-1 de los aciertos medida sobre datos
+reales es **+0,67**. Son ~n/16 observaciones independientes, así que 288
+registros dan ±9pp de incertidumbre sobre la cobertura — no alcanza para
+resolver una desviación de 4pp. Bajar a ±4,5pp pide 4× bloques: ~1.150
+resueltos, ~12 días de mercado.
+
+El reporte imprime ese IC solo, con bootstrap de bloques móviles, y dice si el
+nominal cae dentro. **No leer la cobertura empírica sin él**: tratando los
+aciertos como independientes, el corte de n=288 daba [87,2%, 93,8%] al 95%
+nominal —que lo excluye— y habría producido un falso hallazgo de
+bajo-cobertura.
 
 ### Cuánto tarda, y por qué son 74 h y no 70
 
@@ -323,18 +344,33 @@ por otra vía o aceptar el hueco.
 
 ## Cuando termine
 
-Con `n_resolved >= 280`:
+Al alcanzar cada criterio, **congelar el corte en un artefacto versionado**:
 
 ```powershell
-uv run python -m bob.paper.tracker --symbol ETHUSDT
+uv run python -m bob.paper.tracker --symbol ETHUSDT --artifact
 ```
+
+Escribe `artifacts/forward-ETHUSDT-15m-n<N>-<stamp>.txt` y su `.json`, igual
+que los reportes del gate y por la misma razón: el veredicto de una fase tiene
+que salir de un archivo que cualquiera pueda volver a verificar, no de un
+resumen escrito a mano. El `.json` trae las cifras crudas — baselines, los dos
+Diebold-Mariano, el IC del cono, `model_versions`.
+
+Sin `--artifact` solo imprime, que es lo que se quiere para mirar el avance.
 
 El reporte trae, en el **mismo formato que el backtest** (a propósito: usa
 `models/metrics.py`, no métricas propias, para que los números se comparen sin
 traducir):
 
-- **Volatilidad**: R², QLIKE y razón realizada/pronosticada. Se compara contra
-  el R² OOS de +0,400 del walk-forward.
+- **Volatilidad**: R², QLIKE y razón realizada/pronosticada, **más los tres
+  baselines del gate** (EWMA, GARCH, HAR) corridos sobre las mismas barras.
+  ⚠️ **No comparar el R² forward contra el +0,400 del walk-forward**: el R² se
+  mide contra la dispersión del target en *su* ventana, y tres días tienen una
+  fracción de la dispersión de dos años, así que cae por aritmética aunque el
+  modelo esté intacto. En el corte de n=288 los **tres** baselines dieron R²
+  negativo sobre esa misma ventana. El número comparable es **`R2_vs_ewma`**
+  (+0,367 en el gate → +0,548 forward) y **QLIKE**, que no depende de la
+  dispersión de la muestra.
 - **Cono**: cobertura empírica por nivel nominal. Se compara contra 94,8% al
   95% y 79,9% al 80% del backtest.
 - **Setups**: EV proyectado vs retorno neto realizado.
