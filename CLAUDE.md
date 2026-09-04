@@ -727,8 +727,75 @@ Reformulada por la decisión del 25-08: se emite **proyección**, no dirección.
    `candle_repair_pending` para que `/api/health` distinga "hueco que se
    arregla solo en la próxima barra" de "corte de datos de Binance".
 
-10. ⏳ **Pendiente**: acumular ~280 pronósticos resueltos (≈72h de mercado, no
-   necesariamente corridas) y comparar cobertura forward vs backtest
+10. ✅ **Corte de validación forward a n=288 (2026-09-04)**. El objetivo de
+   ~280 se alcanzó con la corrida arrancada el 31-08: **288 resueltos, 16
+   abiertos, 0 descartados por huecos**, un solo `model_version`
+   (`bob-forecast-0.1.0+vol=gbm`). Artefacto congelado y versionado en
+   `backend/artifacts/forward-ETHUSDT-15m-n288-*.txt|.json`. La corrida
+   **sigue** para cerrar el intervalo del cono (ver abajo).
+
+   **Veredicto — el target de volatilidad sobrevive el forward, y más fuerte
+   que en el gate.** El primer reporte parecía decir lo contrario: R² forward
+   **+0.240** contra el **+0.400** del walk-forward. No era degradación, era
+   un error de lectura que el propio reporte inducía, y por dos motivos que
+   quedaron cerrados:
+
+   - **`R2_vs_base` salía `nan`** porque el tracker nunca calculaba los
+     baselines forward, así que la única comparación posible era el R² contra
+     la media de la propia muestra. Pero el R² se mide contra la dispersión
+     del target **en esa ventana**, y tres días tienen una fracción de la
+     dispersión de dos años: cae por aritmética aunque el modelo esté
+     idéntico. La prueba es que sobre esas mismas 288 barras los **tres**
+     baselines dan R² negativo —peores que la media constante— mientras el
+     modelo queda en positivo:
+
+     | | RMSE | R² | R² vs EWMA | QLIKE |
+     |---|---|---|---|---|
+     | **modelo** | 0.00332 | **+0.240** | **+0.548** | **0.2381** |
+     | ewma | 0.00494 | −0.681 | — | 0.4464 |
+     | garch | 0.00570 | −1.240 | −0.332 | 0.3773 |
+     | har | 0.00445 | −0.363 | +0.189 | 0.3183 |
+
+     Contra EWMA, que es el número comparable, el modelo **mejora** de +0.367
+     (gate) a **+0.548** (forward). Diebold-Mariano: gana a EWMA con p=0.0015
+     y a HAR con p=0.0076, mismo signo y significancia que el gate. QLIKE, que
+     no depende de la dispersión de la muestra, también mejora (0.2381 vs
+     0.4098). Mincer-Zarnowitz β=1.012 con α≈0: insesgado y eficiente.
+
+   - **El cono se leía sin su incertidumbre.** Cobertura empírica 90,6% al 95%
+     nominal y 77,8% al 80% — parece bajo-cubrir. Pero los pronósticos **se
+     solapan**: con H=16, dos consecutivos comparten 15 de 16 barras de
+     horizonte, y la autocorrelación lag-1 de los aciertos es **+0,67 / +0,76**
+     medida sobre los datos reales. Son ~18 observaciones independientes, no
+     288. Con bootstrap de bloques móviles el IC95% da **[79,5%, 97,6%]** y
+     **[61,1%, 89,9%]**: el nominal cae **dentro** en los dos niveles.
+
+     Esto no es un detalle de presentación. Tratando los aciertos como
+     independientes el IC al 95% habría dado **[87,2%, 93,8%]**, que **excluye**
+     el nominal — o sea un falso hallazgo de bajo-cobertura, publicado con
+     apariencia de rigor. La corrección de bloques da vuelta la conclusión.
+
+   **Lo que esto implica: el criterio de 280 estaba bien dimensionado para la
+   volatilidad y sub-potenciado para el cono.** Con ±9pp de incertidumbre esta
+   muestra no puede resolver una desviación de 4pp. Llevar el IC a ±4,5pp pide
+   ~4× bloques ≈ **1.150 resueltos ≈ 12 días de mercado**. Decisión de
+   Nichelson (04-09): la corrida sigue con esa meta; el corte de n=288 queda
+   congelado igual, así el veredicto de volatilidad está cerrado y fechado
+   pase lo que pase con el resto.
+
+   Señal coherente y menor, que apunta en la misma dirección: la razón
+   realizada/pronosticada da media 1,069 (mediana 1,004) —sigma algo corta en
+   las colas— y el ACI ya reaccionó solo, bajando `alpha_t` de 0,05 a 0,023 y
+   de 0,20 a 0,132. El mecanismo hace su trabajo; lo que no se puede todavía
+   es medirlo con precisión.
+
+11. ✅ **El reporte forward se congela en artefacto** (`--artifact` en el
+   tracker), igual que los del gate y por la misma razón: el veredicto de una
+   fase tiene que salir de un archivo verificable y no de un resumen escrito a
+   mano. Antes el tracker imprimía a stdout y no persistía nada. El `.json`
+   trae las cifras crudas —baselines, DM, IC del cono, `model_versions`— y el
+   encabezado marca **⚠ MUESTRA MIXTA** si conviven dos `model_version`, que
+   es la contaminación que el tracker promediaba en silencio.
 
 **Correr la validación: qué sobrevive a una pausa y qué no.**
 
