@@ -46,17 +46,20 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 from loguru import logger
 from sqlmodel import Session, col, select
 
+from bob.data.store import load_series
 from bob.db.models import CandleRecord, ForecastRecord
 from bob.db.session import get_session, init_db
 from bob.models import metrics as mx
 from bob.models.labeling import BarrierConfig, resolve_setup_path
 from bob.models.production import OnlineConformalCone
+from bob.paper import forward_eval as fe
 from bob.utils.console import enable_utf8_stdout
 
 #: Cada cuánto revisa el tracker si hay registros resolubles. Con velas de 15m
@@ -89,6 +92,16 @@ class ResolvedForecast:
         return self.realized_vol / self.sigma_forecast
 
 
+def _dm_dict(dm: "mx.DieboldMariano | None") -> dict[str, Any] | None:
+    if dm is None:
+        return None
+    return {
+        "statistic": dm.statistic,
+        "p_value": dm.p_value,
+        "verdict": dm.verdict(),
+    }
+
+
 @dataclass
 class CoverageReport:
     """Lo medido forward, en el mismo formato en que lo dijo el backtest."""
@@ -108,7 +121,21 @@ class CoverageReport:
     vol_ratio_mean: float = float("nan")
     vol_ratio_median: float = float("nan")
 
+    #: Los mismos baselines del gate sobre estas barras. Sin ellos, el R²
+    #: forward solo se puede leer contra la media de su propia muestra, y
+    #: eso confunde 'muestra corta' con 'modelo degradado'.
+    baselines: dict[str, mx.RegressionMetrics] = field(default_factory=dict)
+    dm_vs_ewma: mx.DieboldMariano | None = None
+    dm_vs_har: mx.DieboldMariano | None = None
+
     cones: dict[float, mx.IntervalMetrics] = field(default_factory=dict)
+    #: IC de la cobertura por bootstrap de bloques: los pronósticos se
+    #: solapan y tratarlos como independientes encoge el error estándar.
+    cone_ci: dict[float, tuple[float, float]] = field(default_factory=dict)
+    #: Observaciones independientes aproximadas — n / horizonte.
+    n_blocks: float = float("nan")
+    #: Homogeneidad de la muestra. Más de uno invalida la comparación.
+    model_versions: list[str] = field(default_factory=list)
     #: Por dirección: EV proyectado vs retorno neto realizado, y mezcla de
     #: resoluciones (tp / sl / vertical).
     setups: dict[str, dict[str, float]] = field(default_factory=dict)
@@ -127,7 +154,13 @@ class CoverageReport:
             "volatility": asdict(self.volatility) if self.volatility else None,
             "vol_ratio_mean": self.vol_ratio_mean,
             "vol_ratio_median": self.vol_ratio_median,
+            "baselines": {k: asdict(v) for k, v in self.baselines.items()},
+            "dm_vs_ewma": _dm_dict(self.dm_vs_ewma),
+            "dm_vs_har": _dm_dict(self.dm_vs_har),
             "cones": {f"{a:.2f}": asdict(m) for a, m in self.cones.items()},
+            "cone_ci": {f"{a:.2f}": list(v) for a, v in self.cone_ci.items()},
+            "n_blocks": self.n_blocks,
+            "model_versions": self.model_versions,
             "setups": self.setups,
         }
 
@@ -335,10 +368,46 @@ def resolve_pending(
 # --------------------------------------------------------------------- #
 
 
+def _baselines_for(
+    symbol: str,
+    timeframe: str,
+    done: list[ForecastRecord],
+    horizon: int,
+) -> dict[str, np.ndarray] | None:
+    """Los baselines del gate sobre las barras resueltas. None si no se puede.
+
+    Necesitan la serie completa de velas —GARCH y HAR se ajustan con el
+    pasado anterior a la ventana forward—, así que esto hace I/O y vive
+    acá y no en `forward_eval`, que es puro. Un fallo degrada el reporte,
+    no lo tumba: sin baselines se sigue imprimiendo todo lo demás.
+    """
+    try:
+        series = load_series(symbol, timeframe)
+        close = np.asarray(series.close, dtype=np.float64)
+        open_time = np.asarray(series.open_time, dtype=np.int64)
+        if close.size < 2:
+            return None
+        pos = {int(t): i for i, t in enumerate(open_time)}
+        if any(int(r.open_time) not in pos for r in done):
+            logger.warning(
+                "tracker: hay pronósticos sin vela en la serie — se omiten "
+                "los baselines para no comparar sobre muestras distintas"
+            )
+            return None
+        idx = np.array([pos[int(r.open_time)] for r in done], dtype=np.int64)
+        tf_ms = int(open_time[1] - open_time[0])
+        return fe.baseline_predictions(close, idx, horizon, tf_ms)
+    except Exception as exc:  # pragma: no cover — degradación deliberada
+        logger.warning("tracker: no se pudieron calcular los baselines: {}", exc)
+        return None
+
+
 def coverage_report(
     symbol: str,
     timeframe: str,
     session: Session | None = None,
+    *,
+    with_baselines: bool = True,
 ) -> CoverageReport:
     """Agrega lo resuelto hasta ahora, con las métricas del backtest."""
     owns = session is None
@@ -369,9 +438,30 @@ def coverage_report(
     if not done:
         return report
 
+    report.model_versions = sorted({r.model_version for r in done})
+    horizon = int(done[0].horizon_bars)
+    report.n_blocks = fe.effective_blocks(len(done), horizon)
+
     y_true = np.array([r.realized_vol for r in done], dtype=np.float64)
     y_pred = np.array([r.sigma_forecast for r in done], dtype=np.float64)
-    report.volatility = mx.regression_metrics(y_true, y_pred)
+
+    base = _baselines_for(symbol, timeframe, done, horizon) if with_baselines else None
+    if base is None:
+        report.volatility = mx.regression_metrics(y_true, y_pred)
+    else:
+        report.volatility = mx.regression_metrics(y_true, y_pred, base["ewma"])
+        report.baselines = {
+            "ewma": mx.regression_metrics(y_true, base["ewma"]),
+            "garch": mx.regression_metrics(y_true, base["garch"], base["ewma"]),
+            "har": mx.regression_metrics(y_true, base["har"], base["ewma"]),
+        }
+        loss = mx.squared_error(y_true, y_pred)
+        report.dm_vs_ewma = mx.diebold_mariano(
+            loss, mx.squared_error(y_true, base["ewma"]), horizon=horizon
+        )
+        report.dm_vs_har = mx.diebold_mariano(
+            loss, mx.squared_error(y_true, base["har"]), horizon=horizon
+        )
     ratios = np.array(
         [r.vol_ratio for r in done if r.vol_ratio is not None], dtype=np.float64
     )
@@ -392,6 +482,8 @@ def coverage_report(
         lo = np.array([p[0] for p in pairs], dtype=np.float64)
         hi = np.array([p[1] for p in pairs], dtype=np.float64)
         report.cones[alpha] = mx.interval_metrics(returns, lo, hi, 1.0 - alpha)
+        hits = (returns >= lo) & (returns <= hi)
+        report.cone_ci[alpha] = fe.coverage_interval(hits, horizon)
 
     per_direction: dict[str, list[dict[str, Any]]] = {}
     for rec in done:
@@ -481,8 +573,13 @@ def render_coverage(report: CoverageReport) -> str:
         "=" * 72,
         f"pronósticos: {report.n_resolved} resueltos, {report.n_open} abiertos, "
         f"{report.n_gap} descartados por huecos",
-        "",
     ]
+    if report.model_versions:
+        marca = " ⚠ MUESTRA MIXTA" if len(report.model_versions) > 1 else ""
+        lines.append(
+            f"model_version: {', '.join(report.model_versions)}{marca}"
+        )
+    lines.append("")
     if report.n_resolved == 0:
         lines.append("Todavía no hay nada resuelto: el horizonte no cerró.")
         return "\n".join(lines)
@@ -498,10 +595,50 @@ def render_coverage(report: CoverageReport) -> str:
         "  (>1 = hubo más movimiento del pronosticado, o sea TP y SL quedaron"
         " cortos)"
     )
+    if report.baselines:
+        lines += ["", "  vs los mismos baselines del gate:"]
+        lines.append(
+            f"    {'':<8}{'RMSE':>10}{'R2':>9}{'R2_vs_ewma':>12}{'QLIKE':>10}"
+        )
+        rows: list[tuple[str, mx.RegressionMetrics | None]] = [
+            ("modelo", report.volatility)
+        ]
+        rows += list(report.baselines.items())
+        for name, reg in rows:
+            if reg is None:
+                continue
+            lines.append(
+                f"    {name:<8}{reg.rmse:>10.5f}{reg.r2:>+9.3f}"
+                f"{reg.r2_vs_baseline:>+12.3f}{reg.qlike:>10.4f}"
+            )
+        for label, dm in (("EWMA", report.dm_vs_ewma), ("HAR", report.dm_vs_har)):
+            if dm is not None:
+                lines.append(
+                    f"    Diebold-Mariano vs {label}: {dm.statistic:+.3f}  "
+                    f"p={dm.p_value:.4f}  {dm.verdict()}"
+                )
+        lines.append(
+            "    R2 se mide contra la media de ESTA muestra y encoge cuando la"
+        )
+        lines.append(
+            "    ventana es corta; R2_vs_ewma es el número comparable al gate."
+        )
 
     lines += ["", "CONO CONFORMAL — ¿contuvo al precio?", "-" * 72]
     for alpha, m in report.cones.items():
         lines.append(f"  alpha={alpha:.2f}  {m.summary()}")
+        ci = report.cone_ci.get(alpha)
+        if ci is not None and np.isfinite(ci[0]):
+            nominal = 1.0 - alpha
+            dentro = ci[0] <= nominal <= ci[1]
+            lines.append(
+                f"            IC95% por bloques [{ci[0]:.1%}, {ci[1]:.1%}] — el "
+                f"nominal cae {'DENTRO' if dentro else 'FUERA'}"
+            )
+    lines.append(
+        f"  n={report.n_resolved} pronósticos solapados = ~{report.n_blocks:.0f} "
+        "observaciones independientes: el IC se calcula sobre eso, no sobre n."
+    )
     lines.append(
         "  comparar contra la cobertura del walk-forward: si divergen mucho,"
     )
@@ -528,6 +665,33 @@ def render_coverage(report: CoverageReport) -> str:
         )
         lines.append("  operar contra él.")
     return "\n".join(lines)
+
+
+def write_artifact(
+    report: CoverageReport, text: str, directory: str = "artifacts"
+) -> list[Path]:
+    """Congela el reporte forward en disco, en el mismo formato que el gate.
+
+    `.txt` legible y `.json` con las cifras crudas. Existe por la misma
+    razón que los artefactos de la Fase 4: el veredicto de una fase tiene
+    que salir de un archivo versionado y no de un resumen escrito a mano,
+    porque un resumen no se puede volver a verificar. El nombre lleva la
+    fecha del último pronóstico y el n, que es lo que identifica al corte.
+    """
+    out = Path(directory)
+    out.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    stem = (
+        f"forward-{report.symbol}-{report.timeframe}-n{report.n_resolved}-{stamp}"
+    )
+    txt = out / f"{stem}.txt"
+    js = out / f"{stem}.json"
+    txt.write_text(text + "\n", encoding="utf-8")
+    js.write_text(
+        json.dumps(report.to_dict(), indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return [txt, js]
 
 
 def _ms_to_iso(ms: int) -> str:
@@ -580,12 +744,34 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="No resuelve nada: solo imprime lo que ya está medido.",
     )
+    parser.add_argument(
+        "--no-baselines",
+        action="store_true",
+        help="Omite EWMA/GARCH/HAR (no carga la serie completa de velas).",
+    )
+    parser.add_argument(
+        "--artifact",
+        nargs="?",
+        const="artifacts",
+        default=None,
+        help=(
+            "Congela el reporte en un .txt + .json versionados, como los del "
+            "gate. Sin esto el veredicto de la fase sería un resumen a mano."
+        ),
+    )
     args = parser.parse_args(argv)
 
     symbol = args.symbol.upper()
     if not args.report_only:
         resolve_pending(symbol, args.timeframe)
-    print(render_coverage(coverage_report(symbol, args.timeframe)))
+    report = coverage_report(
+        symbol, args.timeframe, with_baselines=not args.no_baselines
+    )
+    text = render_coverage(report)
+    print(text)
+    if args.artifact is not None:
+        for path in write_artifact(report, text, args.artifact):
+            print(f"  → {path}")
     return 0
 
 
