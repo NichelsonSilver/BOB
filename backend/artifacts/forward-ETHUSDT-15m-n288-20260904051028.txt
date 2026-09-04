@@ -1,0 +1,44 @@
+========================================================================
+PAPER TRACKING — ETHUSDT 15m
+2026-08-31 15:30 .. 2026-09-04 04:45
+========================================================================
+pronósticos: 288 resueltos, 16 abiertos, 0 descartados por huecos
+model_version: bob-forecast-0.1.0+vol=gbm
+
+VOLATILIDAD PRONOSTICADA vs REALIZADA
+------------------------------------------------------------------------
+  n=288  RMSE=0.00332  R2=+0.240  R2_vs_base=+0.548  QLIKE=0.2381  MZ(a=+0.0005, b=1.012)
+  razón realizada/pronosticada: media 1.069  mediana 1.004
+  (>1 = hubo más movimiento del pronosticado, o sea TP y SL quedaron cortos)
+
+  vs los mismos baselines del gate:
+                  RMSE       R2  R2_vs_ewma     QLIKE
+    modelo     0.00332   +0.240      +0.548    0.2381
+    ewma       0.00494   -0.681        +nan    0.4464
+    garch      0.00570   -1.240      -0.332    0.3773
+    har        0.00445   -0.363      +0.189    0.3183
+    Diebold-Mariano vs EWMA: -3.216  p=0.0015  gana el modelo de forma significativa (p=0.0015)
+    Diebold-Mariano vs HAR: -2.686  p=0.0076  gana el modelo de forma significativa (p=0.0076)
+    R2 se mide contra la media de ESTA muestra y encoge cuando la
+    ventana es corta; R2_vs_ewma es el número comparable al gate.
+
+CONO CONFORMAL — ¿contuvo al precio?
+------------------------------------------------------------------------
+  alpha=0.05  n=288  nominal=95%  empírica=90.6% (-4.4pp)  ancho medio=0.05750  Winkler=0.07971
+            IC95% por bloques [79.5%, 97.6%] — el nominal cae DENTRO
+  alpha=0.20  n=288  nominal=80%  empírica=77.8% (-2.2pp)  ancho medio=0.02636  Winkler=0.04674
+            IC95% por bloques [61.1%, 89.9%] — el nominal cae DENTRO
+  n=288 pronósticos solapados = ~18 observaciones independientes: el IC se calcula sobre eso, no sobre n.
+  comparar contra la cobertura del walk-forward: si divergen mucho,
+  es bandera de sobreajuste, no de mala suerte.
+
+SETUPS PROYECTADOS — EV vs realizado
+------------------------------------------------------------------------
+  long  n= 288  EV proyectado -0.1775%  realizado -0.1426%
+         tp 48.6% / sl 50.7% / vertical 0.7%   barras medias 4.2
+  short n= 288  EV proyectado -0.1640%  realizado -0.1401%
+         tp 50.7% / sl 48.6% / vertical 0.7%   barras medias 4.2
+
+  El EV proyectado se calcula con la probabilidad del KPI 1, que NO
+  pasó el gate (regla 2). Se muestra para poder medirlo, no para
+  operar contra él.

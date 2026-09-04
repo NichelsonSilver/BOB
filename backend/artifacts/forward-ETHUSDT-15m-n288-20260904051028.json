@@ -1,0 +1,117 @@
+{
+  "symbol": "ETHUSDT",
+  "timeframe": "15m",
+  "n_resolved": 288,
+  "n_open": 16,
+  "n_gap": 0,
+  "date_from": "2026-08-31 15:30",
+  "date_to": "2026-09-04 04:45",
+  "volatility": {
+    "n": 288,
+    "rmse": 0.0033221717334559445,
+    "mae": 0.0026286954310801277,
+    "r2": 0.2403080287265058,
+    "r2_vs_baseline": 0.5481691021298699,
+    "qlike": 0.23813201793187855,
+    "mincer_zarnowitz_alpha": 0.00047026499099469453,
+    "mincer_zarnowitz_beta": 1.0121487712500965
+  },
+  "vol_ratio_mean": 1.0688664859361383,
+  "vol_ratio_median": 1.00422259110071,
+  "baselines": {
+    "ewma": {
+      "n": 288,
+      "rmse": 0.0049423570355502065,
+      "mae": 0.004173005005009195,
+      "r2": -0.6813634810159723,
+      "r2_vs_baseline": NaN,
+      "qlike": 0.4464046655975948,
+      "mincer_zarnowitz_alpha": 0.011993244054811067,
+      "mincer_zarnowitz_beta": -0.2051366540404536
+    },
+    "garch": {
+      "n": 288,
+      "rmse": 0.005704209345667963,
+      "mae": 0.0047947545978622675,
+      "r2": -1.2396713309729064,
+      "r2_vs_baseline": -0.3320566054043077,
+      "qlike": 0.3772801112093583,
+      "mincer_zarnowitz_alpha": 0.008927868908928936,
+      "mincer_zarnowitz_beta": 0.07155509588738637
+    },
+    "har": {
+      "n": 288,
+      "rmse": 0.004450107655967663,
+      "mae": 0.0037998479233948435,
+      "r2": -0.36312101746255165,
+      "r2_vs_baseline": 0.18927642187227778,
+      "qlike": 0.31832835822764316,
+      "mincer_zarnowitz_alpha": 0.010258671092094515,
+      "mincer_zarnowitz_beta": -0.035531296764311035
+    }
+  },
+  "dm_vs_ewma": {
+    "statistic": -3.2155237148462743,
+    "p_value": 0.0014508062230124818,
+    "verdict": "gana el modelo de forma significativa (p=0.0015)"
+  },
+  "dm_vs_har": {
+    "statistic": -2.686294952453095,
+    "p_value": 0.007645979649861579,
+    "verdict": "gana el modelo de forma significativa (p=0.0076)"
+  },
+  "cones": {
+    "0.05": {
+      "n": 288,
+      "nominal_coverage": 0.95,
+      "empirical_coverage": 0.90625,
+      "mean_width": 0.05750287050281466,
+      "median_width": 0.05226908550883868,
+      "winkler_score": 0.07971210726658678
+    },
+    "0.20": {
+      "n": 288,
+      "nominal_coverage": 0.8,
+      "empirical_coverage": 0.7777777777777778,
+      "mean_width": 0.026364756985003488,
+      "median_width": 0.023172141067775445,
+      "winkler_score": 0.046735896250738276
+    }
+  },
+  "cone_ci": {
+    "0.05": [
+      0.7951388888888888,
+      0.9756944444444444
+    ],
+    "0.20": [
+      0.6111111111111112,
+      0.8993055555555556
+    ]
+  },
+  "n_blocks": 18.0,
+  "model_versions": [
+    "bob-forecast-0.1.0+vol=gbm"
+  ],
+  "setups": {
+    "long": {
+      "n": 288.0,
+      "projected_ev_pct": -0.001775034900654671,
+      "realized_net_return_pct": -0.0014256291636343913,
+      "win_rate": 0.4861111111111111,
+      "tp": 0.4861111111111111,
+      "sl": 0.5069444444444444,
+      "vertical": 0.006944444444444444,
+      "mean_bars_held": 4.215277777777778
+    },
+    "short": {
+      "n": 288.0,
+      "projected_ev_pct": -0.0016400996683781424,
+      "realized_net_return_pct": -0.0014007163224767196,
+      "win_rate": 0.5069444444444444,
+      "tp": 0.5069444444444444,
+      "sl": 0.4861111111111111,
+      "vertical": 0.006944444444444444,
+      "mean_bars_held": 4.215277777777778
+    }
+  }
+}
