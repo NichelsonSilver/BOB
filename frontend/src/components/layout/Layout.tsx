@@ -14,6 +14,13 @@ const navItems = [
 export function Layout() {
   useAppWebSocket();
   const wsConnected = useAppStore((s) => s.wsConnected);
+  const conn = useAppStore((s) => s.connStatus);
+
+  // Regla 8: el estado de cada conexión es parte de lo que el usuario debe
+  // ver. Se separan a propósito el socket del dashboard y el feed de Binance:
+  // el navegador puede estar perfectamente conectado a un backend que perdió
+  // el feed, y en ese caso el precio que se muestra no es el de ahora.
+  const feedDown = conn !== null && !conn.connected;
 
   return (
     <div className="flex h-full bg-surface">
@@ -44,16 +51,48 @@ export function Layout() {
 
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-neutral-800 bg-neutral-900 px-6 py-3">
-          <div className="flex items-center gap-4 text-sm">
-            <span
-              className={`inline-flex h-2 w-2 rounded-full ${
-                wsConnected ? "bg-success" : "bg-danger"
-              }`}
-              aria-hidden
-            />
-            <span className="text-neutral-400">
-              {wsConnected ? "ws: live" : "ws: disconnected"}
+          <div className="flex items-center gap-4 text-xs">
+            <span className="flex items-center gap-2">
+              <span
+                className={`inline-flex h-2 w-2 rounded-full ${
+                  wsConnected ? "bg-success" : "bg-danger"
+                }`}
+                aria-hidden
+              />
+              <span className="text-neutral-400">
+                {wsConnected ? "dashboard: live" : "dashboard: desconectado"}
+              </span>
             </span>
+
+            {conn && (
+              <span
+                className="flex items-center gap-2"
+                title={
+                  conn.mute_streams.length > 0
+                    ? `streams mudos: ${conn.mute_streams.join(", ")} — se rellenan por REST`
+                    : undefined
+                }
+              >
+                <span
+                  className={`inline-flex h-2 w-2 rounded-full ${
+                    feedDown ? "bg-danger" : "bg-success"
+                  }`}
+                  aria-hidden
+                />
+                <span className="font-mono text-neutral-500">{conn.source}</span>
+                {conn.reconnects > 0 && (
+                  <span className="text-neutral-600">
+                    {conn.reconnects} reconexiones
+                  </span>
+                )}
+              </span>
+            )}
+
+            {conn?.last_error && (
+              <span className="text-warn" title={conn.last_error}>
+                último error: {conn.last_error.slice(0, 60)}
+              </span>
+            )}
           </div>
           <span className="text-xs text-neutral-500">
             solo análisis — BOB nunca ejecuta órdenes
