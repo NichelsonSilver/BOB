@@ -941,7 +941,90 @@ el estimador (`bob-forecast-0.1.0+vol=xgb`) y viaja a `ForecastRecord`,
 Como eso rompía el parseo por posición del nombre, `compare.py` lee la
 variante de la config del JSON, que es la fuente real.
 
-### Fase 6 — API + Dashboard (pages 1-4 + settings)
+### Fase 6 — API + Dashboard ✅ construida (2026-09-04)
+
+Construida **durante** la corrida de validación, y eso ordenó casi todas las
+decisiones: el backend de producción no se reinició ni una vez, así que la
+capa entera se desarrolló y verificó contra una segunda instancia offline
+(`BOB_LIVE_DATA=false ... --port 8001`) que lee la misma SQLite y no escribe.
+El dev server apunta ahí con `BOB_API=http://127.0.0.1:8001`. Los endpoints
+nuevos **no existen todavía en :8000**: decisión de Nichelson (04-09), el
+reinicio espera a que la corrida llegue a ~1.150 resueltos.
+
+1. ✅ `api/routes/`: cinco grupos bajo `/api`, todos de **solo lectura**.
+   `market` (velas + huecos), `analysis` (último pronóstico, reproyección por
+   leverage, features por familia), `history` (emitidos, cobertura forward,
+   CSV), `backtest` (artefactos del gate y corte forward congelado),
+   `settings` (espejo de la config efectiva)
+2. ✅ **Ninguna ruta escribe, y hay un test que lo verifica recorriendo todo
+   lo que llama el dashboard.** Un endpoint que resolviera pronósticos haría
+   avanzar la validación forward cuando alguien abre el navegador, y una
+   muestra que se mide a sí misma no mide nada
+3. ✅ **Nada toca SQLite en el event loop**: el mismo proceso corre el feed, y
+   un request de 5s ajustando GARCH rompe la regla 6 sin que se vea por qué.
+   Todo por `asyncio.to_thread`; `coverage_report` además cachea 2 min con
+   lock por clave — medido 5,0s la primera llamada, 0,18s la siguiente
+4. ✅ **El slider de leverage recalcula en el servidor.** Dibujar la
+   liquidación en TypeScript pondría la fórmula —con sus tiers de MMR y su
+   buffer— en dos lugares, y el número que el usuario mira antes de entrar
+   apalancado saldría de la copia vieja. `project_setup` es puro: microsegundos
+5. ✅ `feature_family_index`: corre `assemble_features` sobre una serie
+   sintética para sacar el mapa nombre→familia sin rearmar la matriz sobre 69k
+   barras. Una tabla de prefijos ya estaría mal hoy — `taker_buy_ratio` es de
+   precio y `taker_ratio_log` es de derivados
+6. ✅ **Bug encontrado al probar**: `/api/backtest/gate` devolvía el artefacto
+   **xgb** para `price+deriv` cuando el vivo emite con **gbm**. Desde la Fase
+   4-bis el `run_id` lleva el estimador, así que ordenar por nombre completo
+   ordena por librería antes que por fecha (`gbm` < `xgb`) y "el más reciente
+   de esta variante" devolvía el otro modelo. El dashboard habría citado, al
+   lado del KPI 1, la medición de un modelo que no produjo ese número. Filtra
+   por variante **y** estimador, y ordena por el timestamp del nombre
+7. ✅ Las cinco páginas. **La Signal page se construye alrededor del KPI 2**:
+   niveles y riesgo arriba, cono con su cobertura medida, seguimiento de la
+   sigma, y el gauge de Seguridad **abajo y en gris** con AUC/BSS/calibración
+   reales al lado. El diseño original lo pedía arriba y grande; darle al
+   número menos respaldado el lugar de más autoridad contradiría la decisión
+   del 25-08 en la única capa que el usuario mira
+8. ✅ **El veredicto del gate viene de la API, no está escrito en el TSX.** El
+   día que el motor direccional pase los dos criterios, el gauge se enciende
+   solo. Hardcodearlo obligaría a que alguien se acuerde de borrarlo
+9. ✅ **El EV sale siempre con su probabilidad de equilibrio al lado**
+   (hallazgo (a) de la Fase 5). En la barra real del 04-09: EV −0,232% contra
+   un equilibrio de 88,9%
+10. ✅ WS ruteado de verdad (antes `void frame`): los eventos lentos —vela,
+    pronóstico— invalidan la query y el dashboard relee de la DB, que es la
+    única que sabe si ya se resolvió; el precio en curso va al store y no toca
+    la red. Sin esa división habría dos versiones del mismo pronóstico en
+    pantalla y ninguna forma de saber cuál se está mirando
+11. ✅ Paleta de series (`lib/chartTheme.ts`) separada de la de estado y
+    **validada**: los colores del producto dan L 0,79–0,82 en OKLCH y quedan
+    fuera de la banda de modo oscuro. La terna `#4a8fe0/#b8820d/#18a37c` pasa
+    las cinco comprobaciones contra `#0e0f0f` con `--pairs all`
+
+**Cuatro cosas se encontraron mirando las capturas, no compilando** — y esa es
+la parte que conviene que quede escrita, porque `tsc` estaba en verde en las
+cuatro: el arco del gauge era invisible sobre su propio riel (el gauge parecía
+vacío, que es mentir por omisión); "precio de liquidación 0.00" a 1x es
+correcto y se lee como dato faltante; `toLocaleString("es")` escribía "42.098"
+muestras al lado de "0.2474" de Brier, dos convenciones a diez píxeles; y el
+reporte de cobertura viene en UTC mientras la tabla se dibuja en hora local,
+lo que aparentaba cuatro horas de hueco.
+
+**Decisiones de alcance, tomadas por Nichelson (04-09):**
+
+- **Backtest es de solo lectura.** Lanzar un walk-forward desde la UI son ~10
+  ajustes de boosting sobre 69k barras compitiendo por CPU con el analista en
+  vivo, justo mientras corre la validación. Los runs siguen saliendo de la CLI
+- **Settings es un espejo, no un formulario.** Cambiar `feature_set` o
+  `vol_kind` en caliente mete dos `model_version` en la misma muestra. Lo
+  editable es lo que no toca ningún modelo —leverage, nivel del cono, símbolo—
+  y vive en localStorage
+
+**Lo que la Fase 6 NO hace, y lo dice en la propia página**: el KPI 3 no se
+emite en vivo (el HMM existe y está testeado, pero el analista no publica
+régimen ni duración esperada, y estimarla de otra cosa sería un número sin
+respaldo). Cablearlo es trabajo pendiente, no un olvido.
+
 ### Fase 7 — Alertas Telegram + sentimiento (F&G, CoinGecko)
 ### Fase 8 — Outliers Club + multi-símbolo watchlist
 ### Fase 9 — Validación end-to-end
