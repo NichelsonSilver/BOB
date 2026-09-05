@@ -92,7 +92,7 @@ class ResolvedForecast:
         return self.realized_vol / self.sigma_forecast
 
 
-def _dm_dict(dm: "mx.DieboldMariano | None") -> dict[str, Any] | None:
+def _dm_dict(dm: mx.DieboldMariano | None) -> dict[str, Any] | None:
     if dm is None:
         return None
     return {

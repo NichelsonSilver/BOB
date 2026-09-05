@@ -20,11 +20,13 @@ from __future__ import annotations
 import json
 import time
 from dataclasses import asdict, dataclass, field
+from functools import lru_cache
 from typing import Any
 
 import numpy as np
 from loguru import logger
 
+from bob.data.binance_rest import INTERVAL_MS
 from bob.data.store import BookDepthSeries, DerivativesSeries, OHLCVSeries
 from bob.models import metrics as mx
 from bob.models.baselines import (
@@ -51,7 +53,13 @@ from bob.models.labeling import (
 )
 from bob.signals import numeric as nm
 from bob.signals.derivatives import build_derivative_features
-from bob.signals.features import FeatureSet, build_features, feature_families
+from bob.signals.features import (
+    CONTEXT_H,
+    FeatureSet,
+    build_features,
+    feature_families,
+    window_bars,
+)
 from bob.signals.microstructure import build_microstructure_features
 
 MODEL_VERSION = "bob-forecast-0.1.0"
@@ -427,6 +435,87 @@ def assemble_features(
 
     return np.column_stack(blocks), names, sparse, families
 
+
+
+@lru_cache(maxsize=8)
+def feature_family_index(timeframe: str, feature_set: str) -> dict[str, str]:
+    """Nombre de feature → familia, sin recomputar sobre la historia real.
+
+    Lo consume el desglose de la Analysis page: la DB guarda el vector como
+    `{nombre: valor}` y hace falta saber a qué familia pertenece cada uno para
+    agruparlo. Rearmar la matriz sobre las 69k barras para eso cuesta 0,68s
+    por request y no aporta nada — los **nombres** de las columnas no dependen
+    de los datos, solo del timeframe y de qué familias se pidieron.
+
+    Así que corre `assemble_features` sobre una serie sintética mínima. Es el
+    mismo código que arma la matriz de verdad, y por eso no puede desincronizarse.
+
+    La alternativa era una tabla de prefijos en la capa de API, y ya estaría
+    mal hoy: `taker_buy_ratio` es de precio y `taker_ratio_log` es de derivados.
+    Cualquier regla por prefijo mete a las dos en la misma familia y el
+    desglose atribuye la lectura al bloque equivocado — silenciosamente, que es
+    la peor forma.
+    """
+    if feature_set not in FEATURE_SETS:
+        raise ValueError(f"feature set desconocido: {feature_set}")
+    use_deriv, use_book, use_near = FEATURE_SETS[feature_set]
+    cfg = ExperimentConfig(
+        use_derivatives=use_deriv, use_book=use_book, use_book_near=use_near
+    )
+
+    tf_ms = INTERVAL_MS[timeframe]
+    # Dos ventanas de contexto: suficiente para que ninguna columna se caiga
+    # por serie corta. Los valores son irrelevantes —solo se leen los nombres—
+    # pero se usa un paseo aleatorio y no constantes: una serie plana tiene
+    # varianza cero y algunas divisiones quedarían indefinidas.
+    n = 2 * window_bars(CONTEXT_H, tf_ms)
+    rng = np.random.default_rng(0)
+    ot = np.arange(n, dtype=np.int64) * tf_ms
+    close = 100.0 * np.exp(np.cumsum(rng.normal(0.0, 0.002, n)))
+    ones = np.ones(n, dtype=np.float64)
+    series = OHLCVSeries(
+        symbol="SYNTH",
+        timeframe=timeframe,
+        open_time=ot,
+        open=close,
+        high=close * 1.001,
+        low=close * 0.999,
+        close=close,
+        volume=ones,
+        quote_volume=ones,
+        taker_buy_volume=ones * 0.5,
+        n_trades=np.ones(n, dtype=np.int64),
+    )
+    derivatives = DerivativesSeries(
+        symbol="SYNTH",
+        period=timeframe,
+        timestamp=ot,
+        open_interest=ones,
+        open_interest_value=ones,
+        long_short_ratio=ones,
+        taker_buy_sell_ratio=ones,
+        top_trader_account_ratio=ones,
+        top_trader_position_ratio=ones,
+        funding_rate=ones * 1e-4,
+    )
+    book = BookDepthSeries(
+        symbol="SYNTH",
+        timeframe=timeframe,
+        open_time=ot,
+        bid_02=ones,
+        ask_02=ones,
+        bid_1=ones,
+        ask_1=ones,
+        bid_5=ones,
+        ask_5=ones,
+        n_snapshots=np.full(n, 30, dtype=np.int64),
+    )
+
+    _, names, _, families = assemble_features(series, cfg, derivatives, derivatives, book)
+    index = {name: family for family, members in families.items() for name in members}
+    # Ninguna columna puede quedar sin familia: si `assemble_features` agrega
+    # un bloque y olvida registrarlo, el desglose lo escondería.
+    return {name: index.get(name, "sin-familia") for name in names}
 
 
 def assert_columns_trainable(

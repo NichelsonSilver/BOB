@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from bob.api.routes import router as api_router
 from bob.api.ws import broadcast_hub
 from bob.api.ws import router as ws_router
 from bob.config import settings
@@ -185,6 +186,7 @@ async def _unhandled_exc(request: Request, exc: Exception) -> JSONResponse:
 
 
 app.include_router(ws_router)
+app.include_router(api_router)
 
 
 @app.get("/api/health")

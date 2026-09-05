@@ -19,7 +19,6 @@ from bob.paper.tracker import CoverageReport, render_coverage, write_artifact
 
 from .conftest import TF_MS, synthetic_series  # type: ignore[attr-defined]
 
-
 # --------------------------------------------------------------------- #
 # Baselines
 # --------------------------------------------------------------------- #
