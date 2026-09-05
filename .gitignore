@@ -16,6 +16,8 @@ venv/
 # Node
 node_modules/
 frontend/dist/
+# Cache incremental de tsc: cambia en cada build y ensucia todos los diffs.
+*.tsbuildinfo
 
 # IDE
 .vscode/
