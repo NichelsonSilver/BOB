@@ -841,3 +841,162 @@ async def test_cada_vela_relee_el_contexto_del_disco(listo, in_memory_engine) ->
     assert analyst._inputs.derivatives is centinela
     assert analyst._inputs.funding is centinela
     assert analyst._inputs.book is centinela
+
+
+# --------------------------------------------------------------------- #
+# El hueco que nace con el proceso arriba (incidente del 06-09)
+# --------------------------------------------------------------------- #
+
+
+def _salto(series, pasos: int):
+    """La serie con una barra `pasos` más allá del final — hueco en la punta.
+
+    Es lo que deja el poll REST al escribir la vela en curso después de que el
+    equipo durmió: la barra nueva es legítima, las del medio no ocurrieron
+    para el feed y en la DB no está ninguna.
+    """
+    from bob.live.analyst import _append_candle
+
+    t = int(series.open_time[-1]) + pasos * TF_MS
+    return _append_candle(series, _kline(t, close=float(series.close[-1])))
+
+
+def _rellenada(series, hasta: int):
+    """La serie contigua hasta `hasta` — lo que deja una reparación exitosa."""
+    from bob.live.analyst import _append_candle
+
+    out = series
+    t = int(series.open_time[-1]) + TF_MS
+    while t <= hasta:
+        out = _append_candle(out, _kline(t, close=float(series.close[-1])))
+        t += TF_MS
+    return out
+
+
+@pytest.mark.asyncio
+async def test_un_hueco_nacido_con_el_proceso_arriba_se_repara_solo(
+    listo, in_memory_engine, monkeypatch
+) -> None:
+    """El incidente del 06-09: el equipo durmió con el backend arriba.
+
+    Secuencia real, medida sobre la corrida de la Fase 5: Windows durmió el
+    equipo entre las 05:15 y las 06:45 UTC. Al despertar, el poll REST escribió
+    la vela en curso y las seis barras del sueño quedaron como hueco interior.
+    Nadie pidió esas velas: `_repair_candles` solo corre al ajustar y al
+    reajustar, y `_candle_repair_pending` no se encendió porque esa bandera
+    marcaba únicamente el fallo de RED de la reparación — acá la red estaba
+    perfecta, lo que faltaba era enterarse del hueco. El analista publicó
+    `analysis.error` en cada barra durante **7 horas**, hasta el reajuste de
+    las 24 h, y se perdieron 27 pronósticos.
+
+    Lo que fija este test es que descubrir el hueco al ir a emitir alcance
+    para pedir la reparación. El error sigue saliendo —no emitir sobre una
+    ventana que no existió es lo correcto— pero ahora se arregla solo.
+    """
+    from bob.live import analyst as mod
+    from bob.live.analyst import AnalystInputs
+
+    analyst, rec, series = listo
+    db = {"series": series}
+    monkeypatch.setattr(
+        LiveAnalyst,
+        "_load_inputs",
+        lambda self: AnalystInputs(
+            series=db["series"], derivatives=None, funding=None, book=None
+        ),
+    )
+    await analyst.start()
+    assert analyst.status()["candle_repair_pending"] is False
+    n0 = len(rec.of("analysis.forecast"))
+
+    # El sueño. La DB queda como la deja el poll REST: la vela nueva escrita,
+    # las seis del medio ausentes.
+    con_hueco = _salto(series, 7)
+    salto = int(con_hueco.open_time[-1])
+    db["series"] = con_hueco
+
+    intentos: list[int] = []
+
+    async def _repair(symbol, timeframe):
+        intentos.append(1)
+        db["series"] = _rellenada(series, salto)
+        return {"gaps_found": 1, "filled": 6, "extended": 0, "gaps_remaining": 0}
+
+    monkeypatch.setattr(mod, "repair_series", _repair)
+
+    await analyst.on_closed_candle(_kline(salto, close=float(series.close[-1])))
+
+    assert len(rec.of("analysis.forecast")) == n0, "no se emite sobre el hueco"
+    assert "warm-up" in rec.of("analysis.error")[-1]["detail"]
+    assert analyst.status()["candle_repair_pending"] is True, (
+        "el hueco descubierto al emitir tiene que pedir reparación — "
+        "contra el código viejo esto quedaba en False hasta el reajuste"
+    )
+    assert intentos == [], "la reparación es de la próxima barra, no de esta"
+
+    # La barra siguiente la dispara y el analista vuelve a emitir.
+    await analyst.on_closed_candle(
+        _kline(salto + TF_MS, close=float(series.close[-1]))
+    )
+    assert len(intentos) == 1
+    assert analyst.status()["candle_repair_pending"] is False
+    assert len(rec.of("analysis.forecast")) == n0 + 1
+
+
+@pytest.mark.asyncio
+async def test_un_hueco_que_binance_no_tiene_se_pide_una_vez_por_hueco(
+    listo, in_memory_engine, monkeypatch
+) -> None:
+    """Un rango que el exchange no publica no se re-pide en cada barra.
+
+    Si la reparación tuvo red y aun así no llenó el hueco, el dato no existe:
+    volver a pedirlo cada 15 min durante las ~100 h que tarda en salir de la
+    ventana de warm-up es rafaguear REST contra la regla 7 sin ninguna chance
+    de éxito. Pero un hueco NUEVO sí merece su intento, y por eso la firma es
+    el conjunto entero de huecos de la cola: con solo el primero, uno
+    irreparable viejo taparía a uno nuevo que sí se puede cerrar.
+    """
+    from bob.live import analyst as mod
+    from bob.live.analyst import AnalystInputs
+
+    analyst, rec, series = listo
+    db = {"series": series}
+    monkeypatch.setattr(
+        LiveAnalyst,
+        "_load_inputs",
+        lambda self: AnalystInputs(
+            series=db["series"], derivatives=None, funding=None, book=None
+        ),
+    )
+    await analyst.start()
+
+    intentos: list[int] = []
+
+    async def _repair_seco(symbol, timeframe):
+        """Con red, pero Binance no devuelve el rango: el hueco sigue ahí."""
+        intentos.append(1)
+        return {"gaps_found": 1, "filled": 0, "extended": 0, "gaps_remaining": 1}
+
+    monkeypatch.setattr(mod, "repair_series", _repair_seco)
+
+    db["series"] = _salto(series, 7)
+    t = int(db["series"].open_time[-1])
+    for _ in range(5):
+        await analyst.on_closed_candle(_kline(t, close=float(series.close[-1])))
+        db["series"] = _salto(db["series"], 1)
+        t += TF_MS
+
+    assert len(intentos) == 1, (
+        f"el mismo hueco irreparable se pidió {len(intentos)} veces"
+    )
+    assert "warm-up" in rec.of("analysis.error")[-1]["detail"]
+
+    # Un hueco nuevo encima del viejo sí se intenta: el conjunto cambió.
+    db["series"] = _salto(db["series"], 4)
+    await analyst.on_closed_candle(
+        _kline(int(db["series"].open_time[-1]), close=float(series.close[-1]))
+    )
+    await analyst.on_closed_candle(
+        _kline(int(db["series"].open_time[-1]) + TF_MS, close=float(series.close[-1]))
+    )
+    assert len(intentos) == 2, "un hueco distinto merece su propio intento"

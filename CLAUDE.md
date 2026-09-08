@@ -797,6 +797,55 @@ Reformulada por la decisión del 25-08: se emite **proyección**, no dirección.
    encabezado marca **⚠ MUESTRA MIXTA** si conviven dos `model_version`, que
    es la contaminación que el tracker promediaba en silencio.
 
+12. ✅ **La cuarta variante del hueco de velas: el que nace en caliente
+   (2026-09-08)**. Encontrada auditando la corrida, no por un error nuevo — el
+   analista reportaba correctamente `no se pronostica sobre un hueco` cada vez.
+   Lo que no hacía nadie era pedirle esas velas a Binance.
+
+   **La medición que la destapó**: 69 barras sin pronóstico en 13 tramos, pero
+   **0 huecos de datos** en klines y derivados. O sea el dato estaba y el
+   pronóstico no, que es exactamente el patrón que el punto 8 enseñó a mirar.
+   Dos tramos concentran 49 de las 69: 09-02 20:15→02:00 UTC (22 barras) y
+   09-06 05:15→12:15 UTC (27 barras), y los dos cierran en un reinicio o un
+   reajuste, no en una barra cualquiera.
+
+   **La causa**: Windows durmió el equipo con el backend arriba. Al despertar,
+   el poll REST escribió la vela en curso y las del sueño quedaron como hueco
+   interior. `_repair_candles` solo corre al ajustar y al reajustar, y
+   `_candle_repair_pending` —el arreglo del punto 9— marca únicamente el fallo
+   de **red** de la reparación. Acá la red estaba perfecta: lo que faltaba era
+   enterarse del hueco. `_compute_and_heal` hacía su `_resync()`, releía la DB,
+   encontraba el mismo hueco y publicaba `analysis.error` — sin volver a llamar
+   a la reparación nunca. Se destrababa recién en el reajuste de las 24 h.
+
+   El punto 9 dejó escrito que "las velas eran la única serie sin camino de
+   vuelta" y le construyó uno; lo que no vio es que ese camino tenía **una sola
+   puerta de entrada**, la del fallo de red. La lección se repite: el disparador
+   correcto de una reparación no es que la reparación anterior haya fallado,
+   sino que **falte el dato**, sin importar cómo se llegó a que faltara.
+
+   Ahora el descubrimiento del hueco al ir a emitir enciende la misma bandera
+   (`_flag_tail_gap_for_repair`) y la próxima barra lo repara. El error sigue
+   saliendo a la superficie —no emitir sobre una ventana que no existió es lo
+   correcto y lo exige la regla 5—, pero se arregla solo en 15 minutos en vez
+   de 7 horas.
+
+   **La firma es el conjunto de huecos de la cola, no el primero.** Si la
+   reparación tuvo red y aun así no llenó el hueco, Binance no publica ese
+   rango y re-pedirlo cada 15 min durante las ~100 h que tarda en salir de la
+   ventana de warm-up sería rafaguear REST contra la regla 7: se pide una vez
+   por conjunto distinto. Guardar solo el primer hueco era la opción simple y
+   estaba mal — un hueco irreparable viejo taparía a uno nuevo que sí se puede
+   cerrar, y el analista se quedaría mudo de más. `_tail_gaps` es una sola
+   definición de "la cola" para sus dos usos (negarse a emitir y decidir si
+   vale pedir el rango); con dos definiciones el analista podría negarse por un
+   hueco que la reparación no mira.
+
+   Los dos tests nuevos **fallan contra el código previo**, que es lo único que
+   los hace valer: uno reproduce el sueño del equipo, el otro fija que el rango
+   que el exchange no tiene se pide una vez y que un hueco nuevo sí merece el
+   suyo.
+
 **Correr la validación: qué sobrevive a una pausa y qué no.**
 
 No hacen falta 72 horas ininterrumpidas. Lo que se necesita son ~280

@@ -170,10 +170,21 @@ class LiveAnalyst:
         self._bundle: ForecastBundle | None = None
         self._inputs: AnalystInputs | None = None
         self._bars_since_fit = 0
-        #: La reparación de velas falló y hay que reintentarla en la próxima
-        #: barra. Ver `_repair_candles`: es el único de los tres arreglos de
-        #: `_repair` que no tenía camino de reintento propio.
+        #: Hay que reparar velas en la próxima barra. Lo encienden los dos
+        #: caminos por los que el analista se entera de que le faltan: la
+        #: reparación que se quedó sin red (`_repair_candles`) y el hueco que
+        #: aparece al ir a emitir (`_flag_tail_gap_for_repair`). Ver ambos:
+        #: las velas son la única de las tres series de `_repair` sin un
+        #: camino de reescritura propio que las ponga al día sola.
         self._candle_repair_pending = False
+        #: Huecos de cola que ya motivaron una reparación. Uno que la
+        #: reparación no pudo llenar es un hecho de los datos, y volver a
+        #: pedirle a Binance el mismo rango cada 15 min durante las ~100 h que
+        #: tarda en salir de la ventana de warm-up sería rafaguear REST contra
+        #: la regla 7. Se guarda el conjunto entero y no el primero: con el
+        #: primero, un hueco irreparable viejo taparía a uno nuevo que sí se
+        #: puede cerrar, y el analista se quedaría mudo de más.
+        self._repaired_tail_gaps: tuple[tuple[int, int], ...] | None = None
         self._lock = asyncio.Lock()
         self._refit_task: asyncio.Task[None] | None = None
         self.last_analysis: MarketAnalysis | None = None
@@ -321,7 +332,9 @@ class LiveAnalyst:
         Un éxito de red cierra lo pendiente aunque queden huecos sin llenar:
         que Binance no devuelva un rango es un hecho de los datos —lo reporta
         `repair_series` y lo vigila `_assert_tail_contiguous`—, y reintentarlo
-        cada 15 minutos sería rafaguear REST contra la regla 7.
+        cada 15 minutos sería rafaguear REST contra la regla 7. Por eso el
+        otro productor de la bandera, `_flag_tail_gap_for_repair`, la enciende
+        una vez por hueco distinto y no una vez por barra fallida.
         """
         try:
             resultado = await repair_series(self.symbol, self.timeframe)
@@ -469,8 +482,27 @@ class LiveAnalyst:
 
         El reintento es UNO solo y solo para este fallo: si tras releer la DB
         la serie sigue sin ser contigua, el hueco es de los datos y no de la
-        memoria, y entonces el error tiene que salir a la superficie en vez de
-        reintentarse en círculos.
+        memoria. Pero "de los datos" no quiere decir "sin arreglo": puede ser
+        un hueco que nació **con el proceso corriendo** y que nadie le pidió
+        todavía a Binance. Por eso el error sale a la superficie —el usuario
+        tiene que ver que no se está emitiendo— y además queda marcado para
+        que la próxima barra intente repararlo.
+
+        El incidente (2026-09-06, medido sobre la corrida de la Fase 5): el
+        equipo durmió entre las 05:15 y las 06:45 UTC con el backend arriba.
+        Al despertar, el poll REST escribió la vela en curso y las seis barras
+        del sueño quedaron como hueco interior. `_repair_candles` no se volvió
+        a llamar —solo corre al ajustar y al reajustar— y `_candle_repair_pending`
+        no se encendió, porque esa bandera solo marca el fallo de RED de la
+        reparación, no el descubrimiento de un hueco. El analista quedó
+        gritando `analysis.error` en cada barra durante **7 horas**, hasta el
+        reajuste de las 24 h. Costó 27 pronósticos, sobre 22 más del mismo
+        origen el 09-02: 49 de las 69 barras perdidas de la corrida.
+
+        Es la cuarta variante de la misma familia que el bug de la mudanza, y
+        la que cierra el hueco de política: ahora los tres caminos por los que
+        aparece un hueco de velas —arranque sin red, hueco preexistente,
+        hueco nacido en caliente— reintentan solos.
         """
         try:
             return self._compute_latest()
@@ -479,7 +511,36 @@ class LiveAnalyst:
                 raise
             logger.warning("analista: serie en memoria desincronizada, releo la DB")
             self._resync()
-            return self._compute_latest()
+            try:
+                return self._compute_latest()
+            except ValueError as exc_db:
+                if "warm-up" not in str(exc_db):
+                    raise
+                self._flag_tail_gap_for_repair()
+                raise
+
+    def _flag_tail_gap_for_repair(self) -> None:
+        """Pide una reparación para el hueco de cola, si es uno nuevo.
+
+        La firma del hueco es lo que evita el círculo: si la reparación anterior
+        tuvo red y aun así no lo llenó, Binance no tiene ese rango y volver a
+        pedirlo no lo va a inventar. Un hueco distinto —o el mismo tras un
+        reinicio— sí merece su intento.
+        """
+        if self._inputs is None:
+            return
+        huecos = tuple(_tail_gaps(self._inputs.series))
+        if not huecos or huecos == self._repaired_tail_gaps:
+            return
+        self._repaired_tail_gaps = huecos
+        self._candle_repair_pending = True
+        logger.warning(
+            "analista: {} hueco(s) de velas en la ventana de warm-up (el primero "
+            "entre {} y {}) — se pide reparación en la próxima barra",
+            len(huecos),
+            huecos[0][0],
+            huecos[0][1],
+        )
 
     def _compute_latest(self) -> MarketAnalysis | None:
         """Parte síncrona y pesada del análisis. Corre en un hilo."""
@@ -802,6 +863,20 @@ def _append_candle(series: OHLCVSeries, kline: Kline) -> OHLCVSeries | None:
     )
 
 
+def _tail_gaps(series: OHLCVSeries) -> list[tuple[int, int]]:
+    """Huecos de la ventana de warm-up de la última barra, como (previo, siguiente).
+
+    Una sola definición de "la cola" para los dos usos que tiene: negarse a
+    emitir sobre ella (`_assert_tail_contiguous`) y decidir si vale la pena
+    pedirle el rango a Binance (`LiveAnalyst._flag_tail_gap_for_repair`). Con
+    dos definiciones, el analista podría negarse a emitir por un hueco que la
+    reparación no mira.
+    """
+    warmup = window_bars(CONTEXT_H, series.interval_ms)
+    tail = series.slice(max(0, len(series) - (warmup + 1)))
+    return tail.gaps
+
+
 def _assert_tail_contiguous(series: OHLCVSeries) -> None:
     """Falla si a la ventana de warm-up de la última barra le faltan velas.
 
@@ -814,9 +889,7 @@ def _assert_tail_contiguous(series: OHLCVSeries) -> None:
     Se mira solo la cola porque es lo que alimenta la fila que se va a emitir;
     un hueco viejo ya estaba en el backtest y no cambia el pronóstico de hoy.
     """
-    warmup = window_bars(CONTEXT_H, series.interval_ms)
-    tail = series.slice(max(0, len(series) - (warmup + 1)))
-    huecos = tail.gaps
+    huecos = _tail_gaps(series)
     if huecos:
         inicio, fin = huecos[0]
         raise ValueError(
