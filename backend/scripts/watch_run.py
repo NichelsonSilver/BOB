@@ -28,7 +28,7 @@ Vigila cinco cosas, en orden de gravedad:
 Uso:
 
     uv run python scripts/watch_run.py                  # cada 10 min
-    uv run python scripts/watch_run.py --every-min 5 --target 280
+    uv run python scripts/watch_run.py --every-min 5 --target 1150
     uv run python scripts/watch_run.py --once           # un chequeo y sale
 
 Solo stdlib: tiene que poder correr aunque el entorno del backend esté ocupado.
@@ -261,7 +261,14 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("--symbol", default="ETHUSDT")
     p.add_argument("--timeframe", default="15m")
-    p.add_argument("--target", type=int, default=280, help="pronósticos resueltos objetivo")
+    # 1150 y no 280: el corte de n=288 ya está congelado en artifacts/ y el
+    # veredicto de volatilidad cerrado con él. Lo que sigue abierto es el
+    # intervalo del cono, que pide ~4x bloques (decisión del 04-09). Con el
+    # default viejo la ETA dice "objetivo alcanzado" desde el primer tick, o
+    # sea el campo que uno mira se apaga justo cuando empieza a hacer falta.
+    p.add_argument(
+        "--target", type=int, default=1150, help="pronósticos resueltos objetivo"
+    )
     p.add_argument("--every-min", type=float, default=10.0)
     p.add_argument("--url", default="http://127.0.0.1:8000/api/health")
     p.add_argument("--db", default=str(BACKEND_DIR / "bob.db"))
