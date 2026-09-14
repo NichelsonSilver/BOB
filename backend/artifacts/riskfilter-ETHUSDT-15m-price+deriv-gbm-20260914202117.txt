@@ -1,0 +1,57 @@
+==========================================================================
+FILTRO DE RÉGIMEN — ETHUSDT 15m
+2024-08-31 21:00 .. 2026-09-14 00:45
+criterio pre-registrado en docs/PREREGISTRO_FILTRO_RIESGO.md
+==========================================================================
+
+features=price+deriv  vol_model=gbm  folds=6  H=16
+barras con sigma OOF: 43,422
+
+--------------------------------------------------------------------------
+PRUEBA CONFIRMATORIA — leverage 20x, q=0.80, direcciones agrupadas
+--------------------------------------------------------------------------
+  barras evaluables: 43,422    eventos de liquidación: 1,430  (~89 independientes)
+
+  filtro        lift   rechaza   captura    costo
+  MODELO       3.077    16.9%    52.0%   16.3%
+  ewma         2.195    16.4%    35.9%   16.0%
+  garch        2.181    17.1%    37.3%   16.8%
+  har          2.394    16.3%    39.0%   15.9%
+
+  lift = (liquidaciones evitadas) / (barras rechazadas).
+  Un filtro que rechaza al azar da exactamente 1.000.
+  costo = barras que NO liquidaban y el filtro rechazó igual.
+
+  criterio 1 (mejor que el azar): lift=3.077 IC95% [2.639, 3.515] — PASA (el IC excluye 1.0)
+  criterio 2 (mejor que ewma): diff=+0.882 IC95% [+0.489, +1.284] — PASA (el IC excluye 0)
+
+  VEREDICTO: el filtro es VIABLE
+
+--------------------------------------------------------------------------
+GRILLA EXPLORATORIA — declarada en §6, NO decide el veredicto
+--------------------------------------------------------------------------
+    lev     q  eventos   modelo     ewma    garch      har  nota
+     5x  0.70        0      nan      nan      nan      nan  sin potencia
+     5x  0.80        0      nan      nan      nan      nan  sin potencia
+     5x  0.90        0      nan      nan      nan      nan  sin potencia
+    10x  0.70       78    3.256    2.627    2.619    2.460  sin potencia
+    10x  0.80       78    3.872    3.837    3.743    3.382  sin potencia
+    10x  0.90       78    5.268    7.199    5.449    6.248  sin potencia
+    20x  0.70    1,430    2.501    1.854    1.851    2.093  
+    20x  0.80    1,430    3.077    2.195    2.181    2.394  
+    20x  0.90    1,430    4.128    2.869    2.964    3.337  
+    25x  0.70    2,748    2.488    1.864    1.875    2.074  
+    25x  0.80    2,748    3.036    2.242    2.214    2.388  
+    25x  0.90    2,748    3.872    2.802    2.897    3.242  
+    50x  0.70   16,724    1.880    1.585    1.590    1.669  
+    50x  0.80   16,724    2.049    1.738    1.765    1.843  
+    50x  0.90   16,724    2.270    1.990    2.036    2.091  
+
+  Un lift que no crece con el leverage sería señal de bug, no hallazgo:
+  a más leverage la liquidación se acerca y depende más de la cola.
+
+==========================================================================
+Lo que esta medición NO decide (§7): no habilita el KPI 1, que sigue
+sin pasar el gate; no vuelve positivo el EV; y no arregla el techo de
+la sigma, que es la propiedad de magnitud y sigue rota.
+==========================================================================

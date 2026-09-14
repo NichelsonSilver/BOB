@@ -1,0 +1,1066 @@
+{
+  "config": {
+    "symbol": "ETHUSDT",
+    "timeframe": "15m",
+    "features": "price+deriv",
+    "vol_model": "gbm",
+    "folds": 6,
+    "horizon": 16,
+    "min_warmup": 2000,
+    "n_boot": 5000,
+    "seed": 0,
+    "n_oof": 43422,
+    "from": "2024-08-31 21:00",
+    "to": "2026-09-14 00:45",
+    "preregistration": "docs/PREREGISTRO_FILTRO_RIESGO.md"
+  },
+  "primary": {
+    "leverage": 20.0,
+    "quantile": 0.8,
+    "n_bars": 43422,
+    "n_events": 1430,
+    "effective_events": 89.375,
+    "underpowered": false,
+    "lifts": {
+      "model": {
+        "label": "model",
+        "n": 43422,
+        "n_rejected": 7333,
+        "n_events": 1430,
+        "n_events_rejected": 743,
+        "lift": 3.0766699821384127,
+        "reject_rate": 0.16887752752061166,
+        "capture_rate": 0.5195804195804196,
+        "false_reject_rate": 0.16300606457957711
+      },
+      "ewma": {
+        "label": "ewma",
+        "n": 43422,
+        "n_rejected": 7110,
+        "n_events": 1430,
+        "n_events_rejected": 514,
+        "lift": 2.1951656782036526,
+        "reject_rate": 0.16374188199530193,
+        "capture_rate": 0.3594405594405594,
+        "false_reject_rate": 0.1604654974594329
+      },
+      "garch": {
+        "label": "garch",
+        "n": 43422,
+        "n_rejected": 7436,
+        "n_events": 1430,
+        "n_events_rejected": 534,
+        "lift": 2.180598261340596,
+        "reject_rate": 0.17124959697849015,
+        "capture_rate": 0.3734265734265734,
+        "false_reject_rate": 0.1678647528508207
+      },
+      "har": {
+        "label": "har",
+        "n": 43422,
+        "n_rejected": 7079,
+        "n_events": 1430,
+        "n_events_rejected": 558,
+        "lift": 2.393514551559473,
+        "reject_rate": 0.16302795817788218,
+        "capture_rate": 0.3902097902097902,
+        "false_reject_rate": 0.15922448310581402
+      }
+    },
+    "lift_ci95": [
+      2.6389630172212866,
+      3.515069790649633
+    ],
+    "beats_chance": true,
+    "diff_vs_baseline": 0.8815043039347601,
+    "diff_ci95": [
+      0.48915028932037796,
+      1.2843977926238874
+    ],
+    "beats_baseline": true
+  },
+  "exploratory": [
+    {
+      "leverage": 5.0,
+      "quantile": 0.7,
+      "n_bars": 43422,
+      "n_events": 0,
+      "effective_events": 0.0,
+      "underpowered": true,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 10770,
+          "n_events": 0,
+          "n_events_rejected": 0,
+          "lift": NaN,
+          "reject_rate": 0.24803095205195522,
+          "capture_rate": NaN,
+          "false_reject_rate": 0.24803095205195522
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 10595,
+          "n_events": 0,
+          "n_events_rejected": 0,
+          "lift": NaN,
+          "reject_rate": 0.24400073695361799,
+          "capture_rate": NaN,
+          "false_reject_rate": 0.24400073695361799
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 11055,
+          "n_events": 0,
+          "n_events_rejected": 0,
+          "lift": NaN,
+          "reject_rate": 0.25459444521210445,
+          "capture_rate": NaN,
+          "false_reject_rate": 0.25459444521210445
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 10184,
+          "n_events": 0,
+          "n_events_rejected": 0,
+          "lift": NaN,
+          "reject_rate": 0.23453548892266593,
+          "capture_rate": NaN,
+          "false_reject_rate": 0.23453548892266593
+        }
+      },
+      "lift_ci95": [
+        NaN,
+        NaN
+      ],
+      "beats_chance": false,
+      "diff_vs_baseline": NaN,
+      "diff_ci95": [
+        NaN,
+        NaN
+      ],
+      "beats_baseline": false
+    },
+    {
+      "leverage": 5.0,
+      "quantile": 0.8,
+      "n_bars": 43422,
+      "n_events": 0,
+      "effective_events": 0.0,
+      "underpowered": true,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 7333,
+          "n_events": 0,
+          "n_events_rejected": 0,
+          "lift": NaN,
+          "reject_rate": 0.16887752752061166,
+          "capture_rate": NaN,
+          "false_reject_rate": 0.16887752752061166
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 7110,
+          "n_events": 0,
+          "n_events_rejected": 0,
+          "lift": NaN,
+          "reject_rate": 0.16374188199530193,
+          "capture_rate": NaN,
+          "false_reject_rate": 0.16374188199530193
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 7436,
+          "n_events": 0,
+          "n_events_rejected": 0,
+          "lift": NaN,
+          "reject_rate": 0.17124959697849015,
+          "capture_rate": NaN,
+          "false_reject_rate": 0.17124959697849015
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 7079,
+          "n_events": 0,
+          "n_events_rejected": 0,
+          "lift": NaN,
+          "reject_rate": 0.16302795817788218,
+          "capture_rate": NaN,
+          "false_reject_rate": 0.16302795817788218
+        }
+      },
+      "lift_ci95": [
+        NaN,
+        NaN
+      ],
+      "beats_chance": false,
+      "diff_vs_baseline": NaN,
+      "diff_ci95": [
+        NaN,
+        NaN
+      ],
+      "beats_baseline": false
+    },
+    {
+      "leverage": 5.0,
+      "quantile": 0.9,
+      "n_bars": 43422,
+      "n_events": 0,
+      "effective_events": 0.0,
+      "underpowered": true,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 4016,
+          "n_events": 0,
+          "n_events_rejected": 0,
+          "lift": NaN,
+          "reject_rate": 0.09248767905669937,
+          "capture_rate": NaN,
+          "false_reject_rate": 0.09248767905669937
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 3789,
+          "n_events": 0,
+          "n_events_rejected": 0,
+          "lift": NaN,
+          "reject_rate": 0.08725991432914192,
+          "capture_rate": NaN,
+          "false_reject_rate": 0.08725991432914192
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 3780,
+          "n_events": 0,
+          "n_events_rejected": 0,
+          "lift": NaN,
+          "reject_rate": 0.08705264612408456,
+          "capture_rate": NaN,
+          "false_reject_rate": 0.08705264612408456
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 3831,
+          "n_events": 0,
+          "n_events_rejected": 0,
+          "lift": NaN,
+          "reject_rate": 0.08822716595274285,
+          "capture_rate": NaN,
+          "false_reject_rate": 0.08822716595274285
+        }
+      },
+      "lift_ci95": [
+        NaN,
+        NaN
+      ],
+      "beats_chance": false,
+      "diff_vs_baseline": NaN,
+      "diff_ci95": [
+        NaN,
+        NaN
+      ],
+      "beats_baseline": false
+    },
+    {
+      "leverage": 10.0,
+      "quantile": 0.7,
+      "n_bars": 43422,
+      "n_events": 78,
+      "effective_events": 4.875,
+      "underpowered": true,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 10770,
+          "n_events": 78,
+          "n_events_rejected": 63,
+          "lift": 3.256417398757232,
+          "reject_rate": 0.24803095205195522,
+          "capture_rate": 0.8076923076923077,
+          "false_reject_rate": 0.2475278334831616
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 10595,
+          "n_events": 78,
+          "n_events_rejected": 50,
+          "lift": 2.6271463317239627,
+          "reject_rate": 0.24400073695361799,
+          "capture_rate": 0.6410256410256411,
+          "false_reject_rate": 0.24364382361754605
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 11055,
+          "n_events": 78,
+          "n_events_rejected": 52,
+          "lift": 2.618543645409317,
+          "reject_rate": 0.25459444521210445,
+          "capture_rate": 0.6666666666666666,
+          "false_reject_rate": 0.25422400479450474
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 10184,
+          "n_events": 78,
+          "n_events_rejected": 45,
+          "lift": 2.4598540697323097,
+          "reject_rate": 0.23453548892266593,
+          "capture_rate": 0.5769230769230769,
+          "false_reject_rate": 0.23422769287508932
+        }
+      },
+      "lift_ci95": [
+        2.0444447874976532,
+        4.115458801154141
+      ],
+      "beats_chance": true,
+      "diff_vs_baseline": 0.6292710670332693,
+      "diff_ci95": [
+        -0.09051470924335032,
+        1.6556143324265717
+      ],
+      "beats_baseline": false
+    },
+    {
+      "leverage": 10.0,
+      "quantile": 0.8,
+      "n_bars": 43422,
+      "n_events": 78,
+      "effective_events": 4.875,
+      "underpowered": true,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 7333,
+          "n_events": 78,
+          "n_events_rejected": 51,
+          "lift": 3.8717179452212864,
+          "reject_rate": 0.16887752752061166,
+          "capture_rate": 0.6538461538461539,
+          "false_reject_rate": 0.16844155544798653
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 7110,
+          "n_events": 78,
+          "n_events_rejected": 49,
+          "lift": 3.8365573947852427,
+          "reject_rate": 0.16374188199530193,
+          "capture_rate": 0.6282051282051282,
+          "false_reject_rate": 0.16332434363690845
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 7436,
+          "n_events": 78,
+          "n_events_rejected": 50,
+          "lift": 3.7432242313899127,
+          "reject_rate": 0.17124959697849015,
+          "capture_rate": 0.6410256410256411,
+          "false_reject_rate": 0.17082728257612428
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 7079,
+          "n_events": 78,
+          "n_events_rejected": 43,
+          "lift": 3.381518467406305,
+          "reject_rate": 0.16302795817788218,
+          "capture_rate": 0.5512820512820513,
+          "false_reject_rate": 0.16267892953461033
+        }
+      },
+      "lift_ci95": [
+        2.3602644924952116,
+        5.537574724315508
+      ],
+      "beats_chance": true,
+      "diff_vs_baseline": 0.035160550436043714,
+      "diff_ci95": [
+        -1.8022424514172344,
+        2.2778400356871136
+      ],
+      "beats_baseline": false
+    },
+    {
+      "leverage": 10.0,
+      "quantile": 0.9,
+      "n_bars": 43422,
+      "n_events": 78,
+      "effective_events": 4.875,
+      "underpowered": true,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 4016,
+          "n_events": 78,
+          "n_events_rejected": 38,
+          "lift": 5.267506895494943,
+          "reject_rate": 0.09248767905669937,
+          "capture_rate": 0.48717948717948717,
+          "false_reject_rate": 0.0921328631030588
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 3789,
+          "n_events": 78,
+          "n_events_rejected": 49,
+          "lift": 7.199240717055443,
+          "reject_rate": 0.08725991432914192,
+          "capture_rate": 0.6282051282051282,
+          "false_reject_rate": 0.08677362100361893
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 3780,
+          "n_events": 78,
+          "n_events_rejected": 37,
+          "lift": 5.449104599104599,
+          "reject_rate": 0.08705264612408456,
+          "capture_rate": 0.47435897435897434,
+          "false_reject_rate": 0.08670446949265842
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 3831,
+          "n_events": 78,
+          "n_events_rejected": 43,
+          "lift": 6.248438849065318,
+          "reject_rate": 0.08822716595274285,
+          "capture_rate": 0.5512820512820513,
+          "false_reject_rate": 0.08781089366802665
+        }
+      },
+      "lift_ci95": [
+        2.6221399737240647,
+        8.76510614460495
+      ],
+      "beats_chance": true,
+      "diff_vs_baseline": -1.9317338215605,
+      "diff_ci95": [
+        -5.723411017725938,
+        2.2102464368905013
+      ],
+      "beats_baseline": false
+    },
+    {
+      "leverage": 20.0,
+      "quantile": 0.7,
+      "n_bars": 43422,
+      "n_events": 1430,
+      "effective_events": 89.375,
+      "underpowered": false,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 10770,
+          "n_events": 1430,
+          "n_events_rejected": 887,
+          "lift": 2.5008157858854236,
+          "reject_rate": 0.24803095205195522,
+          "capture_rate": 0.6202797202797202,
+          "false_reject_rate": 0.24179876835179245
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 10595,
+          "n_events": 1430,
+          "n_events_rejected": 647,
+          "lift": 1.8542876472277134,
+          "reject_rate": 0.24400073695361799,
+          "capture_rate": 0.45244755244755247,
+          "false_reject_rate": 0.24051092326784837
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 11055,
+          "n_events": 1430,
+          "n_events_rejected": 674,
+          "lift": 1.8512920458103634,
+          "reject_rate": 0.25459444521210445,
+          "capture_rate": 0.47132867132867134,
+          "false_reject_rate": 0.2509658838129581
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 10184,
+          "n_events": 1430,
+          "n_events_rejected": 702,
+          "lift": 2.0931121902449474,
+          "reject_rate": 0.23453548892266593,
+          "capture_rate": 0.4909090909090909,
+          "false_reject_rate": 0.23024328564403962
+        }
+      },
+      "lift_ci95": [
+        2.2136540744717417,
+        2.796133175534313
+      ],
+      "beats_chance": true,
+      "diff_vs_baseline": 0.6465281386577102,
+      "diff_ci95": [
+        0.36008135482727377,
+        0.9392669906236494
+      ],
+      "beats_baseline": true
+    },
+    {
+      "leverage": 20.0,
+      "quantile": 0.8,
+      "n_bars": 43422,
+      "n_events": 1430,
+      "effective_events": 89.375,
+      "underpowered": false,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 7333,
+          "n_events": 1430,
+          "n_events_rejected": 743,
+          "lift": 3.0766699821384127,
+          "reject_rate": 0.16887752752061166,
+          "capture_rate": 0.5195804195804196,
+          "false_reject_rate": 0.16300606457957711
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 7110,
+          "n_events": 1430,
+          "n_events_rejected": 514,
+          "lift": 2.1951656782036526,
+          "reject_rate": 0.16374188199530193,
+          "capture_rate": 0.3594405594405594,
+          "false_reject_rate": 0.1604654974594329
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 7436,
+          "n_events": 1430,
+          "n_events_rejected": 534,
+          "lift": 2.180598261340596,
+          "reject_rate": 0.17124959697849015,
+          "capture_rate": 0.3734265734265734,
+          "false_reject_rate": 0.1678647528508207
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 7079,
+          "n_events": 1430,
+          "n_events_rejected": 558,
+          "lift": 2.393514551559473,
+          "reject_rate": 0.16302795817788218,
+          "capture_rate": 0.3902097902097902,
+          "false_reject_rate": 0.15922448310581402
+        }
+      },
+      "lift_ci95": [
+        2.6389630172212866,
+        3.515069790649633
+      ],
+      "beats_chance": true,
+      "diff_vs_baseline": 0.8815043039347601,
+      "diff_ci95": [
+        0.48915028932037796,
+        1.2843977926238874
+      ],
+      "beats_baseline": true
+    },
+    {
+      "leverage": 20.0,
+      "quantile": 0.9,
+      "n_bars": 43422,
+      "n_events": 1430,
+      "effective_events": 89.375,
+      "underpowered": false,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 4016,
+          "n_events": 1430,
+          "n_events_rejected": 546,
+          "lift": 4.128314016660631,
+          "reject_rate": 0.09248767905669937,
+          "capture_rate": 0.38181818181818183,
+          "false_reject_rate": 0.08764371180368558
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 3789,
+          "n_events": 1430,
+          "n_events_rejected": 358,
+          "lift": 2.8690109573720024,
+          "reject_rate": 0.08725991432914192,
+          "capture_rate": 0.25034965034965034,
+          "false_reject_rate": 0.08452946823705716
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 3780,
+          "n_events": 1430,
+          "n_events_rejected": 369,
+          "lift": 2.9642057942057947,
+          "reject_rate": 0.08705264612408456,
+          "capture_rate": 0.25804195804195806,
+          "false_reject_rate": 0.08418994544219917
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 3831,
+          "n_events": 1430,
+          "n_events_rejected": 421,
+          "lift": 3.336904129543127,
+          "reject_rate": 0.08822716595274285,
+          "capture_rate": 0.2944055944055944,
+          "false_reject_rate": 0.08477532957126466
+        }
+      },
+      "lift_ci95": [
+        3.4153352058742104,
+        4.880574730443428
+      ],
+      "beats_chance": true,
+      "diff_vs_baseline": 1.2593030592886283,
+      "diff_ci95": [
+        0.6684252371365667,
+        1.8755307703822925
+      ],
+      "beats_baseline": true
+    },
+    {
+      "leverage": 25.0,
+      "quantile": 0.7,
+      "n_bars": 43422,
+      "n_events": 2748,
+      "effective_events": 171.75,
+      "underpowered": false,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 10770,
+          "n_events": 2748,
+          "n_events_rejected": 1696,
+          "lift": 2.488302862958323,
+          "reject_rate": 0.24803095205195522,
+          "capture_rate": 0.6171761280931587,
+          "false_reject_rate": 0.23596841704718416
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 10595,
+          "n_events": 2748,
+          "n_events_rejected": 1250,
+          "lift": 1.8642413925988819,
+          "reject_rate": 0.24400073695361799,
+          "capture_rate": 0.45487627365356625,
+          "false_reject_rate": 0.2371099695585997
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 11055,
+          "n_events": 2748,
+          "n_events_rejected": 1312,
+          "lift": 1.8752888988957555,
+          "reject_rate": 0.25459444521210445,
+          "capture_rate": 0.4774381368267831,
+          "false_reject_rate": 0.24731259512937595
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 10184,
+          "n_events": 2748,
+          "n_events_rejected": 1337,
+          "lift": 2.07446499689555,
+          "reject_rate": 0.23453548892266593,
+          "capture_rate": 0.48653566229985445,
+          "false_reject_rate": 0.22630089421613395
+        }
+      },
+      "lift_ci95": [
+        2.282741211073401,
+        2.703825901326144
+      ],
+      "beats_chance": true,
+      "diff_vs_baseline": 0.6240614703594412,
+      "diff_ci95": [
+        0.423785384897445,
+        0.8341162721456975
+      ],
+      "beats_baseline": true
+    },
+    {
+      "leverage": 25.0,
+      "quantile": 0.8,
+      "n_bars": 43422,
+      "n_events": 2748,
+      "effective_events": 171.75,
+      "underpowered": false,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 7333,
+          "n_events": 2748,
+          "n_events_rejected": 1409,
+          "lift": 3.0361442590383723,
+          "reject_rate": 0.16887752752061166,
+          "capture_rate": 0.5127365356622998,
+          "false_reject_rate": 0.15764126712328766
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 7110,
+          "n_events": 2748,
+          "n_events_rejected": 1009,
+          "lift": 2.2424081341858133,
+          "reject_rate": 0.16374188199530193,
+          "capture_rate": 0.36717612809315864,
+          "false_reject_rate": 0.15709427321156774
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 7436,
+          "n_events": 2748,
+          "n_events_rejected": 1042,
+          "lift": 2.214223381589858,
+          "reject_rate": 0.17124959697849015,
+          "capture_rate": 0.3791848617176128,
+          "false_reject_rate": 0.1644549086757991
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 7079,
+          "n_events": 2748,
+          "n_events_rejected": 1070,
+          "lift": 2.3883884371697826,
+          "reject_rate": 0.16302795817788218,
+          "capture_rate": 0.3893740902474527,
+          "false_reject_rate": 0.1556316590563166
+        }
+      },
+      "lift_ci95": [
+        2.7379643341208837,
+        3.3538024270234517
+      ],
+      "beats_chance": true,
+      "diff_vs_baseline": 0.793736124852559,
+      "diff_ci95": [
+        0.5077397679800343,
+        1.0838382539388556
+      ],
+      "beats_baseline": true
+    },
+    {
+      "leverage": 25.0,
+      "quantile": 0.9,
+      "n_bars": 43422,
+      "n_events": 2748,
+      "effective_events": 171.75,
+      "underpowered": false,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 4016,
+          "n_events": 2748,
+          "n_events_rejected": 984,
+          "lift": 3.871635727831034,
+          "reject_rate": 0.09248767905669937,
+          "capture_rate": 0.35807860262008734,
+          "false_reject_rate": 0.0838089802130898
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 3789,
+          "n_events": 2748,
+          "n_events_rejected": 672,
+          "lift": 2.8024492872380513,
+          "reject_rate": 0.08725991432914192,
+          "capture_rate": 0.2445414847161572,
+          "false_reject_rate": 0.08212043378995434
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 3780,
+          "n_events": 2748,
+          "n_events_rejected": 693,
+          "lift": 2.896906841339156,
+          "reject_rate": 0.08705264612408456,
+          "capture_rate": 0.2521834061135371,
+          "false_reject_rate": 0.08165667808219178
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 3831,
+          "n_events": 2748,
+          "n_events_rejected": 786,
+          "lift": 3.241928920470672,
+          "reject_rate": 0.08822716595274285,
+          "capture_rate": 0.28602620087336245,
+          "false_reject_rate": 0.08176369863013698
+        }
+      },
+      "lift_ci95": [
+        3.3727869860803725,
+        4.401640400129478
+      ],
+      "beats_chance": true,
+      "diff_vs_baseline": 1.0691864405929827,
+      "diff_ci95": [
+        0.6578170388840746,
+        1.5205273517461282
+      ],
+      "beats_baseline": true
+    },
+    {
+      "leverage": 50.0,
+      "quantile": 0.7,
+      "n_bars": 43422,
+      "n_events": 16724,
+      "effective_events": 1045.25,
+      "underpowered": false,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 10770,
+          "n_events": 16724,
+          "n_events_rejected": 7797,
+          "lift": 1.8796695023714525,
+          "reject_rate": 0.24803095205195522,
+          "capture_rate": 0.46621621621621623,
+          "false_reject_rate": 0.19599258414147178
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 10595,
+          "n_events": 16724,
+          "n_events_rejected": 6467,
+          "lift": 1.5847894230162538,
+          "reject_rate": 0.24400073695361799,
+          "capture_rate": 0.386689787132265,
+          "false_reject_rate": 0.20996862521391899
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 11055,
+          "n_events": 16724,
+          "n_events_rejected": 6768,
+          "lift": 1.5895392901336636,
+          "reject_rate": 0.25459444521210445,
+          "capture_rate": 0.4046878737144224,
+          "false_reject_rate": 0.21879634911580148
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 10184,
+          "n_events": 16724,
+          "n_events_rejected": 6547,
+          "lift": 1.6691432650002922,
+          "reject_rate": 0.23453548892266593,
+          "capture_rate": 0.3914733317388185,
+          "false_reject_rate": 0.19710496292070737
+        }
+      },
+      "lift_ci95": [
+        1.8127032131948164,
+        1.950398825715336
+      ],
+      "beats_chance": true,
+      "diff_vs_baseline": 0.29488007935519867,
+      "diff_ci95": [
+        0.23699145913515482,
+        0.35824726029718296
+      ],
+      "beats_baseline": true
+    },
+    {
+      "leverage": 50.0,
+      "quantile": 0.8,
+      "n_bars": 43422,
+      "n_events": 16724,
+      "effective_events": 1045.25,
+      "underpowered": false,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 7333,
+          "n_events": 16724,
+          "n_events_rejected": 5787,
+          "lift": 2.0489976556195577,
+          "reject_rate": 0.16887752752061166,
+          "capture_rate": 0.34602965797656066,
+          "false_reject_rate": 0.12662578436965202
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 7110,
+          "n_events": 16724,
+          "n_events_rejected": 4760,
+          "lift": 1.7382290994926817,
+          "reject_rate": 0.16374188199530193,
+          "capture_rate": 0.2846209040899306,
+          "false_reject_rate": 0.13491158014831717
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 7436,
+          "n_events": 16724,
+          "n_events_rejected": 5054,
+          "lift": 1.7646781998381726,
+          "reject_rate": 0.17124959697849015,
+          "capture_rate": 0.3022004305190146,
+          "false_reject_rate": 0.14001711351968055
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 7079,
+          "n_events": 16724,
+          "n_events_rejected": 5026,
+          "lift": 1.8434027713136931,
+          "reject_rate": 0.16302795817788218,
+          "capture_rate": 0.30052618990672086,
+          "false_reject_rate": 0.1302338847689675
+        }
+      },
+      "lift_ci95": [
+        1.9649177465203687,
+        2.1393471077217234
+      ],
+      "beats_chance": true,
+      "diff_vs_baseline": 0.31076855612687604,
+      "diff_ci95": [
+        0.23712719485030773,
+        0.3896874479167034
+      ],
+      "beats_baseline": true
+    },
+    {
+      "leverage": 50.0,
+      "quantile": 0.9,
+      "n_bars": 43422,
+      "n_events": 16724,
+      "effective_events": 1045.25,
+      "underpowered": false,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 4016,
+          "n_events": 16724,
+          "n_events_rejected": 3511,
+          "lift": 2.2699003376591698,
+          "reject_rate": 0.09248767905669937,
+          "capture_rate": 0.20993781392011482,
+          "false_reject_rate": 0.0644751853964632
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 3789,
+          "n_events": 16724,
+          "n_events_rejected": 2904,
+          "lift": 1.9899477389229978,
+          "reject_rate": 0.08725991432914192,
+          "capture_rate": 0.17364266921789046,
+          "false_reject_rate": 0.06665715915573303
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 3780,
+          "n_events": 16724,
+          "n_events_rejected": 2964,
+          "lift": 2.0358982243938,
+          "reject_rate": 0.08705264612408456,
+          "capture_rate": 0.17723032767280555,
+          "false_reject_rate": 0.06554478037649743
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 3831,
+          "n_events": 16724,
+          "n_events_rejected": 3085,
+          "lift": 2.0908009103343854,
+          "reject_rate": 0.08822716595274285,
+          "capture_rate": 0.18446543889021766,
+          "false_reject_rate": 0.06527381631488877
+        }
+      },
+      "lift_ci95": [
+        2.157706866553496,
+        2.3887841471955933
+      ],
+      "beats_chance": true,
+      "diff_vs_baseline": 0.27995259873617195,
+      "diff_ci95": [
+        0.18087561571415003,
+        0.38350243630083447
+      ],
+      "beats_baseline": true
+    }
+  ],
+  "verdict": {
+    "viable": true,
+    "reasons": [
+      "criterio 1 (mejor que el azar): lift=3.077 IC95% [2.639, 3.515] \u2014 PASA (el IC excluye 1.0)",
+      "criterio 2 (mejor que ewma): diff=+0.882 IC95% [+0.489, +1.284] \u2014 PASA (el IC excluye 0)"
+    ]
+  }
+}
