@@ -355,6 +355,49 @@ perfectamente calibrado por construcción y es inútil: no distingue nada.
 La calibración dice "cuando digo 70%, acierto 70%"; la discriminación dice
 "sé cuáles son los casos de 70%". Pasar solo la primera no habilita operar.
 
+**Y los dos juntos tampoco alcanzan — pasar el gate habilita MEDIR, no
+OPERAR** (medido 2026-09-14, `docs/PROBABILITY_MODEL.md` §8.1). El gate mide
+si el modelo ordena mejor que el azar; el mercado exige que la probabilidad
+**calibrada** supere la **probabilidad de equilibrio**,
+`P_equilibrio = (SL + costo) / (TP + SL)`, que en este setup es **61,6%**
+contra una tasa base de 43,9%. Son listones distintos, y el AUC no mide el
+segundo: mide **orden**, no **dispersión de las probabilidades**. Un modelo
+puede ordenar apenas mejor que el azar y, ya calibrado, aplastar todas sus
+predicciones contra la tasa base — que es literalmente lo que pasa hoy:
+de 44.539 predicciones long, **40.521 caen en el bucket 40-50%** y solo 3
+superan el 70%.
+
+Cuantificado sobre un binormal de varianza igual, leyendo tasa base y
+equilibrio del artefacto real del gate:
+
+| AUC | % de barras sobre el equilibrio | barras/año a 15m |
+|---|---|---|
+| 0,52 (lo medido) | 0,000% | 0 |
+| **0,55 — umbral del gate** | **0,003%** | **1** |
+| 0,58 | 0,627% | 220 |
+| 0,60 | 2,351% | 824 |
+| 0,63 | 6,541% | 2.292 |
+| 0,65 | 9,723% | 3.407 |
+
+**Un modelo que aprueba el gate con AUC 0,551 emitiría del orden de UNA señal
+operable por año.** El piso para que aparezca algo está cerca de 0,58; el de
+un instrumento usable, cerca de 0,63. Entre el umbral del gate y el umbral
+económico hay ocho centésimas de AUC, que en este problema es más de lo que
+separó al modelo del azar en las dos corridas completas.
+
+**El gate NO se mueve por esto.** AUC > 0.55 con BSS > 0 sigue siendo la
+condición de entrada: es el listón de "esto no es ruido". Lo que cambia es
+cómo se lee un aprobado — el número que decide si hay producto es el que el
+reporte ya imprime al pie de cada dirección, **cuántas señales superan el
+umbral y con qué expectancy neta**. Si son tres en dos años, no hay producto
+aunque las tres ganen. Corolario para cualquier barrido de barreras futuro:
+maximizar AUC es mirar la variable equivocada; lo que hay que maximizar es la
+**masa de probabilidad calibrada por encima del equilibrio**, y bajar el
+costo o alargar el horizonte baja el listón tanto como subir el AUC.
+
+Se reimprime con `uv run python scripts/economic_floor.py` (solo lectura, lee
+el artefacto del gate en vez de copiar sus cifras).
+
 ### Paper tracking (validación forward continua)
 
 Cada señal emitida en vivo se registra en DB y se simula su resultado con
@@ -549,7 +592,9 @@ completo.
 2. ✅ Corrido sobre 24 meses de ETHUSDT 15m
 3. **Criterio de salida (los dos, en TODAS las direcciones)**: error de
    calibración < 10pp por bucket **y** AUC > 0.55 con BSS > 0. Método completo
-   y límites conocidos: `docs/PROBABILITY_MODEL.md`
+   y límites conocidos: `docs/PROBABILITY_MODEL.md`. Recordar que aprobar
+   habilita **medir**, no operar: el piso económico está ~0,08 de AUC por
+   encima del umbral del gate (ver "Backtesting engine" arriba y §8.1)
 
 **VEREDICTO: el target de dirección NO pasó el gate.** Calibra (4,0pp / 5,1pp)
 y no discrimina (AUC 0,519 / 0,533). El target de volatilidad y el cono sí

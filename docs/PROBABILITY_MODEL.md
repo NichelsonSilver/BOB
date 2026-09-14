@@ -161,6 +161,12 @@ un trade tenga EV positivo. El
 reporte muestra siempre los tres números juntos (tasa base, equilibrio, y lo
 que el modelo predice) para que no se puedan leer por separado.
 
+Este listón es **más alto que el del gate** y no está dentro de él: un modelo
+puede aprobar los dos criterios del §8 y aun así no emitir casi ninguna
+probabilidad por encima del equilibrio, porque el AUC mide orden y no
+dispersión. Cuánto AUC hace falta para que aparezcan señales operables está
+cuantificado en el **§8.1**.
+
 ---
 
 ## 3. Features (`signals/features.py`)
@@ -433,6 +439,112 @@ puede ser útil aunque el de dirección no lo sea — de hecho es el orden
 esperado bajo eficiencia de mercado. Dimensionar TP/SL con una volatilidad
 bien pronosticada ya es valor operativo real, sin necesidad de acertar la
 dirección.
+
+---
+
+### 8.1 Pasar el gate NO es poder operar — el piso económico del AUC
+
+Los dos criterios del §8 son **necesarios y no suficientes**, y conviene que
+esté escrito antes de que alguien vea un AUC de 0.56 y crea que el KPI se
+enciende con señales utilizables. Hay un tercer listón que el gate no mide:
+
+> No alcanza con ordenar bien los setups. La probabilidad **calibrada** tiene
+> que superar la **probabilidad de equilibrio** del §2.6 — 61.6% contra una
+> tasa base de 43.9% — o el setup pierde plata aunque el modelo tenga razón
+> en el orden.
+
+Y esas son dos cosas distintas: el AUC mide **orden**, no **dispersión de las
+probabilidades**. Un modelo puede ordenar apenas mejor que el azar y, una vez
+calibrado, aplastar todas sus predicciones contra la tasa base. Es
+exactamente lo que pasa en el run del §9: de 44.539 predicciones long,
+**40.521 caen en el bucket 40-50% y 3.864 en el 50-60%**. Tres superan 70%.
+
+#### Cuánto AUC hace falta
+
+Bajo el binormal de varianza igual —la idealización estándar para razonar
+sobre AUC: `s|y=1 ~ N(mu,1)`, `s|y=0 ~ N(0,1)`, `AUC = Phi(mu/sqrt(2))`— la
+probabilidad calibrada es monótona en el score,
+
+```
+logit p(s) = logit(pi) + mu*s - mu^2/2
+```
+
+así que "`p > p*`" es un corte `s > c` y la fracción de barras que lo supera
+sale de la mixtura. Con la tasa base y el equilibrio **reales del artefacto
+del gate** (`ETHUSDT-15m-price-gbm-20260826135740`, dirección long):
+
+| AUC | % de barras sobre el equilibrio | win rate de esa selección | barras/año (15m) |
+|---|---|---|---|
+| 0.52 (lo medido) | 0.000% | — | 0 |
+| **0.55 (umbral del gate)** | **0.003%** | 62.5% | **1** |
+| 0.58 | 0.627% | 63.7% | 220 |
+| 0.60 | 2.351% | 64.7% | 824 |
+| 0.63 | 6.541% | 66.3% | 2.292 |
+| 0.65 | 9.723% | 67.4% | 3.407 |
+| 0.70 | 17.244% | 70.4% | 6.042 |
+
+**Un modelo que aprueba el gate con AUC 0.551 emitiría del orden de UNA señal
+operable por año.** El piso para que aparezca algo está cerca de **0.58**, y
+el de un instrumento usable cerca de **0.63**. Entre el umbral del gate y el
+umbral económico hay ocho centésimas de AUC, que en este problema es un
+abismo — el salto de 0.52 a 0.63 es más grande que todo lo que separó al
+modelo del azar en las dos corridas.
+
+#### El control contra el run real, que corrige al binormal en las dos direcciones
+
+El binormal supone colas gaussianas y el modelo real las tiene más gordas:
+predice ~0 barras sobre el equilibrio y el run tiene 3 en buckets
+enteramente por encima, más 28 en el bucket que lo cruza. Pero eso **no es
+una buena noticia**, porque esas predicciones extremas están descalibradas:
+
+| bucket | n | predicho | observado | ¿supera el equilibrio? |
+|---|---|---|---|---|
+| 60-70% (long) | 28 | 62.7% | **53.6%** | NO |
+| 60-70% (short) | 20 | 62.6% | **35.0%** | NO |
+| 80-90% (long) | 2 | 88.2% | 100.0% | sí, con n=2 |
+| 90-100% (long) | 1 | 98.2% | 100.0% | sí, con n=1 |
+
+O sea: el binormal **subestima cuántas señales aparecen y sobreestima cuántas
+de ellas sirven**. La cola real existe y no cumple. Las dos únicas celdas que
+cumplen tienen n=2 y n=1, que es ruido con formato de tabla.
+
+#### Qué se hace con esto
+
+**El gate no se mueve.** AUC > 0.55 con BSS > 0 sigue siendo la condición de
+entrada, porque es el listón de "esto no es ruido" y es lo que separa un
+modelo de un generador de tasa base. Lo que cambia es cómo se **lee** un
+aprobado:
+
+- Aprobar el gate habilita **medir**, no habilita **operar**. El número que
+  decide si hay producto es el que el propio reporte ya imprime al pie de
+  cada dirección: **cuántas señales superan el umbral y con qué expectancy
+  neta**. Si son tres en dos años, no hay producto, aunque las tres ganen.
+- El listón se mueve con el setup. `P_equilibrio = (SL + costo) / (TP + SL)`
+  depende de la fricción y de `sigma_H`: bajar costos o alargar el horizonte
+  lo baja, y eso vale tanto como subir el AUC. A 15m con 0.14% round-trip,
+  el costo se come la mayor parte del margen disponible.
+- Por eso un barrido de barreras (§2.5) que solo busque maximizar AUC está
+  mirando la variable equivocada. Lo que hay que maximizar es la **masa de
+  probabilidad calibrada por encima del equilibrio**.
+
+#### Límites de este cálculo
+
+El binormal es una idealización: supone scores gaussianos de **igual
+dispersión** en las dos clases, y ya se vio arriba que el modelo real se
+aparta de eso. Sirve para fijar el **orden de magnitud** del listón, no para
+predecir un run concreto — el control contra los buckets reales está
+justamente para que la tabla no se lea como una promesa. Y el equilibrio de
+61.6% es el de este setup (`TP/SL 0.5σ_H`, `H=16`, 0.14% + funding): con otro
+setup hay que recalcularlo.
+
+Reproducible, leyendo la tasa base y el equilibrio del artefacto en vez de
+copiarlos:
+
+```bash
+cd backend
+uv run python scripts/economic_floor.py                       # variante del vivo (price+deriv, gbm)
+uv run python scripts/economic_floor.py --artifact artifacts/<run>.json
+```
 
 ---
 
@@ -856,6 +968,9 @@ uv run python -m bob.backtest.runner --features price
 uv run python -m bob.backtest.runner --features price+deriv
 uv run python -m bob.backtest.runner --features full
 uv run python -m bob.backtest.compare
+
+# 5. El piso económico del AUC del §8.1 (solo lectura sobre el artefacto)
+uv run python scripts/economic_floor.py
 
 # Variantes
 uv run python -m bob.backtest.runner --tp 1.0 --sl 0.5 --horizon 32 --folds 8
