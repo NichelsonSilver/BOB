@@ -31,6 +31,8 @@ _ADDITIVE_COLUMNS: list[tuple[str, str, str]] = [
     ("derivativesnapshot", "top_trader_position_ratio", "TEXT"),
     # Funding: vive en la misma tabla bajo period="funding".
     ("derivativesnapshot", "funding_rate", "TEXT"),
+    # Fase 5-bis — la decisión del filtro de régimen, por barra.
+    ("forecastrecord", "regime_json", "TEXT"),
 ]
 
 

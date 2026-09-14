@@ -233,6 +233,12 @@ class LiveAnalyst:
             "model_version": self._bundle.model_version if self._bundle else None,
             "last_forecast_open_time": analysis.open_time if analysis else None,
             "last_reference_price": analysis.reference_price if analysis else None,
+            #: Estado del filtro de régimen en la última barra emitida. Va en
+            #: `/api/health` y no solo en el pronóstico porque es lo único que
+            #: el usuario puede accionar sin mirar el dashboard entero.
+            "regime": (
+                analysis.regime.as_dict() if analysis and analysis.regime else None
+            ),
             "cone_coverage": {
                 f"{alpha:.2f}": {
                     "n": cone.n_observed,
@@ -821,6 +827,9 @@ class LiveAnalyst:
                     cones_json=json.dumps([c.as_dict() for c in analysis.cones]),
                     projections_json=json.dumps(
                         {d: p.as_dict() for d, p in analysis.projections.items()}
+                    ),
+                    regime_json=(
+                        json.dumps(analysis.regime.as_dict()) if analysis.regime else None
                     ),
                     probabilities_json=json.dumps(analysis.probabilities),
                     probability_calibrated=analysis.probability_calibrated,

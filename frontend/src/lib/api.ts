@@ -20,6 +20,7 @@ import type {
   HistoryResponse,
   LatestResponse,
   ProjectionResponse,
+  RiskFilterEvidence,
   RunDetail,
   RunsResponse,
   SettingsResponse,
@@ -98,6 +99,8 @@ export const api = {
     request<GateResponse>(`/api/backtest/gate${query(params)}`),
 
   forward: () => request<ForwardArtifact>("/api/backtest/forward"),
+
+  riskFilter: () => request<RiskFilterEvidence>("/api/backtest/riskfilter"),
 
   settings: () => request<SettingsResponse>("/api/settings"),
 };

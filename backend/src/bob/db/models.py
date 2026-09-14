@@ -258,6 +258,14 @@ class ForecastRecord(SQLModel, table=True):
     cones_json: str = "[]"  # [{alpha, nominal, ret_lo, ret_hi, price_lo, price_hi}]
     projections_json: str = "{}"  # {direction: SetupProjection.as_dict()}
 
+    #: Filtro de régimen (Fase 5-bis): la decisión que SÍ pasó su criterio.
+    #: Se persiste —en vez de recalcularse— porque el umbral depende de la
+    #: referencia del bundle vigente al emitir, y esa referencia se mueve con
+    #: cada reajuste. Sin guardarla no habría forma de validar el filtro
+    #: forward: se estaría reconstruyendo la decisión con un umbral que no es
+    #: el que se tomó.
+    regime_json: str | None = None
+
     # --- KPI 1: se registra, NO se emite (regla 2) ---------------------- #
     probabilities_json: str = "{}"  # {direction: P(TP antes que SL)}
     probability_calibrated: bool = False

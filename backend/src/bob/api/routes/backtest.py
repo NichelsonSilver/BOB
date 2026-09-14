@@ -39,6 +39,10 @@ router = APIRouter(tags=["backtest"])
 #: nombrarlos acá evita depender de que falle.
 FORWARD_PREFIX = "forward-"
 
+#: Igual que el anterior: los artefactos del filtro de régimen (Fase 5-bis)
+#: comparten directorio y tienen su propio esquema.
+RISKFILTER_PREFIX = "riskfilter-"
+
 #: El timestamp con que `runner.build_run_id` cierra el nombre: `...-YYYYmmddHHMMSS`.
 _STAMP_RE = re.compile(r"(\d{14})$")
 
@@ -90,7 +94,7 @@ def _gate_runs() -> list[Path]:
     return sorted(
         p
         for p in ARTIFACTS_DIR.glob("*.json")
-        if not p.name.startswith(FORWARD_PREFIX)
+        if not p.name.startswith((FORWARD_PREFIX, RISKFILTER_PREFIX))
     )
 
 
@@ -244,6 +248,55 @@ async def gate(
         "gate": summary["gate"],
         "volatility": summary["volatility"],
         "intervals": summary["intervals"],
+    }
+
+
+@router.get("/backtest/riskfilter")
+async def riskfilter() -> dict[str, Any]:
+    """La medición del filtro de régimen, tal como quedó congelada.
+
+    El dashboard la necesita para cumplir la regla 2 con el estado del filtro:
+    igual que el gauge de Seguridad va con su AUC real al lado, el cartel de
+    "no entres ahora" tiene que ir con el lift medido y su intervalo. Un
+    "RÉGIMEN ELEVADO" sin decir que evita el 52% de las liquidaciones —y no el
+    100%— es una alarma sin magnitud.
+
+    Sale del artefacto y **no** de constantes en el TSX, por la misma razón que
+    el veredicto del gate: el día que se remida, el número del dashboard cambia
+    solo. Y el veredicto viene calculado por `verdict()`, que aplica los dos
+    criterios del pre-registro — no se reinterpreta acá.
+    """
+    paths = sorted(
+        p for p in ARTIFACTS_DIR.glob(f"{RISKFILTER_PREFIX}*.json") if p.is_file()
+    )
+    if not paths:
+        raise HTTPException(status_code=404, detail="no hay medición del filtro")
+    path = paths[-1]
+    raw: dict[str, Any] = await in_thread(
+        lambda: json.loads(path.read_text(encoding="utf-8"))
+    )
+    primary = raw.get("primary", {})
+    model = primary.get("lifts", {}).get("model", {})
+    baseline = primary.get("lifts", {}).get("ewma", {})
+    return {
+        "artifact_id": path.stem,
+        "preregistration": raw.get("config", {}).get("preregistration"),
+        "viable": raw.get("verdict", {}).get("viable", False),
+        "reasons": raw.get("verdict", {}).get("reasons", []),
+        "leverage": primary.get("leverage"),
+        "quantile": primary.get("quantile"),
+        "n_bars": primary.get("n_bars"),
+        "n_events": primary.get("n_events"),
+        "effective_events": primary.get("effective_events"),
+        "lift": model.get("lift"),
+        "lift_ci95": primary.get("lift_ci95"),
+        "capture_rate": model.get("capture_rate"),
+        "reject_rate": model.get("reject_rate"),
+        "false_reject_rate": model.get("false_reject_rate"),
+        "baseline_lift": baseline.get("lift"),
+        "baseline_capture_rate": baseline.get("capture_rate"),
+        "diff_ci95": primary.get("diff_ci95"),
+        "report": raw,
     }
 
 

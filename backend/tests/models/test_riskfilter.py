@@ -299,3 +299,61 @@ def test_el_ic_agrupado_remuestrea_barras_y_no_setups():
 def test_events_con_forma_invalida_falla():
     with pytest.raises(ValueError):
         rf.filter_lift(np.ones(5, dtype=bool), np.ones((4, 2), dtype=bool))
+
+
+# --------------------------------------------------------------------------- #
+# Estado de régimen en vivo
+# --------------------------------------------------------------------------- #
+def test_la_referencia_reproduce_los_cuantiles_de_la_muestra():
+    rng = np.random.default_rng(31)
+    s = rng.lognormal(-5, 0.5, 20_000)
+    ref = rf.SigmaReference.from_samples(s)
+    for q in (0.10, 0.50, 0.80, 0.95):
+        assert ref.threshold(q) == pytest.approx(np.quantile(s, q), rel=0.02)
+    assert ref.n_samples == s.size
+
+
+def test_la_referencia_ignora_los_nan():
+    s = np.array([1.0, 2.0, np.nan, 3.0, np.inf])
+    ref = rf.SigmaReference.from_samples(s)
+    assert ref.n_samples == 3
+
+
+def test_la_referencia_falla_sin_datos():
+    with pytest.raises(ValueError):
+        rf.SigmaReference.from_samples(np.array([np.nan, np.nan]))
+
+
+def test_el_percentil_es_la_inversa_del_umbral():
+    rng = np.random.default_rng(32)
+    ref = rf.SigmaReference.from_samples(rng.lognormal(-5, 0.5, 20_000))
+    for q in (0.20, 0.50, 0.80):
+        assert ref.percentile_of(ref.threshold(q)) == pytest.approx(q * 100, abs=1.0)
+
+
+def test_el_regimen_se_enciende_sobre_el_umbral():
+    ref = rf.SigmaReference.from_samples(np.linspace(0.001, 0.02, 10_000))
+    th = ref.threshold(rf.VALIDATED_Q)
+
+    bajo = rf.regime_state(th * 0.99, ref, rf.VALIDATED_Q)
+    alto = rf.regime_state(th * 1.01, ref, rf.VALIDATED_Q)
+
+    assert not bajo.elevated
+    assert alto.elevated
+    assert alto.percentile > bajo.percentile
+    assert alto.as_dict()["elevated"] is True
+
+
+def test_una_sigma_no_finita_no_enciende_el_regimen():
+    """Sin sigma no hay opinión: el filtro no puede rechazar lo que no ve."""
+    ref = rf.SigmaReference.from_samples(np.linspace(0.001, 0.02, 1_000))
+    st = rf.regime_state(float("nan"), ref, rf.VALIDATED_Q)
+    assert not st.elevated
+    assert np.isnan(st.percentile)
+
+
+def test_el_q_del_vivo_es_el_que_se_valido():
+    """Si producción filtrara con otro q, el lift citado no describiría la regla."""
+    from bob.backtest.riskfilter_runner import PRIMARY_Q
+
+    assert PRIMARY_Q == rf.VALIDATED_Q

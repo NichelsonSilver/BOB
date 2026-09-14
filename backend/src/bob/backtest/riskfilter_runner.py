@@ -52,7 +52,7 @@ ARTIFACT_DIR = Path(__file__).resolve().parents[3] / "artifacts"
 #: exponerla como flag sería invitar a barrerla y reportar la que mejor salga,
 #: que es exactamente lo que el pre-registro existe para impedir.
 PRIMARY_LEVERAGE = 20.0
-PRIMARY_Q = 0.80
+PRIMARY_Q = rf.VALIDATED_Q
 PRIMARY_BASELINE = "ewma"
 
 #: Grilla exploratoria, §6. Declarada, y etiquetada como tal en el reporte.

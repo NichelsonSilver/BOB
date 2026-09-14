@@ -92,6 +92,11 @@ def _record_dict(record: ForecastRecord, timeframe: str) -> dict[str, Any]:
         "cones": json.loads(record.cones_json),
         "projections": json.loads(record.projections_json),
         "probabilities": json.loads(record.probabilities_json),
+        # Filtro de régimen (Fase 5-bis). Sale del registro y no se recalcula:
+        # el umbral dependía de la referencia del bundle vigente al emitir, y
+        # recomputarlo hoy contaría una decisión que nunca se tomó. Es None en
+        # los pronósticos anteriores a la Fase 5-bis, y el frontend lo dice.
+        "regime": json.loads(record.regime_json) if record.regime_json else None,
         # Regla 2, literal: el gate rechazó la discriminación del KPI 1, así
         # que este flag viaja en False y el frontend lo dibuja en gris. No es
         # un default perezoso — es el veredicto.

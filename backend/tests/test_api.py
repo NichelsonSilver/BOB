@@ -417,6 +417,33 @@ def fake_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     (tmp_path / "forward-ETHUSDT-15m-n288-20260904051028.json").write_text(
         json.dumps({"n_resolved": 288}), encoding="utf-8"
     )
+    (tmp_path / "riskfilter-ETHUSDT-15m-price+deriv-gbm-20260914202117.json").write_text(
+        json.dumps(
+            {
+                "config": {"preregistration": "docs/PREREGISTRO_FILTRO_RIESGO.md"},
+                "primary": {
+                    "leverage": 20.0,
+                    "quantile": 0.80,
+                    "n_bars": 43422,
+                    "n_events": 1430,
+                    "effective_events": 89.375,
+                    "lift_ci95": [2.639, 3.515],
+                    "diff_ci95": [0.489, 1.284],
+                    "lifts": {
+                        "model": {
+                            "lift": 3.077,
+                            "capture_rate": 0.520,
+                            "reject_rate": 0.169,
+                            "false_reject_rate": 0.163,
+                        },
+                        "ewma": {"lift": 2.195, "capture_rate": 0.359},
+                    },
+                },
+                "verdict": {"viable": True, "reasons": ["criterio 1: PASA"]},
+            }
+        ),
+        encoding="utf-8",
+    )
     monkeypatch.setattr(backtest_routes, "ARTIFACTS_DIR", tmp_path)
     return tmp_path
 
@@ -461,10 +488,36 @@ def test_los_artefactos_forward_no_se_mezclan_con_los_del_gate(
     body = client.get("/api/backtest/runs").json()
     assert body["n"] == 2
     assert all("forward-" not in r["run_id"] for r in body["runs"])
+    assert all("riskfilter-" not in r["run_id"] for r in body["runs"])
 
     forward = client.get("/api/backtest/forward").json()
     assert forward["frozen"] is True
     assert forward["report"]["n_resolved"] == 288
+
+
+def test_el_filtro_de_regimen_sale_del_artefacto_con_su_evidencia(
+    client: TestClient, fake_artifacts: Path
+) -> None:
+    """Regla 2 aplicada al filtro: el estado no puede ir sin su lift medido.
+
+    Un cartel de "no entres ahora" sin decir que evita el 52% de las
+    liquidaciones —y no el 100%— es una alarma sin magnitud. Y el número sale
+    del artefacto, no del TSX: el día que se remida, cambia solo.
+    """
+    body = client.get("/api/backtest/riskfilter").json()
+
+    assert body["viable"] is True
+    assert body["lift"] == pytest.approx(3.077)
+    assert body["lift_ci95"] == [2.639, 3.515]
+    assert body["capture_rate"] == pytest.approx(0.520)
+    assert body["baseline_lift"] == pytest.approx(2.195)
+    assert body["quantile"] == pytest.approx(0.80)
+    assert body["preregistration"] == "docs/PREREGISTRO_FILTRO_RIESGO.md"
+
+
+def test_el_filtro_404_sin_medicion(client: TestClient, tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(backtest_routes, "ARTIFACTS_DIR", tmp_path)
+    assert client.get("/api/backtest/riskfilter").status_code == 404
 
 
 def test_run_detail_no_deja_salir_del_directorio_de_artefactos(

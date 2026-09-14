@@ -6,6 +6,7 @@ import { TargetBar } from "../components/layout/TargetBar";
 import { AnalystStrip, coverageLabel } from "../components/signal/AnalystStrip";
 import { PriceChart } from "../components/signal/PriceChart";
 import { ProjectionPanel } from "../components/signal/ProjectionPanel";
+import { RegimeFilter } from "../components/signal/RegimeFilter";
 import { SecurityGauge } from "../components/signal/SecurityGauge";
 import { SigmaTimeline } from "../components/signal/SigmaTimeline";
 import { useTarget } from "../hooks/useTarget";
@@ -56,6 +57,13 @@ export function SignalPage() {
   const gate = useQuery({
     queryKey: ["gate", settings?.runtime.live_features],
     queryFn: () => api.gate(),
+    enabled,
+    retry: false,
+    staleTime: 300_000, // los artefactos no cambian solos
+  });
+  const riskFilter = useQuery({
+    queryKey: ["riskfilter"],
+    queryFn: () => api.riskFilter(),
     enabled,
     retry: false,
     staleTime: 300_000, // los artefactos no cambian solos
@@ -119,6 +127,13 @@ export function SignalPage() {
 
       {forecast && (
         <>
+          {/* El filtro va PRIMERO porque es lo único accionable: el resto de
+              la página describe, esto decide. Ver RegimeFilter.tsx. */}
+          <RegimeFilter
+            regime={forecast.regime}
+            evidence={riskFilter.data ?? null}
+          />
+
           {/* --- Chart + proyección ------------------------------------- */}
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             <Card

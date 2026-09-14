@@ -102,7 +102,42 @@ export type AnalystStatus = {
   model_version: string | null;
   last_forecast_open_time: number | null;
   last_reference_price: number | null;
+  regime: RegimeState | null;
   cone_coverage: ConeCoverage;
+};
+
+/** Filtro de régimen (Fase 5-bis): lo único del stack que pasó su criterio
+ *  como REGLA DE DECISIÓN. Dice "a este leverage, ahora no" — nunca hacia
+ *  dónde entrar. */
+export type RegimeState = {
+  sigma: number;
+  threshold: number;
+  percentile: number;
+  q: number;
+  elevated: boolean;
+  n_reference: number;
+};
+
+/** La evidencia medida del filtro, servida desde el artefacto. Va SIEMPRE al
+ *  lado del estado: un aviso sin su magnitud es una alarma, no un dato. */
+export type RiskFilterEvidence = {
+  artifact_id: string;
+  preregistration: string | null;
+  viable: boolean;
+  reasons: string[];
+  leverage: number;
+  quantile: number;
+  n_bars: number;
+  n_events: number;
+  effective_events: number;
+  lift: number;
+  lift_ci95: [number, number];
+  capture_rate: number;
+  reject_rate: number;
+  false_reject_rate: number;
+  baseline_lift: number;
+  baseline_capture_rate: number;
+  diff_ci95: [number, number];
 };
 
 export type Forecast = {
@@ -120,6 +155,8 @@ export type Forecast = {
   cones: ConeBand[];
   projections: Record<string, SetupProjection>;
   probabilities: Record<string, number>;
+  /** null en pronósticos anteriores a la Fase 5-bis. */
+  regime: RegimeState | null;
   /** Regla 2: viaja en false porque el gate rechazó la discriminación. */
   probability_calibrated: boolean;
   model_version: string;

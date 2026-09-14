@@ -36,6 +36,12 @@ from bob.models.projection import DEFAULT_MMR, LeverageProfile, liquidation_pric
 #: es la distancia a la que dos setups dejan de compartir barras.
 DEFAULT_N_BOOT = 5_000
 
+#: El cuantil que se midió y aprobó (§4 del pre-registro). Vive acá una sola
+#: vez porque lo usan dos caminos que NO pueden divergir: la medición y el
+#: vivo. Si producción filtrara con un q distinto del validado, el lift que
+#: el dashboard cita al lado del estado no describiría a la regla en uso.
+VALIDATED_Q = 0.80
+
 
 # --------------------------------------------------------------------------- #
 # Excursión adversa
@@ -395,3 +401,97 @@ def apply_filter(
     with np.errstate(invalid="ignore"):
         rej = np.isfinite(score) & np.isfinite(threshold) & (score >= threshold)
     return np.asarray(rej & eligible)
+
+
+# --------------------------------------------------------------------------- #
+# Estado de régimen en vivo
+# --------------------------------------------------------------------------- #
+#: Rejilla de percentiles que se guarda del ajuste. 201 puntos dan resolución
+#: de medio percentil, que es más fina que cualquier `q` operable, y pesan
+#: nada al lado de guardar las 69k predicciones.
+REFERENCE_GRID = np.linspace(0.0, 1.0, 201)
+
+
+@dataclass(frozen=True)
+class SigmaReference:
+    """Qué es una sigma "alta" *para este modelo*, resumido en percentiles.
+
+    El filtro no compara la sigma contra un número absoluto sino contra la
+    distribución de lo que el propio modelo emite: un 1,2% es altísimo en un
+    régimen calmo y rutinario en uno agitado, y el umbral tiene que moverse
+    con eso. Se guarda la rejilla de percentiles y no la muestra completa
+    porque es lo único que el filtro consulta.
+
+    **Aproximación declarada.** En vivo esta referencia sale de las
+    predicciones del bundle sobre su propia ventana de ajuste, o sea
+    *in-sample*, mientras que la medición de la Fase 5-bis usó sigma
+    out-of-fold. Medido sobre las mismas 43.422 barras de ETHUSDT, los
+    umbrales difieren **0,4% en q=0,80** (1,5% en q=0,90) y las dos reglas
+    coinciden en el **93,1%** de las barras: la in-sample es algo más
+    dispersa (std 0,00474 contra 0,00440), que es lo que se espera de
+    predicciones sobre datos vistos. La diferencia es chica y está medida,
+    no supuesta — pero es una diferencia, y por eso queda escrita acá.
+    """
+
+    quantiles: np.ndarray  # float64, largo == REFERENCE_GRID
+    n_samples: int
+
+    @classmethod
+    def from_samples(cls, sigmas: np.ndarray) -> SigmaReference:
+        s = np.asarray(sigmas, dtype=np.float64)
+        s = s[np.isfinite(s)]
+        if s.size == 0:
+            raise ValueError("no hay sigmas finitas para construir la referencia")
+        return cls(quantiles=np.quantile(s, REFERENCE_GRID), n_samples=int(s.size))
+
+    def threshold(self, q: float) -> float:
+        """Sigma por encima de la cual el filtro rechaza."""
+        if not 0.0 < q < 1.0:
+            raise ValueError("q debe estar en (0, 1)")
+        return float(np.interp(q, REFERENCE_GRID, self.quantiles))
+
+    def percentile_of(self, sigma: float) -> float:
+        """En qué percentil de su propia historia cae esta sigma, en [0, 100]."""
+        if not np.isfinite(sigma):
+            return float("nan")
+        return float(np.interp(sigma, self.quantiles, REFERENCE_GRID) * 100.0)
+
+
+@dataclass(frozen=True)
+class RegimeState:
+    """Lo que el filtro dice de la barra actual.
+
+    `elevated=True` significa *"a este leverage, ahora no"* — no significa
+    que el precio vaya a caer, ni en qué dirección. El filtro no tiene
+    opinión direccional y no puede tenerla.
+    """
+
+    sigma: float
+    threshold: float
+    percentile: float
+    q: float
+    elevated: bool
+    n_reference: int
+
+    def as_dict(self) -> dict[str, float | bool | int]:
+        return {
+            "sigma": self.sigma,
+            "threshold": self.threshold,
+            "percentile": self.percentile,
+            "q": self.q,
+            "elevated": self.elevated,
+            "n_reference": self.n_reference,
+        }
+
+
+def regime_state(sigma: float, reference: SigmaReference, q: float) -> RegimeState:
+    """Evalúa el filtro sobre una sigma puntual."""
+    threshold = reference.threshold(q)
+    return RegimeState(
+        sigma=float(sigma),
+        threshold=threshold,
+        percentile=reference.percentile_of(sigma),
+        q=float(q),
+        elevated=bool(np.isfinite(sigma) and sigma >= threshold),
+        n_reference=reference.n_samples,
+    )

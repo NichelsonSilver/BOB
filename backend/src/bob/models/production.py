@@ -92,6 +92,12 @@ from bob.models.labeling import (
     triple_barrier_labels,
     uniqueness_weights,
 )
+from bob.models.riskfilter import (
+    VALIDATED_Q,
+    RegimeState,
+    SigmaReference,
+    regime_state,
+)
 from bob.models.projection import (
     LeverageProfile,
     SetupProjection,
@@ -236,6 +242,11 @@ class MarketAnalysis:
     #: Regla 2: el KPI 1 no pasó discriminación, así que nunca sale operable.
     probability_calibrated: bool
 
+    #: Filtro de régimen (Fase 5-bis). None si el bundle no trae referencia.
+    #: Es lo ÚNICO de esta estructura que pasó su criterio como regla de
+    #: decisión: dice "a este leverage, ahora no", y no dice hacia dónde.
+    regime: RegimeState | None
+
     model_version: str
     fit_through_ms: int
     n_train: int
@@ -256,6 +267,7 @@ class MarketAnalysis:
             "probabilities": self.probabilities,
             "probability_matches_barriers": self.probability_matches_barriers,
             "probability_calibrated": self.probability_calibrated,
+            "regime": self.regime.as_dict() if self.regime else None,
             "model_version": self.model_version,
             "fit_through_ms": self.fit_through_ms,
             "n_train": self.n_train,
@@ -284,6 +296,19 @@ class ForecastBundle:
     volatility: VolatilityModel
     cones: dict[float, OnlineConformalCone]
     barrier: dict[str, BarrierProbabilityModel]
+
+    #: Cuantil del filtro. Vive en el bundle y NO en `ExperimentConfig`
+    #: porque esa config viaja al `to_dict` de los artefactos del gate, y
+    #: agregarle un campo movería su reproducción bit a bit por un parámetro
+    #: que el gate ni siquiera usa.
+    filter_q: float = VALIDATED_Q
+
+    #: Distribución de la sigma que este bundle emite, para el filtro de
+    #: régimen (Fase 5-bis). Va en el bundle y no en el analista porque
+    #: pertenece al ajuste: cada reajuste la recalcula sobre su propia
+    #: ventana, igual que el umbral causal de la medición se movía con la
+    #: historia disponible. Es None solo en bundles construidos a mano.
+    sigma_reference: SigmaReference | None = None
 
     #: Se completa en `fit_bundle` con el estimador que produjo la sigma. No
     #: es cosmético: `ForecastRecord` guarda este string y es lo único que
@@ -433,6 +458,10 @@ def fit_bundle(
 
     volatility = VolatilityModel(kind=cfg.vol_kind, seed=cfg.seed).fit(X, y_vol, vol_fit)
 
+    # Referencia del filtro de régimen: qué sigmas emite ESTE bundle. Una
+    # predicción extra sobre las filas de ajuste, despreciable al lado del fit.
+    sigma_reference = SigmaReference.from_samples(volatility.predict(X[vol_fit]))
+
     ret_fit = np.flatnonzero(finite_rows & np.isfinite(y_ret))
     cones: dict[float, OnlineConformalCone] = {}
     for alpha in cfg.conformal_alphas:
@@ -477,6 +506,7 @@ def fit_bundle(
         volatility=volatility,
         cones=cones,
         barrier=barrier,
+        sigma_reference=sigma_reference,
     )
 
 
@@ -554,6 +584,17 @@ def build_analysis(
             profile=profile,
         )
 
+    # El filtro se evalúa SIEMPRE sobre la sigma pronosticada, aunque las
+    # barreras se dimensionen con la otra: lo que se midió en la Fase 5-bis
+    # fue el orden del pronóstico, no el de la realizada pasada.
+    regime = (
+        regime_state(
+            forecast.sigma_forecast, bundle.sigma_reference, bundle.filter_q
+        )
+        if bundle.sigma_reference is not None
+        else None
+    )
+
     return MarketAnalysis(
         symbol=symbol,
         timeframe=timeframe,
@@ -568,6 +609,7 @@ def build_analysis(
         probabilities=dict(forecast.probabilities),
         probability_matches_barriers=barrier_sigma_source == "backward",
         probability_calibrated=False,  # regla 2: el gate lo rechazó, y se nota
+        regime=regime,
         model_version=bundle.model_version,
         fit_through_ms=bundle.fit_through_ms,
         n_train=bundle.n_train,
