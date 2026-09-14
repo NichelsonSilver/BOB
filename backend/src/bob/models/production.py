@@ -92,18 +92,18 @@ from bob.models.labeling import (
     triple_barrier_labels,
     uniqueness_weights,
 )
-from bob.models.riskfilter import (
-    VALIDATED_Q,
-    RegimeState,
-    SigmaReference,
-    regime_state,
-)
 from bob.models.projection import (
     LeverageProfile,
     SetupProjection,
     breakeven_probability,
     funding_cost_pct,
     project_setup,
+)
+from bob.models.riskfilter import (
+    VALIDATED_Q,
+    RegimeState,
+    SigmaReference,
+    regime_state,
 )
 
 EPS = 1e-12

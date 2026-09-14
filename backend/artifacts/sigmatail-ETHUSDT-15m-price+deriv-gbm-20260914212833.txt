@@ -1,0 +1,65 @@
+============================================================================
+TECHO DE LA SIGMA — ETHUSDT 15m
+2024-08-31 21:00 .. 2026-09-14 00:45
+¿la regresión cuantílica cubre la cola que la media no cubre?
+============================================================================
+
+features=price+deriv  vol_model=gbm  folds=6  H=16
+
+----------------------------------------------------------------------------
+CUANTIL 0.80  (excedencia nominal 20%)
+----------------------------------------------------------------------------
+  n=43,422
+
+                     excedencia              IC95%      pinball
+  cuantílico              22.4%   [ 21.3,  23.6]     0.001658
+  k·media                 23.4%   [ 22.2,  24.6]     0.001608
+  k(t)·media ACI          20.0%   [ 18.9,  21.1]     0.001759   <-- calibra
+
+  criterio 1 — calibra como cuantil: NO PASA
+  criterio 2/3 — pinball < baseline:  NO PASA
+
+  El techo, que es el hallazgo que motivó esta medición:
+    máximo que emite la media        0.05327
+    máximo que emite el cuantílico   0.06098  (1.14× la media)
+    máximo realizado                 0.09312
+    barras por encima del techo de la media      79
+    barras por encima del techo del cuantílico   51
+
+  Déficit en las barras donde la media se quedó corta:
+    con la media       24.3% del movimiento sin cubrir
+    con el cuantílico  22.5%
+
+  VEREDICTO q=0.80: NO adoptable
+
+----------------------------------------------------------------------------
+CUANTIL 0.90  (excedencia nominal 10%)
+----------------------------------------------------------------------------
+  n=43,422
+
+                     excedencia              IC95%      pinball
+  cuantílico              14.3%   [ 13.3,  15.2]     0.001281
+  k·media                 14.9%   [ 13.9,  15.9]     0.001213
+  k(t)·media ACI          10.1%   [  9.2,  10.9]     0.001278   <-- calibra
+
+  criterio 1 — calibra como cuantil: NO PASA
+  criterio 2/3 — pinball < baseline:  NO PASA
+
+  El techo, que es el hallazgo que motivó esta medición:
+    máximo que emite la media        0.05327
+    máximo que emite el cuantílico   0.07591  (1.43× la media)
+    máximo realizado                 0.09312
+    barras por encima del techo de la media      79
+    barras por encima del techo del cuantílico   23
+
+  Déficit en las barras donde la media se quedó corta:
+    con la media       24.3% del movimiento sin cubrir
+    con el cuantílico  21.3%
+
+  VEREDICTO q=0.90: NO adoptable
+
+============================================================================
+Esta medición NO toca el filtro de régimen (usa el orden, ya validado)
+ni habilita el KPI 1. Adoptar la sigma cuantílica cambiaría
+model_version: no se hace a mitad de una corrida forward.
+============================================================================

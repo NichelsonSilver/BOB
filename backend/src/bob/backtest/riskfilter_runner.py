@@ -40,9 +40,8 @@ from bob.models.experiment import (
     assemble_features,
     assert_columns_trainable,
 )
-from bob.models.labeling import BarrierConfig
 from bob.models.forecast import VolatilityModel
-from bob.models.labeling import forward_volatility
+from bob.models.labeling import BarrierConfig, forward_volatility
 from bob.models.validation import purged_walk_forward
 from bob.utils.console import enable_utf8_stdout
 
@@ -328,7 +327,9 @@ def main() -> None:
     parser.add_argument("--symbol", default="ETHUSDT")
     parser.add_argument("--timeframe", default="15m")
     parser.add_argument("--features", default="price+deriv", choices=sorted(FEATURE_SETS))
-    parser.add_argument("--vol-model", default=exp_defaults.vol_kind, choices=["gbm", "xgb", "ridge"])
+    parser.add_argument(
+        "--vol-model", default=exp_defaults.vol_kind, choices=["gbm", "xgb", "ridge"]
+    )
     parser.add_argument("--folds", type=int, default=exp_defaults.n_splits)
     parser.add_argument("--horizon", type=int, default=BarrierConfig().horizon_bars)
     parser.add_argument("--until", default=None, metavar="YYYY-MM-DD[THH:MM]")

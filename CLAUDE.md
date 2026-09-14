@@ -1293,6 +1293,80 @@ vuelve positivo el EV: sigue siendo −costo sin edge direccional. No arregla el
 techo de la sigma. Y es medición **offline**: la Fase 5 enseñó que el forward
 es otra cosa, así que la validación forward del filtro queda pendiente.
 
+### Fase 5-ter — El techo de la sigma: la hipótesis cuantílica se cae ✅ (2026-09-14)
+
+**La hipótesis.** `VolatilityModel` entrena con pérdida cuadrática sobre
+log-volatilidad, o sea estima la **media condicional**, y una media encoge la
+cola por construcción. Entrenar el **cuantil** condicional debería cubrirla.
+
+Criterios fijados antes de correr (docstring de `backtest/sigma_tail_runner.py`):
+calibrar como cuantil, ganarle al escalado trivial `k·media` con `k` del train,
+y menor pérdida pinball. Los tres.
+
+**Resultado: la hipótesis se cae, en los dos cuantiles y por los tres
+criterios.**
+
+| q=0,90 | excedencia | IC95% | pinball |
+|---|---|---|---|
+| nominal | 10,0% | — | — |
+| GBM cuantílico | 14,3% | [13,3, 15,2] | 0,001281 |
+| `k·media` (k del train) | 14,9% | [13,9, 15,9] | **0,001213** |
+
+El GBM cuantílico **pierde contra multiplicar la media por una constante**, en
+pinball y casi en excedencia. Caveat que corresponde declarar: sus
+hiperparámetros se heredaron del modelo de media a propósito —para aislar la
+variable— y un cuantílico con los suyos podría andar mejor; buscarlos exigiría
+su propio pre-registro.
+
+**El hallazgo está en que los DOS fallan igual.** Los dos sub-cubren, en la
+misma dirección y en los dos niveles. Eso no es un problema de estimador: es
+**deriva**. La cola del test es más pesada que la del train, y ninguna
+constante ajustada en el pasado puede seguir eso.
+
+Y el proyecto ya tiene la forma correcta de respuesta a la deriva: el **ACI**
+que lleva el cono conformal, que en la Fase 5 movió `alpha_t` de 0,05 a 0,025
+justo donde había sub-cobertura. Lo que la sigma no tiene es un mecanismo
+equivalente. Aplicándole la misma aritmética —`k(t)·media`, corregido en línea
+con retroalimentación retrasada H barras, como en vivo—:
+
+| | q=0,80 | q=0,90 |
+|---|---|---|
+| nominal | 20,0% | 10,0% |
+| **k(t)·media con ACI** | **20,0%** [18,9, 21,1] ✓ | **10,1%** [9,2, 10,9] ✓ |
+
+**Calibra en los dos niveles, y es aritmética sobre el modelo que ya existe.**
+
+⚠ **Pero es un candidato POST-HOC y no se adopta todavía.** Se agregó después
+de ver que los dos estimadores estáticos sub-cubrían, así que declararlo
+ganador acá sería exactamente el p-hacking que este proyecto evita. Lo que lo
+hace prometedor y no arbitrario es que **no tiene un solo parámetro ajustado a
+estos datos** —γ se fijó una vez, y el mecanismo es el mismo ya validado para
+el cono—. Lo que corresponde es confirmarlo con su propio pre-registro sobre
+datos que no tocó.
+
+Y su costo hay que decirlo: **pierde en pinball** (0,001278 contra 0,001213 a
+q=0,90). Pinball premia la agudeza, y cubrir la cola se paga con ancho. Para
+un usuario apalancado y averso al riesgo la cobertura es lo que importa, pero
+el intercambio es real y no se esconde.
+
+**El techo sí sube, aunque no alcance.** El cuantílico a q=0,90 emite un máximo
+de 0,07591 contra 0,05327 de la media (**1,43×**) y las barras por encima del
+techo caen de 79 a 23. El déficit en las barras donde la media se queda corta
+baja de 24,3% a 21,3% del movimiento. O sea: mejora y no resuelve.
+
+Se reimprime con:
+
+    uv run python -m bob.backtest.sigma_tail_runner \
+      --features price+deriv --vol-model gbm --until 2026-09-14T00:45
+
+Artefacto en `backend/artifacts/sigmatail-*.txt|.json`.
+
+**Qué NO cambia.** Nada se adoptó: el vivo sigue dimensionando con la media y
+el techo sigue siendo un límite declarado. Adoptar cualquiera de estos
+cambiaría `model_version`, y eso no se hace a mitad de una corrida forward por
+la razón de la Fase 4-bis. El filtro de régimen no se toca — usa el *orden*, y
+esta medición es sobre la *magnitud*.
+
 ### Fase 6 — API + Dashboard ✅ construida (2026-09-04)
 
 Construida **durante** la corrida de validación, y eso ordenó casi todas las

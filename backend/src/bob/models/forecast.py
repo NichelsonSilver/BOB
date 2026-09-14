@@ -265,6 +265,20 @@ class VolatilityModel:
     kind: VolKind = "gbm"
     seed: int = 42
 
+    #: Si se fija, se entrena el **cuantil** condicional en vez de la media.
+    #:
+    #: Existe por el techo de la sigma (Fase 5, punto 13): una media
+    #: condicional encoge hacia el centro de su distribución de entrenamiento
+    #: por construcción, así que el modelo no puede emitir una sigma alta —
+    #: medido, el 3,6% de las barras realizó más movimiento que el máximo que
+    #: llegó a emitir, y el peor fue 2,75× ese techo. Para un usuario
+    #: apalancado esa es la dirección que duele: TP y SL quedan cortos
+    #: exactamente donde importa.
+    #:
+    #: Solo con `kind="gbm"`: la pérdida pinball de XGBoost no es la misma
+    #: parametrización y compararlas sería comparar dos cosas distintas.
+    quantile: float | None = None
+
     _model: object | None = field(default=None, repr=False)
     _scaler: StandardScaler | None = field(default=None, repr=False)
     _resid_var: float = field(default=0.0, repr=False)
@@ -275,9 +289,18 @@ class VolatilityModel:
         X_tr = X[train_idx]
         y_tr = np.log(np.maximum(y_vol[train_idx], EPS))
 
-        if self.kind == "ridge":
+        if self.quantile is not None:
+            if self.kind != "gbm":
+                raise ValueError("el modo cuantílico solo está definido para kind='gbm'")
+            if not 0.0 < self.quantile < 1.0:
+                raise ValueError("quantile debe estar en (0, 1)")
+            self._scaler = None
+            qm = _gbm_regressor(self.seed, loss="quantile", quantile=self.quantile)
+            qm.fit(X_tr, y_tr)
+            model: object = qm
+        elif self.kind == "ridge":
             self._scaler = StandardScaler().fit(X_tr)
-            model: object = Ridge(alpha=1.0, random_state=self.seed)
+            model = Ridge(alpha=1.0, random_state=self.seed)
             model.fit(self._scaler.transform(X_tr), y_tr)  # type: ignore[attr-defined]
         else:
             # Los dos boostings son invariantes a escala y tratan el NaN como
@@ -298,8 +321,20 @@ class VolatilityModel:
         return np.asarray(self._model.predict(X_use), dtype=np.float64)  # type: ignore[attr-defined]
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """Volatilidad en niveles, con corrección de Jensen."""
-        return np.exp(self._predict_log(X) + 0.5 * self._resid_var)
+        """Volatilidad en niveles.
+
+        La corrección de Jensen aplica **solo a la media**: E[exp(Z)] =
+        exp(µ + σ²/2) para la media, pero los cuantiles son invariantes ante
+        transformaciones monótonas, así que el cuantil en niveles es
+        exactamente `exp(cuantil del log)`. Aplicarle Jensen a un modelo
+        cuantílico lo inflaría por un factor que no corresponde a nada, y el
+        error sería invisible: seguiría pareciendo una sigma razonable, solo
+        que sistemáticamente alta.
+        """
+        log_pred = self._predict_log(X)
+        if self.quantile is not None:
+            return np.exp(log_pred)
+        return np.exp(log_pred + 0.5 * self._resid_var)
 
 
 @dataclass

@@ -549,6 +549,18 @@ not to enter* uses only its **ordering**, which is the part both validations
 support — and that is what the regime filter measures (see the gate table
 above and `docs/PREREGISTRO_FILTRO_RIESGO.md`).
 
+Fixing the magnitude was tried and **did not work**. Training the conditional
+*quantile* instead of the mean loses to simply multiplying the mean by a
+constant — on pinball loss and on calibration, at both q=0.80 and q=0.90. The
+finding is that **both static estimators under-cover in the same direction**,
+which points at drift rather than at the estimator. An ACI-style online
+correction — the same mechanism the conformal cone already uses — calibrates
+the exceedance rate at both levels (20.0% and 10.1% against a nominal 20% and
+10%). That candidate was added *after* seeing the failure, so it is reported as
+a lead to be confirmed under its own pre-registration, **not** as a result.
+Nothing was adopted: live sizing still uses the mean and the ceiling remains a
+declared limit. Reproduce with `bob.backtest.sigma_tail_runner`.
+
 Everything is validated with **purged walk-forward with embargo**
 (triple-barrier labels overlap; a standard K-Fold leaks the future and comes
 out inflated), against real baselines, and with a **Diebold-Mariano** test to

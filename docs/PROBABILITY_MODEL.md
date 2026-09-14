@@ -1062,6 +1062,88 @@ sigma, que es la propiedad de magnitud.
 
 ---
 
+## 9-quinquies. El techo de la sigma: por qué el cuantil no lo arregla
+
+El §9-quater separó las dos propiedades del pronóstico de volatilidad. Este
+apartado ataca la que está rota —la **magnitud**— y documenta que el ataque
+obvio falla, y sobre todo qué se aprende de *cómo* falla.
+
+### 9-quinquies.1 La hipótesis y su criterio
+
+`VolatilityModel` minimiza error cuadrático sobre log-volatilidad, o sea
+estima la **media condicional**, y una media encoge hacia el centro de su
+distribución de entrenamiento por construcción. Eso explica el techo medido en
+la Fase 5. La hipótesis natural: entrenar el **cuantil** condicional, cuya
+pérdida pinball penaliza asimétricamente y no tiene por qué colapsar al centro.
+
+Criterios fijados antes de correr: (1) calibrar como cuantil —excedencia
+empírica ≈ `1−q`, con IC por bloques que lo contenga—, (2) ganarle al escalado
+trivial `k·media` con `k` calibrado en el train de cada fold, (3) menor pérdida
+pinball que ese baseline. Los tres.
+
+El baseline es deliberadamente duro: si multiplicar la media por una constante
+hace el mismo trabajo, no hace falta un modelo nuevo.
+
+### 9-quinquies.2 Resultado — la hipótesis se cae
+
+Sobre 43.422 barras OOF de ETHUSDT 15m:
+
+| | excedencia (q=0,80) | pinball | excedencia (q=0,90) | pinball |
+|---|---|---|---|---|
+| nominal | 20,0% | — | 10,0% | — |
+| GBM cuantílico | 22,4% | 0,001658 | 14,3% | 0,001281 |
+| `k·media` | 23,4% | **0,001608** | 14,9% | **0,001213** |
+
+El GBM cuantílico **pierde contra multiplicar la media por una constante**, en
+los dos niveles y en las dos métricas. Caveat declarado: heredó los
+hiperparámetros del modelo de media a propósito, para aislar la variable;
+buscarle los suyos exigiría su propio pre-registro.
+
+### 9-quinquies.3 El hallazgo: no es el estimador, es la deriva
+
+Lo informativo no es que el cuantílico pierda, sino que **los dos fallan
+igual** — sub-cubren, en la misma dirección, en los dos niveles. Una constante
+calibrada en el pasado no puede seguir una cola que se vuelve más pesada.
+
+El proyecto ya tiene la forma correcta de respuesta a la deriva: el **ACI** del
+cono conformal (§5), que en la Fase 5 movió `alpha_t` de 0,05 a 0,025
+exactamente donde había sub-cobertura. Lo que la sigma no tiene es un
+mecanismo equivalente. Con la misma aritmética sobre la media —`k(t)·media`,
+con retroalimentación retrasada H barras como en vivo—:
+
+| | q=0,80 | q=0,90 |
+|---|---|---|
+| **k(t)·media con ACI** | **20,0%** IC [18,9, 21,1] | **10,1%** IC [9,2, 10,9] |
+
+Calibra en los dos niveles, sobre el modelo que ya existe.
+
+**Y aun así no se adopta.** Es un candidato **post-hoc**: se agregó después de
+ver fallar a los dos estáticos, y declararlo ganador acá sería el p-hacking
+contra el que este documento predica. Lo que lo hace prometedor y no arbitrario
+es que no tiene un solo parámetro ajustado a estos datos —γ se fijó una vez, y
+el mecanismo ya está validado para el cono—. Corresponde confirmarlo bajo
+pre-registro propio, sobre datos que no tocó.
+
+Su costo tampoco se esconde: **pierde en pinball** (0,001278 contra 0,001213 a
+q=0,90). Pinball premia la agudeza, y cubrir la cola se paga con ancho. Para un
+usuario apalancado la cobertura importa más, pero el intercambio es real.
+
+### 9-quinquies.4 Lo que sí mejora, y cuánto
+
+El techo sube: el cuantílico a q=0,90 emite un máximo de 0,07591 contra 0,05327
+de la media (**1,43×**), y las barras por encima del techo caen de 79 a 23. El
+déficit en las barras donde la media se queda corta baja de **24,3% a 21,3%**
+del movimiento. Mejora, y no resuelve: el máximo realizado sigue siendo 0,09312.
+
+### 9-quinquies.5 Estado
+
+**Nada se adoptó.** El vivo dimensiona con la media y el techo sigue siendo un
+límite declarado que el dashboard muestra. Cambiar el estimador movería
+`model_version`, y eso no se hace a mitad de una corrida forward (§9-ter y
+Fase 4-bis).
+
+---
+
 ## 10. Reproducibilidad
 
 ```bash
@@ -1091,6 +1173,10 @@ uv run python scripts/economic_floor.py
 # 6. El filtro de régimen del §9-quater. El --until no es opcional si se
 #    quiere reproducir: la DB crece con el feed y la muestra cambia.
 uv run python -m bob.backtest.riskfilter_runner \
+  --features price+deriv --vol-model gbm --until 2026-09-14T00:45 --artifact
+
+# 7. El techo de la sigma del §9-quinquies: media vs cuantil vs ACI
+uv run python -m bob.backtest.sigma_tail_runner \
   --features price+deriv --vol-model gbm --until 2026-09-14T00:45 --artifact
 
 # Variantes

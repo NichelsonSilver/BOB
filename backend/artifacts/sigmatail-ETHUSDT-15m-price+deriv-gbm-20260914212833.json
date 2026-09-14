@@ -1,0 +1,86 @@
+{
+  "config": {
+    "symbol": "ETHUSDT",
+    "timeframe": "15m",
+    "features": "price+deriv",
+    "vol_model": "gbm",
+    "folds": 6,
+    "horizon": 16,
+    "seed": 0,
+    "n_boot": 2000,
+    "from": "2024-08-31 21:00",
+    "to": "2026-09-14 00:45"
+  },
+  "results": [
+    {
+      "q": 0.8,
+      "nominal_exceedance": 0.19999999999999996,
+      "n": 43422,
+      "exceedance_model": 0.2243102574731703,
+      "exceedance_ci95": [
+        0.21279478144719266,
+        0.23630935931094837
+      ],
+      "exceedance_baseline": 0.23379853530468425,
+      "exceedance_baseline_ci95": [
+        0.22212185067477316,
+        0.24552646124084562
+      ],
+      "exceedance_adaptive": 0.20033623508820414,
+      "exceedance_adaptive_ci95": [
+        0.18856743125604533,
+        0.21116196858735203
+      ],
+      "adaptive_calibrated": true,
+      "pinball_adaptive": 0.0017589104739447665,
+      "ceiling_adaptive": 0.0978444719465641,
+      "calibrated": false,
+      "pinball_model": 0.0016582264898281408,
+      "pinball_baseline": 0.0016077606943991967,
+      "beats_baseline_pinball": false,
+      "ceiling_model": 0.060980751227802533,
+      "ceiling_mean": 0.05327031302271237,
+      "ceiling_realized": 0.09311940348593134,
+      "bars_over_mean_ceiling": 79,
+      "bars_over_model_ceiling": 51,
+      "tail_deficit_mean": 0.24316373937358549,
+      "tail_deficit_model": 0.22533815905745141,
+      "adopted": false
+    },
+    {
+      "q": 0.9,
+      "nominal_exceedance": 0.09999999999999998,
+      "n": 43422,
+      "exceedance_model": 0.14257749527889088,
+      "exceedance_ci95": [
+        0.13311167150292477,
+        0.15222813320436643
+      ],
+      "exceedance_baseline": 0.14907189903735435,
+      "exceedance_baseline_ci95": [
+        0.139029754502326,
+        0.15886014002118742
+      ],
+      "exceedance_adaptive": 0.10070931785730736,
+      "exceedance_adaptive_ci95": [
+        0.09204723412095252,
+        0.1090035005296854
+      ],
+      "adaptive_calibrated": true,
+      "pinball_adaptive": 0.0012777158831530026,
+      "ceiling_adaptive": 0.10839824105362615,
+      "calibrated": false,
+      "pinball_model": 0.0012807470073011576,
+      "pinball_baseline": 0.0012134745098829629,
+      "beats_baseline_pinball": false,
+      "ceiling_model": 0.0759114610167754,
+      "ceiling_mean": 0.05327031302271237,
+      "ceiling_realized": 0.09311940348593134,
+      "bars_over_mean_ceiling": 79,
+      "bars_over_model_ceiling": 23,
+      "tail_deficit_mean": 0.24316373937358549,
+      "tail_deficit_model": 0.21285600847216887,
+      "adopted": false
+    }
+  ]
+}
