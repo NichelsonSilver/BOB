@@ -600,9 +600,11 @@ shape` — un error que no dice nada de la causa. `assert_columns_trainable` lo
 convierte en un diagnóstico que nombra las columnas y falla en segundos.
 Requiere que el nivel acumule historia para cubrir varios folds.
 
-### Fase 5 — Live + paper tracking ✅ construida (2026-08-25)
+### Fase 5 — Live + paper tracking ✅ CERRADA (2026-09-14)
 
-Reformulada por la decisión del 25-08: se emite **proyección**, no dirección.
+Construida el 25-08, cerrada el 14-09 con la corrida de validación forward
+completa. Reformulada por la decisión del 25-08: se emite **proyección**, no
+dirección. El veredicto de cierre está en el punto 13.
 
 1. ✅ `models/production.py`: el puente que faltaba entre el experimento y el
    vivo. `experiment.py` entrena un modelo por fold y lo tira —su producto son
@@ -762,6 +764,15 @@ Reformulada por la decisión del 25-08: se emite **proyección**, no dirección.
      no depende de la dispersión de la muestra, también mejora (0.2381 vs
      0.4098). Mincer-Zarnowitz β=1.012 con α≈0: insesgado y eficiente.
 
+     ⚠ **Ese argumento sobre QLIKE es falso y quedó corregido en el punto 13.**
+     QLIKE es escala-libre *por observación*, pero su **media está dominada por
+     la cola** —el decil superior aporta el 71% del total—, así que depende de
+     la ventana tanto como el R², por otra vía. Con n=1158 la misma métrica da
+     0.5123, o sea *peor* que el gate, y tampoco eso es un hallazgo: su IC por
+     bloques contiene los dos valores. La frase se deja escrita porque el error
+     de razonamiento importa más que el número: se usó como evidencia
+     independiente algo que no lo era.
+
    - **El cono se leía sin su incertidumbre.** Cobertura empírica 90,6% al 95%
      nominal y 77,8% al 80% — parece bajo-cubrir. Pero los pronósticos **se
      solapan**: con H=16, dos consecutivos comparten 15 de 16 barras de
@@ -846,11 +857,152 @@ Reformulada por la decisión del 25-08: se emite **proyección**, no dirección.
    que el exchange no tiene se pide una vez y que un hueco nuevo sí merece el
    suyo.
 
+13. ✅ **CIERRE DE LA FASE — la meta de 1.150 se alcanzó y el cono pasa
+   (2026-09-14)**. Backend apagado, DB congelada, corrida terminada: **1.157
+   resueltos, 16 abiertos, 0 descartados por huecos**, un solo `model_version`
+   (`bob-forecast-0.1.0+vol=gbm`) sobre la ventana 2026-08-31 15:30 ..
+   2026-09-14 00:30 UTC. Artefacto congelado y versionado en
+   `backend/artifacts/forward-ETHUSDT-15m-n1157-*.txt|.json`.
+
+   Por qué abajo aparecen 1.157 y también 1.158: el corte del artefacto se tomó
+   con el backend todavía arriba y alcanzó a resolver **un** pronóstico más
+   antes de apagarse. El veredicto se cita del artefacto (n=1.157); el
+   diagnóstico se recalcula de la DB tal como quedó (n=1.158), así que quien lo
+   corra hoy ve ese número. Ninguna conclusión se mueve por una barra, y es
+   preferible la diferencia visible a un artefacto que no reproduzca la DB.
+
+   **El cono conformal: veredicto cerrado, y pasa.** Era lo único que la meta
+   de 1.150 compraba, porque n=288 no tenía potencia para resolverlo:
+
+   | nivel | gate (walk-forward) | forward n=288 | **forward n=1157** | IC95% por bloques |
+   |---|---|---|---|---|
+   | 80% | 79,90% | 77,8% | **79,9%** (−0,1pp) | [73,0%, 85,8%] ✓ dentro |
+   | 95% | 94,79% | 90,6% | **92,7%** (−2,3pp) | [88,4%, 96,1%] ✓ dentro |
+
+   El cálculo de potencia del 04-09 era correcto y conviene que quede
+   registrado que lo fue: 18 → **72 bloques independientes** dio exactamente el
+   estrechamiento √4 = 2× que predecía (±9pp → ±3,9pp al 95%). La muestra
+   **ahora sí** puede resolver una desviación de 4pp, y la que encuentra es de
+   2,3pp. Al 80% el forward reproduce la cobertura del gate con 0,005pp de
+   diferencia. La banda del 80% sigue siendo más ancha (±6,4pp) porque la
+   varianza de un Bernoulli es máxima en el centro, no porque falte muestra:
+   con el punto estimado a −0,1pp del nominal, ese ancho no cambia ninguna
+   conclusión.
+
+   **Lo que parecía degradación no lo es.** QLIKE subió de 0,2381 (n=288) a
+   0,5123 y la pendiente de Mincer-Zarnowitz de 1,012 a 1,1342. Las dos
+   lecturas se caen al ponerles su IC por bloques, que es la misma corrección
+   que en n=288 dio vuelta la lectura del cono:
+
+   | | forward | IC95% por bloques | gate | β=1 |
+   |---|---|---|---|---|
+   | QLIKE | 0,5123 | [0,2676, 0,8460] | 0,4098 → **dentro** | — |
+   | MZ β | 1,1342 | [0,8279, 1,4748] | 1,0201 → **dentro** | **dentro** |
+
+   Con ~72 bloques independientes esta muestra no distingue 0,24 de 0,41 ni de
+   0,51, ni una pendiente de 1,13 de una de 1,00. **Y de ahí sale la corrección
+   del punto 10**: el argumento de que QLIKE "no depende de la dispersión de la
+   muestra" y por eso servía como evidencia independiente es falso. Es
+   escala-libre por observación, pero su media la fijan unas pocas barras de
+   pico —el decil superior aporta el **71%** del total, mediana por observación
+   0,1240 contra media 0,5123—, así que depende de la ventana tanto como el R².
+   Medido por sub-ventanas: 0,2378 / 0,5203 / 0,1483 / 1,1408. El error de
+   razonamiento es el que importa, no el número.
+
+   Lo que **sí** se sostiene es la comparación contra baselines, que es la que
+   el gate usa para decidir: R² vs EWMA mejora de +0,367 (gate) a **+0,559**, y
+   Diebold-Mariano gana a EWMA con p=0,0009 y a HAR con p=0,0000 — mismo signo
+   y significancia que el gate. Los tres baselines dan R² negativo en esta
+   ventana. **El target de volatilidad sobrevive el forward.**
+
+   **El hallazgo nuevo, y el que tiene consecuencia operativa: el techo de la
+   sigma.** El modelo no puede emitir una sigma alta.
+
+   | | mediana | p95 | máximo |
+   |---|---|---|---|
+   | pronosticada | 0,00765 | 0,01305 | **0,01787** |
+   | realizada | 0,00738 | 0,01612 | **0,04919** |
+
+   **42 de 1.158 barras (3,6%) tuvieron sigma realizada por encima del máximo
+   que el modelo llegó a emitir en toda la corrida**, y el máximo realizado es
+   **2,75×** ese techo. El evento es uno: 09-11 09:45→12:15 UTC, realizada
+   0,045–0,049 contra pronósticos de 0,008–0,010, o sea **4,8× a 5,6× corta**.
+   Es lo que hace un GBM de media condicional —encoge hacia el centro de su
+   distribución de entrenamiento— y se lee en la razón realizada/pronosticada:
+   **mediana 0,940 con media 1,059**, o sea sobra en la calma y falta en el
+   pico. Para un usuario apalancado y averso al riesgo es la dirección que
+   duele: TP y SL dimensionados por la sigma pronosticada quedan demasiado
+   ajustados exactamente donde importa.
+
+   El ACI es la compensación de diseño y se lo ve trabajando con precisión:
+   bajó `alpha_t` de 0,05 a **0,025** —ensancha el cono— donde había
+   sub-cobertura, y de 0,20 a **0,194**, casi sin moverse, donde la cobertura
+   estaba clavada en el nominal. Movió mucho donde había que mover y nada donde
+   no. **Consecuencia para la Fase 6**: la página Signal ya muestra el cono con
+   su cobertura medida, y debe mostrar también que la sigma tiene techo — un
+   nivel derivado de sigma no es una cota superior del movimiento posible.
+
+   **Emisión: se perdió el 8,7% de las barras, y casi nada es del software.**
+   112 barras sin pronóstico de 1.286, con **0 huecos de klines** en la ventana
+   y **0 descartados por hueco**. Atribuidas en 24 tramos:
+
+   - **90 barras con el proceso abajo o suspendido** → la pérdida que el diseño
+     acepta y que la tabla de abajo ya declaraba. 22 reinicios en 13 días.
+   - **22 barras con el analista mudo y el proceso vivo** → la clase de bug del
+     punto 12. De esas, **18 pre-arreglo y 4 post-arreglo**, y las 4 son
+     singles aisladas: exactamente el costo de diseño del arreglo (descubre el
+     hueco, lo marca, repara, emite en la barra siguiente).
+
+   Los arreglos de los puntos 9 y 12 quedan **validados en producción y no solo
+   en test**. El del punto 9 se lee textual dos veces en el log: 09-11 19:35 y
+   09-12 23:49, `getaddrinfo failed` al arrancar en una red que todavía no
+   estaba, hueco marcado como pendiente, y la barra siguiente lo cierra
+   —2 barras de costo en vez de un hueco permanente—. Los tramos largos
+   post-arreglo (21, 8 y 3 barras) son todos equipo abajo o dormido.
+
+   **La trampa de medición que apareció al atribuirlas**, porque va a volver:
+   `backend.log` escribe en hora local y **Chile cambia a horario de verano el
+   06-09, en el medio de la ventana**. Un offset fijo de +3h —el primer intento—
+   desplaza una hora toda la mitad anterior al cambio y reasigna tramos enteros
+   entre "proceso abajo" y "analista mudo": daba 84/28 en vez de 90/22. Hay que
+   convertir con el offset vigente en cada timestamp, que es lo que hace
+   `log_activity`. El discriminador tampoco puede ser el reinicio limpio: un
+   equipo que Windows durmió con el backend arriba vuelve sin haber escrito una
+   sola vela y, desde la lista de arranques, aparenta haber corrido todo el
+   tiempo. La prueba de vida es la actividad real en el log.
+
+   **El EV confirma el álgebra del hallazgo (a) con 1.157 muestras.** Proyectado
+   −0,1784% contra realizado −0,1430% en long, y −0,1631% contra −0,1421% en
+   short: las dos direcciones negativas, el realizado apenas mejor que la
+   proyección. El reparto es el espejo que predice un camino sin deriva —long
+   tp 48,6% / sl 45,4%, short tp 45,2% / sl 48,7%, vertical 6,1% en las dos—.
+   No hay edge direccional, y ahora está medido en vivo además de deducido.
+
+   **Procedencia, que es lo que hace auditable este cierre.** El veredicto sale
+   del artefacto del tracker. Las cuatro mediciones que ese artefacto no trae
+   —atribución de las barras perdidas, techo de la sigma, QLIKE como estadística
+   de cola, e ICs por bloques contra el gate— salen de
+   `scripts/diagnose_forward.py`, que es de solo lectura sobre la DB y **lee las
+   referencias del gate del artefacto** de su variante y su estimador en vez de
+   copiarlas. Ninguna cifra de este punto es un cálculo hecho a mano: se
+   reimprime con
+
+       uv run python scripts/diagnose_forward.py
+
+   **Lo que la Fase 5 NO cierra.** El KPI 1 sigue sin pasar el gate y sigue en
+   gris (regla 2): esta corrida no lo evaluó, midió el target de volatilidad y
+   el cono. El KPI 3 sigue sin emitirse en vivo. Y el techo de la sigma queda
+   como el sospechoso abierto más concreto que deja la fase: si algún día se
+   busca mejorar la sigma, el lugar donde el modelo pierde está identificado y
+   fechado.
+
 **Correr la validación: qué sobrevive a una pausa y qué no.**
 
-No hacen falta 72 horas ininterrumpidas. Lo que se necesita son ~280
-pronósticos resueltos, y el reloj puede pararse entre medio: todo lo que
-importa vive en SQLite, no en memoria.
+No hacen falta 72 horas ininterrumpidas. Lo que se necesita es un número de
+pronósticos resueltos —~280 dimensionó el veredicto de volatilidad, ~1.150 el
+intervalo del cono— y el reloj puede pararse entre medio: todo lo que importa
+vive en SQLite, no en memoria. Medido en la corrida que cerró la fase: 22
+reinicios en 13 días costaron el 8,7% de las barras y **ni un solo resuelto**.
 
 | | sobrevive a apagar el equipo |
 |---|---|
@@ -999,6 +1151,18 @@ capa entera se desarrolló y verificó contra una segunda instancia offline
 El dev server apunta ahí con `BOB_API=http://127.0.0.1:8001`. Los endpoints
 nuevos **no existen todavía en :8000**: decisión de Nichelson (04-09), el
 reinicio espera a que la corrida llegue a ~1.150 resueltos.
+
+> **Actualización (14-09).** La condición se cumplió y la corrida está cerrada
+> (punto 13 de la Fase 5) con el backend apagado, así que **el reinicio ya no
+> está bloqueado**: el próximo arranque sirve los cinco grupos en :8000 y la
+> instancia offline de :8001 deja de ser necesaria para probar.
+>
+> Y una corrección de registro: "el backend de producción no se reinició ni una
+> vez" describía el proceso *que cargó el código de la Fase 6*, no la corrida.
+> Medidos sobre `backend.log`, hubo **22 reinicios en 13 días** —varios antes
+> del 04-09—, y por eso el cierre pudo separar las barras perdidas por proceso
+> abajo de las perdidas por analista mudo. La frase no sostiene su lectura
+> literal.
 
 1. ✅ `api/routes/`: cinco grupos bajo `/api`, todos de **solo lectura**.
    `market` (velas + huecos), `analysis` (último pronóstico, reproyección por

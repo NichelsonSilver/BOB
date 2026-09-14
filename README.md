@@ -64,6 +64,56 @@ proportion that keeps the gross at zero. **Without a directional edge there is
 no positive EV, and that is algebra, not markets.** Full derivation in
 `docs/PROBABILITY_MODEL.md` §9-ter.3.
 
+### Forward validation: closed 2026-09-14
+
+A gate is a backtest. The run that checks whether the backtest *held up live*
+is closed: **1,157 resolved forecasts** over 2026-08-31 .. 2026-09-14, one
+single `model_version`, zero discarded for data gaps. It emitted from a single
+fit consulted bar by bar — not from the walk-forward's throwaway per-fold
+models — and every forecast was resolved against the prices that actually
+followed. The live variant is `price+deriv` with the `gbm` estimator, so the
+comparison below is against *that* gate run, not the `price` headline above.
+
+| | walk-forward gate | forward n=1,157 | verdict |
+|---|---|---|---|
+| R² vs EWMA (volatility) | +0.367 | **+0.559** | holds, and stronger |
+| Diebold-Mariano vs EWMA / HAR | p<0.0001 | p=0.0009 / p=0.0000 | same sign and significance |
+| Cone coverage @ 80% nominal | 79.90% | **79.9%**, CI [73.0, 85.8] | nominal inside |
+| Cone coverage @ 95% nominal | 94.79% | **92.7%**, CI [88.4, 96.1] | nominal inside |
+
+**The confidence intervals are the point, not decoration.** Forecasts overlap:
+with H=16, two consecutive ones share 15 of 16 horizon bars, so 1,157 records
+are **~72 independent observations**. Treating them as independent shrinks the
+standard error by ~4× and manufactures findings — at n=288 it would have
+produced a false "under-coverage" result with the appearance of rigour. Every
+interval here is a moving-block bootstrap.
+
+Those same intervals dispose of two apparent findings, and leave one standing:
+
+- **QLIKE rose from 0.238 (n=288) to 0.512, and Mincer-Zarnowitz β from 1.012
+  to 1.134 — neither is degradation.** Both block-bootstrap CIs contain the
+  gate value ([0.268, 0.846] and [0.828, 1.475]), and the β interval contains
+  1. QLIKE's *mean* is a tail statistic — its top decile carries **71%** of the
+  total, median-per-observation 0.124 against a mean of 0.512 — so it depends
+  on the window as much as R² does, by another route. An earlier note in
+  `CLAUDE.md` claimed otherwise and is corrected there rather than deleted.
+- **Forecast sigma has a ceiling, and this is a real limitation.** The highest
+  sigma the model ever emitted was 0.01787; realized sigma reached 0.04919 —
+  **2.75×** that, with **42 of 1,158 bars (3.6%)** above the ceiling. Realized
+  over forecast has median 0.940 but mean 1.059: a conditional-mean GBM shrinks
+  toward the centre, so levels are generous in calm and short in the spike,
+  which is the direction that hurts a leveraged user. The ACI absorbs it as
+  designed — it cut `alpha_t` from 0.05 to 0.025 where coverage fell short and
+  left 0.20 at 0.194 where it did not — but **a sigma-derived level is not an
+  upper bound on possible movement.**
+
+Operationally, 112 of 1,286 bars (8.7%) produced no forecast, with **zero
+remaining kline gaps**: 90 of those bars had the process down or the machine
+asleep, and 22 had the analyst mute with the process alive. Of that second
+group only **4 are after the tail-gap repair fix**, and all 4 are isolated
+single bars — the fix's designed cost, measured in production rather than in
+tests.
+
 ### How to verify it yourself
 
 The reports for every run are **committed to the repo**, not summarized by
@@ -81,6 +131,16 @@ cat backend/artifacts/ETHUSDT-15m-price-xgb-20260826140451.txt
 # The variant comparator, which imports the gate thresholds from
 # ExperimentResult itself instead of copying them
 cd backend && uv run python -m bob.backtest.compare
+
+# The frozen forward-validation cut (Phase 5 closure)
+cat backend/artifacts/forward-ETHUSDT-15m-n1157-20260914005518.txt
+
+# The four measurements the tracker report does not carry: attribution of the
+# missing bars, the sigma ceiling, QLIKE as a tail statistic, and the
+# block-bootstrap CIs against the gate. Read-only over the database, and it
+# reads the gate reference from that variant's own artifact instead of
+# hardcoding it.
+cd backend && uv run python scripts/diagnose_forward.py
 ```
 
 And to reproduce from scratch (data download + experiment). All randomness in
@@ -464,9 +524,12 @@ tracker resolves it once its horizon closes — realized sigma, cone coverage,
 realized EV — using **the same metric functions as the gate**, so that
 "forward vs backtest" is a comparison and not a translation.
 
-**Pausing the process is safe.** You do not need 72 uninterrupted hours: what
-is needed is ~280 resolved forecasts, and everything that matters lives in
-SQLite. The analyst repairs the candle and derivatives series on startup.
+**Pausing the process is safe.** You do not need uninterrupted hours: what is
+needed is a count of resolved forecasts — ~280 sized the volatility verdict,
+~1,150 the cone's interval — and everything that matters lives in SQLite. The
+analyst repairs the candle and derivatives series on startup. The run that
+closed Phase 5 took 22 restarts across 13 days and lost 8.7% of its bars to
+them, without losing a single resolved forecast.
 
 | | survives powering the machine off? |
 |---|---|
