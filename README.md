@@ -43,6 +43,64 @@ calibrates and does not discriminate.** That is not a bug — it is the
 finding, and it is exactly what the weak form of the efficient-market
 hypothesis predicts at this horizon.
 
+### Passing the gate is not the same as being tradeable
+
+Both criteria above are **necessary and not sufficient**, and it is worth
+saying so before anyone sees an AUC of 0.56 and assumes the KPI lights up with
+usable signals. There is a third bar the gate does not measure:
+
+> Ordering the setups correctly is not enough. The **calibrated** probability
+> has to clear the **break-even probability**,
+> `P_breakeven = (SL + cost) / (TP + SL)` — **61.6%** against a base rate of
+> **43.9%** — or the setup loses money even when the model gets the ordering
+> right.
+
+These are different properties. AUC measures **ordering**, not the **spread of
+the calibrated probabilities**. A model can order barely better than chance
+and, once calibrated, collapse every prediction onto the base rate. That is
+literally what happens here: of 44,539 long predictions, **40,521 land in the
+40–50% bucket** and 3,864 in 50–60%. Three exceed 70%.
+
+Quantified under an equal-variance binormal model, reading the base rate and
+the break-even from the gate artifact itself rather than from hardcoded values
+— here the `price` / `gbm` run, `ETHUSDT-15m-price-gbm-20260826135740`, whose
+break-even is 61.6% (the `full` run used for the EV-gap figure further down
+sits at 61.8%; the bar moves with the setup's friction and `sigma_H`):
+
+| AUC | % of bars over break-even | win rate of that selection | bars/year at 15m |
+|---|---|---|---|
+| 0.52 — *what is measured* | 0.000% | — | 0 |
+| **0.55 — the gate threshold** | **0.003%** | 62.5% | **1** |
+| 0.58 | 0.627% | 63.7% | 220 |
+| 0.60 | 2.351% | 64.7% | 824 |
+| 0.63 | 6.541% | 66.3% | 2,292 |
+| 0.65 | 9.723% | 67.4% | 3,407 |
+
+**A model that passes the gate at AUC 0.551 would emit on the order of one
+tradeable signal per year.** The floor for anything to appear at all is near
+**0.58**, and the floor for a usable instrument near **0.63** — eight AUC
+points above the gate threshold, which in this problem is more than the entire
+distance that separated the model from chance across both full runs.
+
+The binormal is an idealisation, so it is checked against the real buckets, and
+the check corrects it in both directions: the real tail is **fatter** than
+Gaussian (the model predicts ~0 bars over break-even and the run has 3, plus 28
+in the bucket that straddles it) but it is **miscalibrated** — the 60–70%
+bucket promised 62.7% and delivered 53.6% long, 35.0% short. So the binormal
+**understates how many signals appear and overstates how many of them work.**
+
+**The gate does not move because of this.** AUC > 0.55 with BSS > 0 remains the
+entry condition: it is the "this is not noise" bar. What changes is how a pass
+is *read* — it licenses **measuring**, not **trading**, and the number that
+decides whether there is a product is the one each run already prints per
+direction: **how many signals clear the threshold, and at what net expectancy.**
+Three in two years is not a product even if all three win. The corollary for any
+future barrier sweep: maximising AUC is the wrong objective — what has to be
+maximised is the **mass of calibrated probability above break-even**, and
+cutting cost or lengthening the horizon lowers the bar just as much as raising
+AUC does. Derivation, limits and the control table in
+`docs/PROBABILITY_MODEL.md` §8.1.
+
 ### What this means for the product
 
 By an explicit decision on 2026-08-25, **BOB is built on the volatility
@@ -141,6 +199,11 @@ cat backend/artifacts/forward-ETHUSDT-15m-n1157-20260914005518.txt
 # reads the gate reference from that variant's own artifact instead of
 # hardcoding it.
 cd backend && uv run python scripts/diagnose_forward.py
+
+# How much AUC the directional target would need before it emits anything
+# tradeable. Read-only, and it reads the base rate and the break-even from the
+# gate artifact instead of hardcoding them.
+cd backend && uv run python scripts/economic_floor.py
 ```
 
 And to reproduce from scratch (data download + experiment). All randomness in
@@ -325,7 +388,10 @@ the record anyway.
 of fees, slippage and funding is zero — sits at 61.8%. The highest probability
 the model ever emits is 52.2% long and 51.4% short, leaving a gap of about 10pp.
 No setup is tradeable at any threshold that respects EV, and lowering the
-threshold does not create good signals: it creates negative-EV ones.
+threshold does not create good signals: it creates negative-EV ones. That
+gap measures *this* model; how much AUC any future model would need before the
+gap closes is quantified above, in "Passing the gate is not the same as being
+tradeable".
 
 ![Permutation importance of the directional target](docs/figures/permutation_importance_direction_full.png)
 
