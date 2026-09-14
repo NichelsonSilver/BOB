@@ -28,6 +28,7 @@ KPI may be shown as tradeable. The result, measured and reproducible:
 | **Direction** — `P(TP before SL)` | Calibrates (4.0pp / 5.1pp) but **does NOT discriminate** (AUC 0.519 / 0.533; BSS −0.0028 / +0.0005) | ❌ **Not enabled.** Shown greyed out, labelled "experimental". No directional signals are emitted. |
 | **Future realized volatility** | OOS R² **+0.400** vs the mean and **+0.375** vs EWMA; QLIKE **0.3973** vs 0.6702 (EWMA), 0.5339 (GARCH(1,1)) and 0.5072 (HAR-RV); Diebold-Mariano against EWMA and HAR-RV at **p < 0.0001** | ✅ **Validated.** This is what the product rests on. |
 | **Price cone** (CQR + ACI) | Empirical coverage 94.8% at 95% nominal (deviation −0.2pp) and 79.9% at 80% (−0.1pp) | ✅ **Validated.** |
+| **Regime filter** — *when not to enter* | Rejecting the top 16.9% of bars by forecast sigma avoids **52.0%** of liquidations at 20x. Lift **3.077**, block-bootstrap CI95% [2.639, 3.515]; against the same rule built on EWMA (2.195) the paired difference is **+0.882**, CI95% [+0.489, +1.284] | ✅ **Validated** against a criterion [pre-registered before the run](docs/PREREGISTRO_FILTRO_RIESGO.md). Offline only — no forward validation yet. |
 
 **Both gate criteria are mandatory, not alternatives:**
 
@@ -540,6 +541,14 @@ lag. The stack predicts three things that *are* predictable:
 | Future realized volatility | Regression | TP/SL sizing, KPI 2 | ✅ passes |
 | Return interval over H bars | Conformal prediction (CQR + ACI) | Price cone | ✅ passes |
 
+The volatility forecast turns out to be **two** products, not one, and they do
+not rest on the same property. Sizing TP/SL uses its **magnitude**, which is
+broken in the tail: 3.6% of bars realized more movement than the highest sigma
+the model ever emitted, and the worst was 2.75× that ceiling. Deciding *when
+not to enter* uses only its **ordering**, which is the part both validations
+support — and that is what the regime filter measures (see the gate table
+above and `docs/PREREGISTRO_FILTRO_RIESGO.md`).
+
 Everything is validated with **purged walk-forward with embargo**
 (triple-barrier labels overlap; a standard K-Fold leaks the future and comes
 out inflated), against real baselines, and with a **Diebold-Mariano** test to
@@ -664,6 +673,8 @@ All design documents are in Spanish, the working language of the project.
 - `CLAUDE.md` — identity, architecture, KPIs, phases and project rules
 - `docs/PROBABILITY_MODEL.md` — derivation of the forecasting stack, the gate
   and its results, with the discarded alternatives and the known limits
+- `docs/PREREGISTRO_FILTRO_RIESGO.md` — the regime filter's criterion and test
+  count, committed **before** the run that measured it
 - `docs/DATA_SOURCES.md` — Binance/CoinGecko/etc. endpoints and their traps
 - `docs/RUNBOOK_FASE5.md` — how to run the forward validation run
 - `docs/HANDOFF_FASE1.md` — state at the close of Phase 0 and environment gotchas

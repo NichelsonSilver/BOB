@@ -946,6 +946,122 @@ el dato justo donde el dato no está.
 
 ---
 
+## 9-quater. El filtro de régimen — orden sin magnitud (`models/riskfilter.py`)
+
+Este apartado existe porque el pronóstico de volatilidad resultó tener **dos
+propiedades con respaldo empírico distinto**, y el producto que se construya
+encima depende de cuál use.
+
+### 9-quater.1 El diagnóstico que lo motivó
+
+Auditando el techo de la sigma que dejó abierto la Fase 5 (§9-ter):
+
+| hecho | medición |
+|---|---|
+| eventos de sub-pronóstico | **tres** en 13 días (09-03, 09-04, 09-11), no uno |
+| cobertura del cono en esas 42 barras | **0%** al 80% nominal, 50% al 95% |
+| AUC de la sigma para el decil más volátil | **0,875** |
+| percentil de la sigma al *arrancar* cada evento | 93,8 / **45,4** / **50,6** |
+
+Las dos últimas filas juntas son el hallazgo: el modelo **ordena** la
+volatilidad muy bien y no **anticipa el arranque** de un evento. Y la segunda
+fila dice que el cono no rescata nada — falla en las mismas barras.
+
+De ahí la separación:
+
+| producto | usa | estado de esa propiedad |
+|---|---|---|
+| TP/SL dimensionados por sigma | **magnitud** | rota en la cola |
+| *cuándo no entrar* | **orden** | validada |
+
+### 9-quater.2 Diseño
+
+La liquidación es un evento de **movimiento adverso**, no de dirección
+acertada, así que se puede medir sin ningún edge direccional. Por barra y
+dirección se calcula la excursión adversa máxima con la convención del gate
+(entrada al `open[i+1]`, barras `i+1..i+H`):
+
+```
+long :  MAE = 1 − min(low [i+1..i+H]) / entry
+short:  MAE = max(high[i+1..i+H]) / entry − 1
+```
+
+y la liquidación a leverage `L` es un **umbral** sobre el MAE, con la
+distancia derivada de `projection.liquidation_price` para que no pueda
+divergir del número que el dashboard muestra. Tratarla como umbral —en vez de
+resimular por leverage— da la curva completa con una pasada y quita la
+tentación de elegir el leverage después de ver el resultado.
+
+La métrica es el **lift**:
+
+```
+lift = (fracción de liquidaciones evitadas) / (fracción de barras rechazadas)
+```
+
+Un filtro que rechaza al azar da **exactamente 1,0** a cualquier tasa de
+rechazo. Por eso el listón es 1 y no 0, y por eso valores distintos de `q` son
+comparables: la métrica ya normaliza por lo que el filtro cuesta.
+
+### 9-quater.3 Las cuatro formas de mentirse, y cómo se cierran
+
+1. **El umbral.** Es el cuantil del **pasado estricto** en ventana expansiva.
+   Tomarlo sobre la muestra completa usaría el futuro para decidir qué es
+   "alto" hoy — lookahead de la regla 5, invisible, y el filtro se vería mejor
+   de lo que es. Hay test de mutación del futuro.
+2. **El denominador.** Solo entran las barras con sigma OOF. Incluir las que
+   no la tienen —que no pueden rechazarse ni liquidar— baja la tasa de rechazo
+   sin tocar la captura: medido, **lift 5,06 en vez de 3,08**, un 64% de
+   inflación sin que ninguna cuenta falle. Fue un bug real de la primera
+   corrida, y se vio por una inconsistencia de contabilidad (`n_bars` 43.422
+   contra un `n` interno de 71.344), no por un error.
+3. **La incertidumbre.** Los setups solapan 15 de 16 barras, así que los ICs
+   van por **bloques móviles de largo H**, con un test que reproduce
+   `coverage_interval` de la Fase 5 para que los dos intervalos del proyecto
+   sean el mismo objeto estadístico.
+4. **La comparación.** Contra el baseline es **pareada** sobre los mismos
+   remuestreos. Dos ICs marginales que se solapan no permiten concluir que no
+   hay diferencia — mismo motivo por el que acá se usa Diebold-Mariano y no
+   dos RMSE sueltos.
+
+Y una prueba de que la plomería mide lo que dice: alimentado con el **futuro
+real** como score, el lift satura en **4,1** sobre un máximo teórico de 5
+(`1/(1−q)`); con ruido da **1,01**.
+
+### 9-quater.4 Resultado
+
+Criterio fijado en `PREREGISTRO_FILTRO_RIESGO.md` **antes** de correr, con el
+leverage primario elegido por potencia (~89 eventos independientes a 20x) y no
+por resultado. Sobre 43.422 barras con sigma OOF, 20x, `q=0,80`, direcciones
+agrupadas:
+
+| filtro | lift | rechaza | captura |
+|---|---|---|---|
+| **modelo** | **3,077** | 16,9% | **52,0%** |
+| ewma | 2,195 | 16,4% | 35,9% |
+| garch | 2,181 | 17,1% | 37,3% |
+| har | 2,394 | 16,3% | 39,0% |
+
+- mejor que el azar: IC95% **[2,639, 3,515]**, excluye 1,0 ✓
+- mejor que EWMA: diferencia pareada **+0,882**, IC95% **[+0,489, +1,284]** ✓
+
+**Los dos criterios, no uno.** Superar solo el azar no demostraría que el
+modelo aporte algo sobre la regla trivial "no entres cuando viene volátil",
+que un EWMA da gratis.
+
+Coherencia de la grilla exploratoria: el lift **baja** con el leverage (3,08 a
+20x → 2,05 a 50x, porque a más leverage las liquidaciones son comunes y hay
+menos que concentrar) y **sube** con `q`. 5x y 10x quedan etiquetados sin
+potencia y no se leen.
+
+### 9-quater.5 Límites
+
+Es medición **offline**: la validación forward del filtro está pendiente, y la
+Fase 5 enseñó que no es un trámite. No habilita el KPI 1, no vuelve positivo
+el EV —sigue siendo −costo sin edge direccional— y no arregla el techo de la
+sigma, que es la propiedad de magnitud.
+
+---
+
 ## 10. Reproducibilidad
 
 ```bash
@@ -971,6 +1087,11 @@ uv run python -m bob.backtest.compare
 
 # 5. El piso económico del AUC del §8.1 (solo lectura sobre el artefacto)
 uv run python scripts/economic_floor.py
+
+# 6. El filtro de régimen del §9-quater. El --until no es opcional si se
+#    quiere reproducir: la DB crece con el feed y la muestra cambia.
+uv run python -m bob.backtest.riskfilter_runner \
+  --features price+deriv --vol-model gbm --until 2026-09-14T00:45 --artifact
 
 # Variantes
 uv run python -m bob.backtest.runner --tp 1.0 --sl 0.5 --horizon 32 --folds 8

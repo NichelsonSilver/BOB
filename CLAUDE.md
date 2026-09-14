@@ -96,6 +96,15 @@ criterio y el número de pruebas ANTES de correrlas.
   si alguna vez pasa los dos criterios, se enciende. Lo que no se hace es
   mostrarlo como operable mientras no los pase.
 
+> **Extensión (2026-09-14, Fase 5-bis).** "Apoyarse en volatilidad" resultó ser
+> **dos** cosas y no una, con respaldo distinto. Los **niveles** usan la
+> *magnitud* de la sigma, que está rota en la cola. El **filtro de régimen**
+> —cuándo no entrar, o con cuánto leverage— usa solo su *orden*, y eso pasó su
+> propio criterio pre-registrado: rechazando el 16,9% de las barras se evita el
+> 52,0% de las liquidaciones a 20x, contra 35,9% del mismo filtro hecho con
+> EWMA. La decisión del 25-08 no cambia; se afina: **el producto se apoya
+> primero en el orden de la volatilidad y solo después en su magnitud.**
+
 ### Lo que NO cambia
 
 La regla 2 sigue siendo la regla 2, y esta decisión es su aplicación literal:
@@ -970,8 +979,17 @@ dirección. El veredicto de cierre está en el punto 13.
 
    **42 de 1.158 barras (3,6%) tuvieron sigma realizada por encima del máximo
    que el modelo llegó a emitir en toda la corrida**, y el máximo realizado es
-   **2,75×** ese techo. El evento es uno: 09-11 09:45→12:15 UTC, realizada
-   0,045–0,049 contra pronósticos de 0,008–0,010, o sea **4,8× a 5,6× corta**.
+   **2,75×** ese techo. El más violento es el del 09-11 09:30→15:30 UTC,
+   realizada 0,045–0,049 contra pronósticos de 0,008–0,010, o sea **4,8× a
+   5,6× corta**.
+
+   > ⚠ **Corrección de registro (2026-09-14, Fase 5-bis).** Esta línea decía
+   > *"El evento es uno: 09-11 09:45→12:15"*. Son **tres**: 09-03 11:45→14:30
+   > (12 barras), 09-04 08:30→12:15 (16 barras) y 09-11 09:30→15:30 (14
+   > barras). Uno cada cuatro días, no una rareza — y la diferencia importa,
+   > porque un evento único se lee como mala suerte y tres se leen como
+   > propiedad del modelo. El del 09-11 es el único que se había mirado.
+
    Es lo que hace un GBM de media condicional —encoge hacia el centro de su
    distribución de entrenamiento— y se lee en la razón realizada/pronosticada:
    **mediana 0,940 con media 1,059**, o sea sobra en la calma y falta en el
@@ -1186,6 +1204,94 @@ el estimador (`bob-forecast-0.1.0+vol=xgb`) y viaja a `ForecastRecord`,
 `analyst.status()` lo expone, y el `run_id` lleva variante **y** estimador.
 Como eso rompía el parseo por posición del nombre, `compare.py` lee la
 variante de la config del JSON, que es la fuente real.
+
+### Fase 5-bis — El filtro de régimen ✅ (2026-09-14)
+
+**Qué la motivó.** Auditando el techo de la sigma que la Fase 5 dejó abierto
+aparecieron tres hechos que parten el producto en dos mitades con respaldo muy
+distinto:
+
+1. Los eventos de sub-pronóstico son **tres y no uno** (corrección arriba).
+2. **Donde falla la sigma falla también el cono**: en esas 42 barras el cono al
+   80% cubrió **0%** y el de 95% cubrió 50%. El 92,7% global lo sostienen las
+   1.116 barras calmas. Los dos targets validados fallan **juntos**, y
+   exactamente en el régimen que liquida a un usuario apalancado.
+3. **Pero el modelo ordena bien**: AUC **0,875** para separar el decil más
+   volátil. Lo que no anticipa es el *arranque* — dos de los tres eventos
+   empezaron con la sigma en el percentil 45 y 51.
+
+La lectura es que el modelo sabe **en qué régimen estás** y falla en la
+**magnitud de la cola**. Y eso importa porque los dos productos posibles no se
+apoyan en lo mismo:
+
+| producto | se apoya en | estado |
+|---|---|---|
+| niveles TP/SL dimensionados por sigma | **magnitud** | rota en la cola |
+| filtro "ahora no entres / bajá el leverage" | **orden** | validada |
+
+**El criterio se pre-registró antes de correr nada**
+(`docs/PREREGISTRO_FILTRO_RIESGO.md`, commit `5c94510`), que es lo que el
+CLAUDE.md exige de cualquier barrido. El leverage primario se eligió por
+**potencia** —conteo de eventos, ~89 independientes a 20x— y no por resultado.
+1 prueba confirmatoria y 24 exploratorias, declaradas.
+
+**Resultado: el filtro es VIABLE.** 43.422 barras con sigma OOF del mismo
+walk-forward purgado del gate, 20x, q=0,80, direcciones agrupadas:
+
+| filtro | lift | rechaza | captura de liquidaciones |
+|---|---|---|---|
+| **modelo** | **3,077** | 16,9% | **52,0%** |
+| ewma | 2,195 | 16,4% | 35,9% |
+| garch | 2,181 | 17,1% | 37,3% |
+| har | 2,394 | 16,3% | 39,0% |
+
+- **Criterio 1** (mejor que el azar): IC95% por bloques **[2,639, 3,515]**,
+  excluye 1,0. Un filtro que rechaza al azar da exactamente 1,000.
+- **Criterio 2** (mejor que EWMA): diferencia **pareada** +0,882, IC95%
+  **[+0,489, +1,284]**, excluye 0.
+
+Rechazando 1 de cada 6 barras se evita **la mitad** de las liquidaciones a 20x,
+y la versión del modelo captura 16pp más que la misma regla hecha con un EWMA.
+El lift baja con el leverage (3,08 a 20x → 2,05 a 50x) y sube con `q`, que es
+lo que tiene que pasar; 5x y 10x salen etiquetados **sin potencia**.
+
+**El bug que casi lo infla, y por qué se vio.** La primera corrida dio lift
+**5,06**. El denominador incluía las ~28.000 barras sin sigma OOF, que no
+pueden rechazarse ni liquidar: bajaban la tasa de rechazo sin tocar la captura
+e inflaban el lift un **64%** sin que ninguna cuenta fallara. Se detectó porque
+`n_bars` (43.422) y el `n` interno (71.344) no coincidían — o sea por una
+inconsistencia de contabilidad, no por un error. El test de regresión **falla
+contra el código previo** (4000 vs 1984), que es lo único que lo hace valer.
+
+**Lo que sostiene el resultado**, y conviene que quede escrito porque cada una
+era una forma de mentirse:
+
+- El umbral es el cuantil del **pasado estricto** en ventana expansiva. Uno
+  sobre la muestra completa usaría el futuro para decidir qué es "alto" hoy:
+  lookahead de la regla 5, invisible, y el filtro se vería mejor de lo que es.
+- La sigma es **out-of-fold**, del mismo walk-forward purgado con embargo.
+- Los ICs son por **bloques móviles de largo H** —los setups solapan 15 de 16
+  barras— con un test que reproduce `coverage_interval` de la Fase 5, para que
+  los dos intervalos del proyecto sean el mismo objeto estadístico.
+- La comparación contra el baseline es **pareada**, no dos ICs marginales: dos
+  intervalos que se solapan no permiten concluir que no hay diferencia. Mismo
+  motivo por el que el proyecto usa Diebold-Mariano y no dos RMSE sueltos.
+- El **oráculo satura el lift en 4,1** sobre un máximo teórico de 5, y el ruido
+  da 1,01. Es la prueba de que la plomería mide lo que dice medir.
+
+Se reimprime con:
+
+    uv run python -m bob.backtest.riskfilter_runner \
+      --features price+deriv --vol-model gbm --until 2026-09-14T00:45
+
+Artefacto versionado en `backend/artifacts/riskfilter-*.txt|.json`, reproduce
+bit a bit y cita su pre-registro.
+
+**Lo que la Fase 5-bis NO hace.** No habilita el KPI 1, que sigue sin pasar el
+gate y sigue en gris (regla 2) — este filtro no dice hacia dónde entrar. No
+vuelve positivo el EV: sigue siendo −costo sin edge direccional. No arregla el
+techo de la sigma. Y es medición **offline**: la Fase 5 enseñó que el forward
+es otra cosa, así que la validación forward del filtro queda pendiente.
 
 ### Fase 6 — API + Dashboard ✅ construida (2026-09-04)
 
