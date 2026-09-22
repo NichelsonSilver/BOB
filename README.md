@@ -28,7 +28,7 @@ KPI may be shown as tradeable. The result, measured and reproducible:
 | **Direction** — `P(TP before SL)` | Calibrates (4.0pp / 5.1pp) but **does NOT discriminate** (AUC 0.519 / 0.533; BSS −0.0028 / +0.0005) | ❌ **Not enabled.** Shown greyed out, labelled "experimental". No directional signals are emitted. |
 | **Future realized volatility** | OOS R² **+0.400** vs the mean and **+0.375** vs EWMA; QLIKE **0.3973** vs 0.6702 (EWMA), 0.5339 (GARCH(1,1)) and 0.5072 (HAR-RV); Diebold-Mariano against EWMA and HAR-RV at **p < 0.0001** | ✅ **Validated.** This is what the product rests on. |
 | **Price cone** (CQR + ACI) | Empirical coverage 94.8% at 95% nominal (deviation −0.2pp) and 79.9% at 80% (−0.1pp) | ✅ **Validated.** |
-| **Regime filter** — *when not to enter* | Rejecting the top 16.9% of bars by forecast sigma avoids **52.0%** of liquidations at 20x. Lift **3.077**, block-bootstrap CI95% [2.639, 3.515]; against the same rule built on EWMA (2.195) the paired difference is **+0.882**, CI95% [+0.489, +1.284] | ✅ **Validated** against a criterion [pre-registered before the run](docs/PREREGISTRO_FILTRO_RIESGO.md). Offline only — no forward validation yet. |
+| **Regime filter** — *when not to enter* | Rejecting the top 16.9% of bars by forecast sigma avoids **52.0%** of liquidations at 20x. Lift **3.077**, block-bootstrap CI95% [2.639, 3.515]; against the same rule built on EWMA (2.195) the paired difference is **+0.882**, CI95% [+0.489, +1.284] | ✅ **Validated** against a criterion [pre-registered before the run](docs/PREREGISTRO_FILTRO_RIESGO.md). Runs on every live bar and its decision is persisted, but the validation is **offline only** — no forward validation yet. |
 
 **Both gate criteria are mandatory, not alternatives:**
 
@@ -205,6 +205,18 @@ cd backend && uv run python scripts/diagnose_forward.py
 # tradeable. Read-only, and it reads the base rate and the break-even from the
 # gate artifact instead of hardcoding them.
 cd backend && uv run python scripts/economic_floor.py
+
+# The regime filter, measured against a criterion committed BEFORE the run
+# (docs/PREREGISTRO_FILTRO_RIESGO.md, commit 5c94510). Reproduces bit for bit
+# and the report cites its own pre-registration.
+cat backend/artifacts/riskfilter-ETHUSDT-15m-price+deriv-gbm-20260914202117.txt
+cd backend && uv run python -m bob.backtest.riskfilter_runner \
+    --features price+deriv --vol-model gbm --until 2026-09-14T00:45
+
+# The sigma ceiling: the quantile hypothesis, and why it falls
+cat backend/artifacts/sigmatail-ETHUSDT-15m-price+deriv-gbm-20260914212833.txt
+cd backend && uv run python -m bob.backtest.sigma_tail_runner \
+    --features price+deriv --vol-model gbm --until 2026-09-14T00:45
 ```
 
 And to reproduce from scratch (data download + experiment). All randomness in
@@ -228,7 +240,8 @@ last bar, which is precisely what its report prints:
 
 ```bash
 # reproduces the run of 2026-08-25 exactly: same 69,119 bars
-uv run python -m bob.backtest.runner --features price --vol-model gbm     --until 2026-08-21T20:30
+uv run python -m bob.backtest.runner --features price --vol-model gbm \
+    --until 2026-08-21T20:30
 ```
 
 Minute precision matters here rather than being pedantry: that run ended on
@@ -513,6 +526,10 @@ cd frontend
 npm install
 npm run dev
 # → http://localhost:5173
+
+# The dev server proxies /api to localhost:8000. To point it at another
+# backend — a second, read-only instance, say — without editing vite.config:
+BOB_API=http://127.0.0.1:8001 npm run dev
 ```
 
 > ⚠️ Always invoke entry points as `uv run python -m <module>`. On Windows,
@@ -636,6 +653,86 @@ daily archive (~1 day of lag) and the join is exact on `open_time`, with no
 forward-fill — filling it would be inventing liquidity. `assert_tail_observable`
 fails naming the columns instead of leaving the analyst silently mute.
 
+### The regime filter, live
+
+The filter that Phase 5-bis validated now runs on every closed bar. Three
+decisions make it worth describing rather than just listing:
+
+- **The bundle learns what a "high" sigma is *for itself*.** `fit_bundle`
+  stores the percentile grid of its own predictions (`SigmaReference`) and the
+  analyst evaluates the rule against that, not against a constant. The
+  threshold quantile comes from `VALIDATED_Q`, defined once in
+  `models/riskfilter.py`, because the measurement and production cannot use
+  different values: if live filtered at a `q` other than the one measured, the
+  lift the dashboard quotes would not describe the rule in use.
+- **The approximation is measured, not assumed.** The live reference is
+  in-sample while the validation used out-of-fold sigmas. Over the same 43,422
+  bars the thresholds differ by 0.4% at q=0.80 and the two rules agree on
+  **93.1%** of bars.
+- **The decision is persisted, not recomputed.** The threshold depended on the
+  reference in force at emission time, and that moves with every refit.
+  Without storing it there would be no way to validate the filter forward —
+  one would be reconstructing a decision that was never taken. The API serves
+  it from the record, and the dashboard says *"predates Phase 5-bis"* where it
+  is missing instead of inventing it.
+
+Rule 2 applies to the filter too: *"do not enter"* on its own is an alarm;
+with *"avoids 52% of liquidations at 20x, not 100%"* next to it, it is a
+measurement. Those numbers come from `/api/backtest/riskfilter`, so the day
+they are re-measured they change on their own.
+
+---
+
+## Dashboard and API
+
+Five read-only route groups under `/api` — `market`, `analysis`, `history`,
+`backtest`, `settings` — and the five pages that consume them. Four scope
+decisions are worth stating, because each one is a deliberate *no*:
+
+- **No route writes, and a test verifies it** by walking everything the
+  dashboard calls. An endpoint that resolved forecasts would advance the
+  forward validation whenever somebody opened the browser, and a sample that
+  measures itself measures nothing.
+- **Nothing touches SQLite on the event loop.** The same process runs the live
+  feed, and a 5s request fitting GARCH breaks the <1s latency rule without it
+  being visible why. Everything goes through `asyncio.to_thread`;
+  `coverage_report` additionally caches for 2 minutes with a per-key lock —
+  measured 5.0s on the first call, 0.18s on the next.
+- **The leverage slider recomputes on the server.** Drawing the liquidation
+  price in TypeScript would put the formula — with its MMR tiers and its
+  buffer — in two places, and the number the user looks at before entering
+  leveraged would come from the stale copy. `project_setup` is pure:
+  microseconds.
+- **Backtest is read-only and Settings is a mirror, not a form.** Launching a
+  walk-forward from the UI is ~10 boosting fits over 69k bars competing for
+  CPU with the live analyst; changing `feature_set` or `vol_kind` hot puts two
+  `model_version`s into the same sample. What is editable is what touches no
+  model — leverage, cone level, symbol — and it lives in localStorage.
+
+**The Signal page is built around KPI 2, and the ordering is the argument.**
+The regime filter goes first, because the rest of the page describes and this
+decides. Then levels and risk, the cone with its measured coverage, and the
+sigma timeline. The **Safety gauge sits at the bottom, in grey**, with its
+real AUC/BSS/calibration alongside — and **that verdict comes from the API,
+not hardcoded in the TSX**, so the day the directional engine passes both
+criteria the gauge lights up by itself instead of waiting for someone to
+remember to delete a constant.
+
+Four bugs in this layer were found by *looking at screenshots*, not by
+compiling — `tsc` was green for all four: the gauge arc was invisible against
+its own rail (a gauge that looks empty is lying by omission), "liquidation
+price 0.00" at 1x is correct and reads as missing data, `toLocaleString("es")`
+wrote "42.098" samples ten pixels from "0.2474" of Brier, and the coverage
+report comes in UTC while the table drew local time, faking a four-hour gap.
+A fifth, same way: `pct()` already multiplies by 100, so five `pct(x * 100)`
+calls rendered 73.585% where 0.739% belongs.
+
+**What the dashboard does not do, and says so on the page itself**: KPI 3 —
+expected regime duration — is not emitted live. The HMM exists and is tested,
+but the analyst publishes neither the regime nor its expected duration, and
+estimating it from something else would be a number with nothing behind it.
+Wiring it is pending work, not an oversight.
+
 ---
 
 ## Tests
@@ -648,7 +745,7 @@ uv run python -m pytest      # do NOT use `uv run pytest` on Windows (trampoline
 uv run python -m pytest --cov=bob.signals --cov=bob.models --cov=bob.backtest --cov=bob.data
 ```
 
-**699 tests green.** Coverage ≥ 90% in `signals/`, `models/` and `backtest/` —
+**824 tests green.** Coverage ≥ 90% in `signals/`, `models/` and `backtest/` —
 a bug there is a false probability applied to leveraged capital.
 
 Two tests hold up the invariants that, if broken, corrupt everything silently
@@ -670,8 +767,11 @@ Two tests hold up the invariants that, if broken, corrupt everything silently
 | 2b | Derivatives + microstructure over 730 days, venue profiles | ✅ |
 | 3 | Pure models — HMM, triple-barrier, conformal, projection | ✅ |
 | 4 | Backtesting engine — **the gate** (run twice) | ✅ run · ❌ direction not enabled |
-| 5 | Live + paper tracking of the projection | ✅ built · ⏳ accumulating samples |
-| 6 | API + dashboard | ⬜ |
+| 4-bis | XGBoost on the volatility target — estimator benchmark | ✅ a tie; the default stays on `gbm` |
+| 5 | Live + paper tracking of the projection | ✅ **closed 2026-09-14** — 1,157 resolved forecasts |
+| 5-bis | Regime filter — *when not to enter* | ✅ passes its pre-registered criterion · offline only |
+| 5-ter | The sigma ceiling — does a quantile fix it? | ✅ measured · ❌ hypothesis refuted, nothing adopted |
+| 6 | API + dashboard | ✅ built — read-only by design |
 | 7 | Telegram alerts + sentiment | ⬜ |
 | 8 | Outliers Club + multi-symbol | ⬜ |
 | 9 | End-to-end validation | ⬜ |
@@ -690,7 +790,11 @@ All design documents are in Spanish, the working language of the project.
 - `docs/DATA_SOURCES.md` — Binance/CoinGecko/etc. endpoints and their traps
 - `docs/RUNBOOK_FASE5.md` — how to run the forward validation run
 - `docs/HANDOFF_FASE1.md` — state at the close of Phase 0 and environment gotchas
-- `backend/artifacts/*.txt` — the gate reports, committed
+- `backend/artifacts/*.txt|.json` — every verdict this repo states, committed:
+  the gate runs, the frozen forward cut (`forward-*`), the regime filter
+  (`riskfilter-*`) and the sigma-ceiling study (`sigmatail-*`). No number in
+  this README is a hand-written summary — each one is reprinted from one of
+  these files
 - `docs/figures/` — the diagnostic figures, regenerated from those artifacts
   by `backend/scripts/plot_diagnostics.py`
 
@@ -705,3 +809,8 @@ All design documents are in Spanish, the working language of the project.
    catch it.
 5. **Do not inflate the KPI**: no rounding up, no smoothing drawdowns, no
    hiding bad buckets.
+6. **Any sweep is pre-registered.** The criterion and the number of tests are
+   written and committed *before* the run that measures them — otherwise a
+   combination that passes by chance is indistinguishable from one that works.
+   A candidate spotted *after* seeing the results is reported as a lead, not
+   as a result, and needs its own pre-registration (see Phase 5-ter).
