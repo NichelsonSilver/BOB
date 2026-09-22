@@ -46,7 +46,7 @@ from xml.etree import ElementTree
 import httpx
 from loguru import logger
 
-from bob.data.binance_rest import INTERVAL_MS
+from bob.data.binance_rest import INTERVAL_MS, Kline
 from bob.data.snapshots import DerivativePoint
 
 #: De acá se descargan los .zip.
@@ -357,6 +357,54 @@ def daterange(start: date, end: date) -> Iterator[date]:
         current += timedelta(days=1)
 
 
+def parse_klines_csv(raw: bytes) -> list[Kline]:
+    """Parsea el CSV mensual de klines del archivo al mismo `Kline` del REST.
+
+    Dos trampas del archivo, las dos capaces de corromper en silencio:
+
+    - **Encabezado opcional.** Los meses viejos vienen sin él y los nuevos con
+      él. Se detecta por si la primera celda parsea como entero.
+    - **Unidad del timestamp.** Binance pasó de milisegundos a microsegundos
+      en los archivos nuevos. Un `open_time` en µs entra a la DB como una
+      fecha del año 57000 y se mezcla con las velas buenas sin que nada
+      falle: la serie queda con un salto y los features describen ventanas
+      que no existieron. Se normaliza por magnitud.
+    """
+    out: list[Kline] = []
+    for line in raw.decode("utf-8").splitlines():
+        if not line.strip():
+            continue
+        parts = line.split(",")
+        if len(parts) < 11:
+            continue
+        try:
+            open_time = int(float(parts[0]))
+        except ValueError:
+            continue  # fila de encabezado
+        # > 1e15 solo puede ser microsegundos: en ms serían más de 33.000 d.C.
+        if open_time > 1_000_000_000_000_000:
+            open_time //= 1000
+        close_time = int(float(parts[6]))
+        if close_time > 1_000_000_000_000_000:
+            close_time //= 1000
+        out.append(
+            Kline(
+                open_time=open_time,
+                open=parts[1],
+                high=parts[2],
+                low=parts[3],
+                close=parts[4],
+                volume=parts[5],
+                close_time=close_time,
+                quote_volume=parts[7],
+                n_trades=int(float(parts[8])),
+                taker_buy_volume=parts[9],
+                taker_buy_quote_volume=parts[10],
+            )
+        )
+    return sorted(out, key=lambda k: k.open_time)
+
+
 def object_key(dataset: str, symbol: str, day: date) -> str:
     """Clave del objeto diario dentro del bucket."""
     return f"data/futures/um/daily/{dataset}/{symbol}/{symbol}-{dataset}-{day.isoformat()}.zip"
@@ -446,6 +494,102 @@ class VisionClient:
                 break
 
         return sorted(days)
+
+    async def fetch_month_klines(self, symbol: str, timeframe: str, month: str) -> bytes | None:
+        """CSV mensual de klines del archivo. `None` si ese mes no existe (404).
+
+        Es la **única** vía para un símbolo deslistado: `/fapi/v1/klines`
+        responde `-1121 Invalid symbol` en cuanto el contrato deja de cotizar,
+        así que una ingesta que dependa solo del REST no puede traer
+        justamente los símbolos cuya ausencia sesga el panel.
+        """
+        key = (
+            f"data/futures/um/monthly/klines/{symbol}/{timeframe}/"
+            f"{symbol}-{timeframe}-{month}.zip"
+        )
+        async with self._sem:
+            response = await self._client.get(f"{VISION_BASE}/{key}")
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        return _unzip_single(response.content)
+
+    async def list_symbols(self, dataset: str = "klines") -> list[str]:
+        """Símbolos presentes en el archivo mensual, **incluidos los deslistados**.
+
+        Es la pieza que hace corregible el sesgo de supervivencia. `exchangeInfo`
+        solo lista lo que cotiza hoy, y lo que dejó de cotizar es justamente lo
+        que cayó: `LUNAUSDT` no está ahí, y era el mayor reventón de la muestra.
+        El archivo no olvida, así que el universo se arma desde acá.
+
+        Lista `CommonPrefixes` con delimitador, que es lo que devuelve un nivel
+        de "directorio" de S3 sin traer las claves de adentro.
+        """
+        prefix = f"data/futures/um/monthly/{dataset}/"
+        ns = {"s3": "http://s3.amazonaws.com/doc/2006-03-01/"}
+        symbols: set[str] = set()
+        token: str | None = None
+
+        while True:
+            params = {
+                "list-type": "2",
+                "prefix": prefix,
+                "delimiter": "/",
+                "max-keys": "1000",
+            }
+            if token:
+                params["continuation-token"] = token
+            response = await self._client.get(LISTING_BASE, params=params)
+            response.raise_for_status()
+            root = ElementTree.fromstring(response.text)
+
+            for node in root.findall("s3:CommonPrefixes/s3:Prefix", ns):
+                text = (node.text or "").strip().rstrip("/")
+                if text:
+                    symbols.add(text.rsplit("/", 1)[-1])
+
+            if root.findtext("s3:IsTruncated", default="false", namespaces=ns).lower() != "true":
+                break
+            token = root.findtext("s3:NextContinuationToken", namespaces=ns)
+            if not token:  # pragma: no cover — S3 siempre lo manda si truncó
+                break
+
+        return sorted(symbols)
+
+    async def available_months(self, symbol: str, timeframe: str) -> list[str]:
+        """Meses con velas publicadas para un símbolo, como `YYYY-MM` ordenados.
+
+        Da la profundidad de historia **sin descargar nada**: es lo que decide
+        si un símbolo entra al universo y desde cuándo, y para los deslistados
+        es la única fuente, porque ya no tienen `onboardDate` que consultar.
+        """
+        prefix = f"data/futures/um/monthly/klines/{symbol}/{timeframe}/"
+        ns = {"s3": "http://s3.amazonaws.com/doc/2006-03-01/"}
+        months: set[str] = set()
+        token: str | None = None
+        marker = f"-{timeframe}-"
+
+        while True:
+            params = {"list-type": "2", "prefix": prefix, "max-keys": "1000"}
+            if token:
+                params["continuation-token"] = token
+            response = await self._client.get(LISTING_BASE, params=params)
+            response.raise_for_status()
+            root = ElementTree.fromstring(response.text)
+
+            for node in root.findall("s3:Contents/s3:Key", ns):
+                key = (node.text or "").strip()
+                if not key.endswith(".zip") or marker not in key:
+                    continue  # los .CHECKSUM comparten prefijo
+                months.add(key.rsplit(marker, 1)[-1].removesuffix(".zip"))
+
+            if root.findtext("s3:IsTruncated", default="false", namespaces=ns).lower() != "true":
+                break
+            token = root.findtext("s3:NextContinuationToken", namespaces=ns)
+            if not token:  # pragma: no cover — S3 siempre lo manda si truncó
+                break
+
+        return sorted(months)
 
     async def fetch_day(self, dataset: str, symbol: str, day: date) -> bytes | None:
         """Baja y descomprime el CSV de un día. `None` si ese día no existe (404).

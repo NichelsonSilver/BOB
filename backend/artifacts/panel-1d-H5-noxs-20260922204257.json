@@ -1,0 +1,84 @@
+{
+  "config": {
+    "horizon": 5,
+    "n_splits": 6,
+    "min_train_frac": 0.35,
+    "embargo_frac": 0.01,
+    "portfolio_quantile": 0.1,
+    "leg_cost": 0.0014,
+    "model_kind": "gbm",
+    "use_cross_section": false,
+    "seed": 42,
+    "n_boot": 20000,
+    "placebo": false
+  },
+  "n_rows": 284763,
+  "n_symbols": 659,
+  "n_dates": 2571,
+  "n_features": 58,
+  "date_from": 1645574400000,
+  "date_to": 1789516800000,
+  "base_rate": 0.49850577497778853,
+  "auc": 0.5455254142523223,
+  "brier": 0.24845165263396443,
+  "bss": 0.0061845138633388475,
+  "calibration_error": 7.683509869804517,
+  "model_mean_ic": 0.09585703556239582,
+  "model_spread_gross": 0.017039654660317573,
+  "model_spread_net": 0.014239654660317572,
+  "oracle_spread": 0.30557062386711603,
+  "oracle_capture": 0.055763392582291,
+  "baselines": {
+    "xs_momentum_30d": {
+      "mean_ic": -0.03343906493582485,
+      "spread_gross": -0.0030358896663300714
+    },
+    "xs_reversal_5d": {
+      "mean_ic": 0.0330758064625147,
+      "spread_gross": -0.00063512723830622
+    }
+  },
+  "paired_ic": {
+    "xs_momentum_30d": [
+      0.12929610049822066,
+      0.10915906642137173,
+      0.1495714669372284
+    ],
+    "xs_reversal_5d": [
+      0.06278122909988111,
+      0.04587110539822744,
+      0.08031336742872608
+    ]
+  },
+  "intervals": {
+    "ic": [
+      0.08281439433284676,
+      0.10869554476865236
+    ],
+    "spread_gross": [
+      0.01244702444389168,
+      0.021808121002499216
+    ],
+    "spread_net": [
+      0.00964702444389168,
+      0.01900812100249922
+    ]
+  },
+  "turnover": 0.4800919616477553,
+  "zero_return_frac": 0.005443693637741286,
+  "delisted_rows": 32,
+  "criteria": {
+    "discrimination": false,
+    "vs_baseline": true,
+    "economics": true,
+    "viable": false
+  },
+  "fold_names": [
+    "fold1",
+    "fold2",
+    "fold3",
+    "fold4",
+    "fold5",
+    "fold6"
+  ]
+}

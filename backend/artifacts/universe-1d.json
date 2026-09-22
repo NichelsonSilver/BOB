@@ -1,0 +1,7788 @@
+{
+  "discovered_at": "2026-09-22T20:22:19+00:00",
+  "summary": {
+    "crypto_perp": 685,
+    "delisted": 31,
+    "total": 864,
+    "tradfi": 179
+  },
+  "symbols": [
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "0GUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1000000BOBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1000000MOGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1000BONKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-01",
+      "last_month": "2022-04",
+      "n_months": 4,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "1000BTTCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-10",
+      "last_month": "2026-08",
+      "n_months": 23,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1000CATUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1000CHEEMSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-05",
+      "last_month": "2026-08",
+      "n_months": 40,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1000FLOKIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-09",
+      "last_month": "2026-08",
+      "n_months": 48,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1000LUNCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-05",
+      "last_month": "2026-08",
+      "n_months": 40,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1000PEPEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-12",
+      "last_month": "2026-08",
+      "n_months": 33,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1000RATSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-12",
+      "last_month": "2026-08",
+      "n_months": 33,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1000SATSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-05",
+      "last_month": "2026-08",
+      "n_months": 64,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1000SHIBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "1000WHYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-09",
+      "last_month": "2026-08",
+      "n_months": 60,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1000XECUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "1000XUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-12",
+      "last_month": "2026-08",
+      "n_months": 69,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1INCHUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "1MBABYDOGEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "2ZUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "42USDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "4USDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "A2ZUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AAOIUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AAPLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-10",
+      "last_month": "2026-08",
+      "n_months": 71,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AAVEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-12",
+      "last_month": "2026-08",
+      "n_months": 33,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ACEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2026-08",
+      "n_months": 43,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ACHUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ACTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ACUUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "ACXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-01",
+      "last_month": "2026-08",
+      "n_months": 80,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ADBEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-06",
+      "n_months": 22,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "AERGOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AEROUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-03",
+      "last_month": "2026-08",
+      "n_months": 30,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AEVOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2026-08",
+      "n_months": 43,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "AGIXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-07",
+      "last_month": "2026-08",
+      "n_months": 38,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AGLDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AGTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "AI16ZUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AIAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AIGENSYNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AINUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AIOTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AIOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-01",
+      "last_month": "2026-08",
+      "n_months": 32,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "AIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AIXBTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AKEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-01",
+      "last_month": "2022-05",
+      "n_months": 17,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "AKROUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AKTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ALABUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ALCHUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-06",
+      "last_month": "2026-08",
+      "n_months": 75,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ALGOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ALICEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ALLOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ALLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "ALPACAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-11",
+      "last_month": "2026-08",
+      "n_months": 70,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "ALPHAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ALPINEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-01",
+      "last_month": "2026-08",
+      "n_months": 32,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ALTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AMATUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-03",
+      "last_month": "2026-08",
+      "n_months": 42,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "AMBUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AMDUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-02",
+      "last_month": "2026-08",
+      "n_months": 7,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AMZNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-03",
+      "last_month": "2022-05",
+      "n_months": 3,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "ANCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ANIMEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-01",
+      "last_month": "2026-08",
+      "n_months": 68,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ANKRUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ANTHROPICUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-12",
+      "last_month": "2024-05",
+      "n_months": 30,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "ANTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-03",
+      "last_month": "2026-08",
+      "n_months": 54,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "APEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-02",
+      "last_month": "2026-08",
+      "n_months": 55,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "API3USDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "APPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "APRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-10",
+      "last_month": "2026-08",
+      "n_months": 47,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "APTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-03",
+      "last_month": "2026-08",
+      "n_months": 42,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ARBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ARCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ARIAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-07",
+      "last_month": "2026-08",
+      "n_months": 38,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ARKMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-09",
+      "last_month": "2026-08",
+      "n_months": 36,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ARKUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ARMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-10",
+      "last_month": "2026-08",
+      "n_months": 59,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ARPAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-09",
+      "last_month": "2026-08",
+      "n_months": 60,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ARUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ARXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ASMLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ASRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ASTERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2026-08",
+      "n_months": 43,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ASTRUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ASTSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-08",
+      "last_month": "2026-08",
+      "n_months": 61,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "ATAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ATHUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ATOMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ATUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-12",
+      "last_month": "2026-08",
+      "n_months": 33,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AUCTIONUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-08",
+      "last_month": "2024-05",
+      "n_months": 34,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "AUDIOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AVAAIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AVAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AVGOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AVNTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AWEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-03",
+      "last_month": "2026-08",
+      "n_months": 30,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AXLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-11",
+      "last_month": "2026-08",
+      "n_months": 70,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AXSUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AXTIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-02",
+      "last_month": "2026-08",
+      "n_months": 7,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "AZTECUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "B2USDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-02",
+      "last_month": "2026-08",
+      "n_months": 19,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "B3USDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BABAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BABYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "BADGERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-05",
+      "last_month": "2026-08",
+      "n_months": 64,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "BAKEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "BALUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BANANAS31USDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BANANAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-07",
+      "last_month": "2026-08",
+      "n_months": 74,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BANDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BANKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BANUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BARDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BASEDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BASUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BATUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-05",
+      "last_month": "2026-08",
+      "n_months": 28,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BBUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BBXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-01",
+      "last_month": "2026-08",
+      "n_months": 80,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BCHUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-03",
+      "n_months": 10,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "BDXNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BEAMXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BEATUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-11",
+      "last_month": "2026-08",
+      "n_months": 70,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BELUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-02",
+      "last_month": "2026-08",
+      "n_months": 19,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BERAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-09",
+      "last_month": "2026-08",
+      "n_months": 36,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BICOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "BIDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BIGTIMEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BILLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BIOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BIRBUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BITOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BLESSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BLUAIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-11",
+      "last_month": "2024-05",
+      "n_months": 19,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "BLUEBIRDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-04",
+      "last_month": "2026-08",
+      "n_months": 41,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BLURUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "BLZUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BMNRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BMTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BNCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-08",
+      "last_month": "2026-08",
+      "n_months": 37,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BNTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-04",
+      "last_month": "2026-08",
+      "n_months": 53,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "BNXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "BOBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-03",
+      "last_month": "2026-08",
+      "n_months": 30,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BOMEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "BONDUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BOTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BRETTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BREVUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BRKBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BROCCOLI714USDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BROCCOLIF3BUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BSBUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BSPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BSVUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "BSWUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-06",
+      "last_month": "2026-08",
+      "n_months": 63,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BTCDOMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-06",
+      "n_months": 64,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "BTCSTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-01",
+      "last_month": "2026-08",
+      "n_months": 80,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BTRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-02",
+      "last_month": "2024-05",
+      "n_months": 40,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "BTSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-04",
+      "last_month": "2022-01",
+      "n_months": 10,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "BTTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BTWUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BULLAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2021-12",
+      "n_months": 16,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "BZRXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "BZUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-08",
+      "last_month": "2026-08",
+      "n_months": 61,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "C98USDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CAKEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CAPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CARVUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CATIUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CATUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CBRSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-09",
+      "last_month": "2026-08",
+      "n_months": 60,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CELOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CELRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CETUSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CFGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2026-08",
+      "n_months": 43,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CFXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CGPTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "CHESSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CHILLGUYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CHIPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CHRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-01",
+      "last_month": "2026-08",
+      "n_months": 68,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CHZUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CIENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2026-08",
+      "n_months": 43,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CKBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CLANKERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CLOUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "COAIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2024-05",
+      "n_months": 16,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "COCOSUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "COHRUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-02",
+      "last_month": "2026-08",
+      "n_months": 7,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "COINUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "COLLECTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-06",
+      "last_month": "2026-08",
+      "n_months": 39,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "COMBOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "COMMONUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-06",
+      "last_month": "2026-08",
+      "n_months": 75,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "COMPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "COOKIEUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "COPPERUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "COSTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "COSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "COTIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "COWUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-02",
+      "last_month": "2026-08",
+      "n_months": 7,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CRCLUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CRDOUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CRMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CROSSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CRVUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CRWDUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CRWVUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CSCOUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CSOPSAMSUNG2LUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CSOPSKHYNIX2LUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-11",
+      "last_month": "2026-08",
+      "n_months": 70,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CTKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CTRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-10",
+      "last_month": "2026-08",
+      "n_months": 59,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CTSIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "CUDISUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-11",
+      "last_month": "2026-08",
+      "n_months": 70,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CVCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-09",
+      "last_month": "2026-08",
+      "n_months": 48,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CVXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CXMTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-08",
+      "last_month": "2026-08",
+      "n_months": 37,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CYBERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "CYSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "DAMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-04",
+      "last_month": "2026-08",
+      "n_months": 53,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "DARUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DASHUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DATAIPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DEEPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-08",
+      "last_month": "2026-08",
+      "n_months": 73,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "DEFIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "DEGENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "DEGOUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DELLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "DENTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DEXEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "DFUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-04",
+      "last_month": "2026-08",
+      "n_months": 65,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "DGBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-10",
+      "last_month": "2026-08",
+      "n_months": 23,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DIAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DISUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DJTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DKNGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "DMCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-02",
+      "last_month": "2022-05",
+      "n_months": 16,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "DODOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-08",
+      "last_month": "2026-08",
+      "n_months": 37,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DODOXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-07",
+      "last_month": "2026-08",
+      "n_months": 74,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DOGSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DOLOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DOODUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DOSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-01",
+      "last_month": "2021-02",
+      "n_months": 2,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "DOTECOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-08",
+      "last_month": "2026-08",
+      "n_months": 73,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DOTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DRAMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DRIFTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "DUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-01",
+      "last_month": "2026-08",
+      "n_months": 56,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DUSKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-09",
+      "last_month": "2026-08",
+      "n_months": 60,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DYDXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-02",
+      "last_month": "2026-08",
+      "n_months": 31,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "DYMUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EBAYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EDENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EDGEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-04",
+      "last_month": "2026-08",
+      "n_months": 41,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EDUUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EGLDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-10",
+      "last_month": "2026-08",
+      "n_months": 23,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EIGENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ELSAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-04",
+      "last_month": "2026-08",
+      "n_months": 29,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ENAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ENJUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ENSOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-11",
+      "last_month": "2026-08",
+      "n_months": 58,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ENSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-01",
+      "last_month": "2025-05",
+      "n_months": 65,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "EOSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EPICUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "EPTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ERAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ESPORTSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-02",
+      "last_month": "2026-08",
+      "n_months": 7,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ESPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-01",
+      "last_month": "2026-08",
+      "n_months": 80,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ETCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-03",
+      "last_month": "2026-08",
+      "n_months": 30,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ETHFIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-01",
+      "last_month": "2026-08",
+      "n_months": 80,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ETHWUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EULUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EVAAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EWJUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EWTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EWYUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "EWZUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FARTCOINUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-01",
+      "last_month": "2026-08",
+      "n_months": 44,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FETUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FFUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FHEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FIDAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FIGHTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-10",
+      "last_month": "2026-08",
+      "n_months": 71,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FILUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "FIOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "FISUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FLEXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "FLMUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FLNCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FLOCKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-02",
+      "last_month": "2026-08",
+      "n_months": 55,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FLOWUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FLUIDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FLUXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FOGOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FOLKSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-09",
+      "last_month": "2024-05",
+      "n_months": 21,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "FOOTBALLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FORMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "FORTHUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FRAXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-09",
+      "last_month": "2024-09",
+      "n_months": 13,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "FRONTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "FTMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-04",
+      "last_month": "2026-08",
+      "n_months": 53,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "FTTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "FUNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "FWDIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-01",
+      "last_month": "2026-08",
+      "n_months": 44,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "FXSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-09",
+      "last_month": "2026-08",
+      "n_months": 60,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GALAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-05",
+      "last_month": "2024-07",
+      "n_months": 27,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "GALUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GASUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GDXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GENIUSUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GEVUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "GHSTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GIGADEVUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GIGGLEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-09",
+      "last_month": "2026-08",
+      "n_months": 36,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "GLMRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-02",
+      "last_month": "2026-08",
+      "n_months": 31,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GLMUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GLWUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GMEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-03",
+      "last_month": "2026-08",
+      "n_months": 54,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GMTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2026-08",
+      "n_months": 43,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GMXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-10",
+      "last_month": "2026-08",
+      "n_months": 23,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GOATUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GOOGLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-02",
+      "last_month": "2026-08",
+      "n_months": 19,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GPSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GRAMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GRASSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GRIFFAINUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-12",
+      "last_month": "2026-08",
+      "n_months": 69,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GRTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GRVTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-06",
+      "last_month": "2026-08",
+      "n_months": 63,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GTCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GUAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GUNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "GWEIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HAEDALUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HANAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HANMIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HBARUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-02",
+      "last_month": "2026-08",
+      "n_months": 19,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HEIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HEMIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-04",
+      "last_month": "2026-08",
+      "n_months": 41,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "HFTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-09",
+      "last_month": "2026-08",
+      "n_months": 36,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "HIFIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2026-08",
+      "n_months": 43,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "HIGHUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HIMSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "HIPPOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HIVEUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HK0700USDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HK1810USDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HMSTRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2024-05",
+      "n_months": 45,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "HNTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HOLOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HOMEUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-02",
+      "last_month": "2026-08",
+      "n_months": 7,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HOODUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-01",
+      "last_month": "2026-08",
+      "n_months": 44,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "HOOKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HOTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HPEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HUMAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HYPERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HYPEUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "HYUNDAIUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "IBMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ICNTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-05",
+      "last_month": "2026-08",
+      "n_months": 64,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ICPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "ICXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-05",
+      "last_month": "2026-08",
+      "n_months": 40,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "IDEXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "IDOLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-03",
+      "last_month": "2026-08",
+      "n_months": 42,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "IDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ILVUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-02",
+      "last_month": "2026-08",
+      "n_months": 55,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "IMXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "INITUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-08",
+      "last_month": "2026-08",
+      "n_months": 49,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "INJUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-02",
+      "last_month": "2026-08",
+      "n_months": 7,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "INTCUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "INTWUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "INUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "INXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "IONQUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "IOSTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "IOTAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-08",
+      "last_month": "2026-08",
+      "n_months": 61,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "IOTXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-06",
+      "last_month": "2026-08",
+      "n_months": 27,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "IOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-02",
+      "last_month": "2026-08",
+      "n_months": 19,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "IPUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "IRENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "IRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "IRYSUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "IWMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-04",
+      "last_month": "2026-08",
+      "n_months": 53,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "JASMYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "JCTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "JELLYJELLYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-03",
+      "last_month": "2026-08",
+      "n_months": 42,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "JOEUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "JPMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "JSTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-12",
+      "last_month": "2026-08",
+      "n_months": 33,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "JTOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-01",
+      "last_month": "2026-08",
+      "n_months": 32,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "JUPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KAIAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-02",
+      "last_month": "2026-08",
+      "n_months": 19,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KAITOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KASUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KATUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-07",
+      "last_month": "2026-08",
+      "n_months": 74,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KAVAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "KDAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-06",
+      "last_month": "2022-02",
+      "n_months": 9,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "KEEPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KERNELUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-05",
+      "last_month": "2026-08",
+      "n_months": 40,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "KEYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KGENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KITEUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KLACUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-10",
+      "last_month": "2026-08",
+      "n_months": 59,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "KLAYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KMNOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-06",
+      "last_month": "2026-08",
+      "n_months": 75,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KNCUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KODEX200USDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KOMAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KORUUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-10",
+      "last_month": "2026-08",
+      "n_months": 71,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KSMUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KSTRUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "KUAISHOUUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LABUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-02",
+      "last_month": "2026-08",
+      "n_months": 19,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LAYERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-09",
+      "last_month": "2026-08",
+      "n_months": 48,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LDOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-07",
+      "last_month": "2020-11",
+      "n_months": 5,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "LENDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-03",
+      "last_month": "2026-08",
+      "n_months": 42,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "LEVERUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LGELECTRONICSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LIGHTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "LINAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LINEAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-01",
+      "last_month": "2026-08",
+      "n_months": 80,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-06",
+      "last_month": "2026-08",
+      "n_months": 27,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LISTAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LITEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-02",
+      "last_month": "2026-08",
+      "n_months": 67,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LITUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LLYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "LOKAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "LOOMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-11",
+      "last_month": "2026-08",
+      "n_months": 58,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LPTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-03",
+      "last_month": "2026-08",
+      "n_months": 42,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LQTYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-10",
+      "last_month": "2026-08",
+      "n_months": 71,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "LRCUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LRCXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-01",
+      "last_month": "2026-08",
+      "n_months": 32,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LSKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-01",
+      "last_month": "2026-08",
+      "n_months": 80,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LTCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LUMIAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-09",
+      "last_month": "2026-08",
+      "n_months": 48,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LUNA2USDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-01",
+      "last_month": "2022-05",
+      "n_months": 17,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "LUNAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LYNUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "LYTEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-01",
+      "last_month": "2026-08",
+      "n_months": 44,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MAGICUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MAGMAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MANAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-01",
+      "last_month": "2026-08",
+      "n_months": 32,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MANTAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MANTRAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MARAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-08",
+      "last_month": "2026-08",
+      "n_months": 61,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MASKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-10",
+      "last_month": "2024-09",
+      "n_months": 48,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "MATICUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-02",
+      "last_month": "2026-08",
+      "n_months": 31,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MAVIAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-06",
+      "last_month": "2026-08",
+      "n_months": 39,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MAVUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2024-05",
+      "n_months": 7,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "MBLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "MBOXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-06",
+      "last_month": "2026-08",
+      "n_months": 39,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "MDTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MEGAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MEITUANUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MELANIAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "MEMEFIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MEMEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MERLUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "METAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-03",
+      "last_month": "2026-08",
+      "n_months": 30,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "METISUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "METUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-06",
+      "last_month": "2026-08",
+      "n_months": 27,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MEWUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "MILKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2026-08",
+      "n_months": 43,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MINAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MINIMAXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MIRAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MITOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-08",
+      "last_month": "2026-08",
+      "n_months": 73,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "MKRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "MLNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MMTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MOCAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MONUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-10",
+      "last_month": "2026-08",
+      "n_months": 23,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MOODENGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MORPHOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MOVEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-12",
+      "last_month": "2026-08",
+      "n_months": 33,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MOVRUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MRKUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MRNAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MRVLUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MSFTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-02",
+      "last_month": "2026-08",
+      "n_months": 7,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MSTRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MTLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MUBARAKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MUUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MUUUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MVLLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-03",
+      "last_month": "2026-08",
+      "n_months": 30,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "MYROUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "MYXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NAORISUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NATGASUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NAVERUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NBISUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-10",
+      "last_month": "2026-08",
+      "n_months": 71,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NEARUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "NEIROETHUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NEIROUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NEOUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NETUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NEWTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NFLXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-12",
+      "last_month": "2026-08",
+      "n_months": 33,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "NFPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NIGHTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NILUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-04",
+      "last_month": "2026-08",
+      "n_months": 65,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "NKNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-06",
+      "last_month": "2026-08",
+      "n_months": 39,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NMRUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NOKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NOMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-05",
+      "last_month": "2026-08",
+      "n_months": 28,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NOTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NOWUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "NTRNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "NULSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-10",
+      "last_month": "2022-02",
+      "n_months": 5,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "NUUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NVDAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NVOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "NXPCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "OBOLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-11",
+      "last_month": "2026-08",
+      "n_months": 70,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "OCEANUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-04",
+      "last_month": "2026-08",
+      "n_months": 65,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "OGNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "OGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "OLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-07",
+      "last_month": "2026-08",
+      "n_months": 74,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "OMGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-04",
+      "last_month": "2026-08",
+      "n_months": 29,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "OMNIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-02",
+      "last_month": "2026-08",
+      "n_months": 31,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "OMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-01",
+      "last_month": "2026-08",
+      "n_months": 32,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ONDOUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ONDSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ONEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ONGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ONTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ONUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "OPENAIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "OPENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "OPGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-02",
+      "last_month": "2026-08",
+      "n_months": 7,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "OPNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-06",
+      "last_month": "2026-08",
+      "n_months": 51,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "OPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "ORBSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ORCAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ORCLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ORDERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ORDIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "OUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-08",
+      "last_month": "2026-08",
+      "n_months": 37,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "OXTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PANWUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PARTIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PAXGUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PAYPUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PDDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-07",
+      "last_month": "2026-08",
+      "n_months": 38,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PENDLEUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PENGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PENGUUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-12",
+      "last_month": "2026-08",
+      "n_months": 57,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PEOPLEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-03",
+      "last_month": "2026-08",
+      "n_months": 42,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "PERPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PHAROSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PHAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2026-08",
+      "n_months": 43,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "PHBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PIEVERSEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PIPPINUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-02",
+      "last_month": "2026-08",
+      "n_months": 31,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PIXELUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PLAYUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-02",
+      "last_month": "2026-08",
+      "n_months": 7,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PLTRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PLUMEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PNUTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "POLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "POLYXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "PONKEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "POPCATUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "POPMARTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "PORT3USDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-02",
+      "last_month": "2026-08",
+      "n_months": 31,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PORTALUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "POWERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "POWRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PRLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PROMPTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PROMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PROVEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PTBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "PUFFERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PUMPBTCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PUMPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PUNDIXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PYPLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "PYTHUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "QCOMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-10",
+      "last_month": "2026-08",
+      "n_months": 47,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "QNTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "QNTXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "QQQUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "QTUMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "QUICKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "QUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-05",
+      "last_month": "2026-08",
+      "n_months": 40,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "RADUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RAMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RAREUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RAVEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RAYSOLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-08",
+      "last_month": "2026-08",
+      "n_months": 61,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "RAYUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RDDTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-04",
+      "last_month": "2026-08",
+      "n_months": 41,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "RDNTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RECALLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "REDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-02",
+      "last_month": "2026-08",
+      "n_months": 67,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "REEFUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "REIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-07",
+      "last_month": "2026-08",
+      "n_months": 26,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RENDERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-10",
+      "last_month": "2026-08",
+      "n_months": 71,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "RENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RESOLVUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "REUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-04",
+      "last_month": "2026-08",
+      "n_months": 29,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "REZUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RIFUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RIVERUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RIVNUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RKLBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-07",
+      "last_month": "2026-08",
+      "n_months": 74,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RLCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "RLSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2024-07",
+      "n_months": 18,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "RNDRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-02",
+      "last_month": "2026-08",
+      "n_months": 7,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ROBOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-02",
+      "last_month": "2026-08",
+      "n_months": 31,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RONINUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-12",
+      "last_month": "2026-08",
+      "n_months": 57,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ROSEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RPLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-10",
+      "last_month": "2026-08",
+      "n_months": 71,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RSRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RUNEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-02",
+      "last_month": "2026-08",
+      "n_months": 67,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "RVNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "RVVUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-10",
+      "last_month": "2026-08",
+      "n_months": 23,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SAFEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-04",
+      "last_month": "2026-08",
+      "n_months": 29,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SAGAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SAHARAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SAMSUNGEMUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SAMSUNGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-01",
+      "last_month": "2026-08",
+      "n_months": 68,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SANDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-10",
+      "last_month": "2026-08",
+      "n_months": 23,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SANTOSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SAPIENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "SCRTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-10",
+      "last_month": "2026-08",
+      "n_months": 23,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SCRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-04",
+      "last_month": "2026-08",
+      "n_months": 65,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "SCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-08",
+      "last_month": "2026-08",
+      "n_months": 37,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SEIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SENTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-02",
+      "last_month": "2026-08",
+      "n_months": 67,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SFPUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SHAZUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-02",
+      "last_month": "2026-08",
+      "n_months": 19,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SHELLUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SHOPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SIGNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SIRENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "SKATEUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SKDDUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SKHYNIXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SKHYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-12",
+      "last_month": "2026-08",
+      "n_months": 69,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SKLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SKRUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SKUUUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SKYAIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SKYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "SLERFUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SLPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SLXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SMCIUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SMHUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SNDKUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SNOWUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "SNTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-08",
+      "last_month": "2026-08",
+      "n_months": 73,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SNXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SNXXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SOFIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SOLVUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SOMIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SONICUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SONYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SOONUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SOPHUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SOXLUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SOXSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SPACEUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SPCXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-09",
+      "last_month": "2026-08",
+      "n_months": 48,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SPELLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SPKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SPORTFUNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SPXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SPYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SQDUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SQQQUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2024-05",
+      "n_months": 45,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "SRMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2026-08",
+      "n_months": 43,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SSVUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "STABLEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "STARUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "STBLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "STEEMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-08",
+      "last_month": "2026-08",
+      "n_months": 49,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "STGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "STMXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "STORJUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "STOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "STPTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "STRAXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "STRCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-02",
+      "last_month": "2026-08",
+      "n_months": 31,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "STRKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2026-08",
+      "n_months": 43,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "STXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "STXXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-05",
+      "last_month": "2026-08",
+      "n_months": 40,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SUNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SUPERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SUSHIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SWARMSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "SWELLUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-07",
+      "last_month": "2026-05",
+      "n_months": 71,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "SXPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SXTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SYNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "SYRUPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "SYSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TACUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TAGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-06",
+      "last_month": "2026-08",
+      "n_months": 15,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TAIKOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TAKEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "TANSSIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-04",
+      "last_month": "2026-08",
+      "n_months": 29,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TAOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TBTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TEMUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TENCENTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-05",
+      "last_month": "2026-08",
+      "n_months": 76,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "THETAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-11",
+      "last_month": "2026-08",
+      "n_months": 22,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "THEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TIAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-07",
+      "last_month": "2026-08",
+      "n_months": 62,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TLMUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TMFUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-04",
+      "last_month": "2026-08",
+      "n_months": 29,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TNSRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "TOKENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-10",
+      "last_month": "2024-05",
+      "n_months": 44,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "TOMOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-03",
+      "last_month": "2026-08",
+      "n_months": 30,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "TONUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TOSHIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TOWNSUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TQQQUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TRADOORUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TRBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TREEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-02",
+      "last_month": "2026-08",
+      "n_months": 7,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TRIAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-10",
+      "last_month": "2026-08",
+      "n_months": 23,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "TROYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TRUMPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TRUSTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TRUTHUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-03",
+      "last_month": "2026-08",
+      "n_months": 42,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "TRUUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-01",
+      "last_month": "2026-08",
+      "n_months": 80,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TRXUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TSLAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-04",
+      "last_month": "2026-08",
+      "n_months": 5,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TSMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-02",
+      "last_month": "2026-08",
+      "n_months": 19,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TSTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TTWOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-05",
+      "last_month": "2026-08",
+      "n_months": 28,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TURBOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TURTLEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-02",
+      "last_month": "2026-08",
+      "n_months": 43,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TUTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TWTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TXNUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "TZAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-11",
+      "last_month": "2026-08",
+      "n_months": 10,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "UAIUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "UBERUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "UBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-05",
+      "last_month": "2026-08",
+      "n_months": 40,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "UMAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-02",
+      "last_month": "2026-08",
+      "n_months": 67,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "UNFIUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "UNITREEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2026-08",
+      "n_months": 72,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "UNIUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "URNMUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "USARUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-03",
+      "last_month": "2026-08",
+      "n_months": 42,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "USDCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "USELESSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-11",
+      "last_month": "2026-08",
+      "n_months": 34,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "USTCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "USUALUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "USUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "UVXYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-09",
+      "last_month": "2026-08",
+      "n_months": 24,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "UXLINKUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "VANAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-03",
+      "last_month": "2026-08",
+      "n_months": 30,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "VANRYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "VELODROMEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "VELVETUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "VETUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "VFYUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "VICUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "VIDTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "VINEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-12",
+      "last_month": "2026-08",
+      "n_months": 21,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "VIRTUALUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-08",
+      "last_month": "2026-08",
+      "n_months": 25,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "VOXELUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "VRTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "VSTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "VTHOUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "VUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "VVVUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-03",
+      "last_month": "2026-08",
+      "n_months": 18,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "WALUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-08",
+      "last_month": "2026-08",
+      "n_months": 73,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "WAVESUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-10",
+      "last_month": "2026-08",
+      "n_months": 35,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "WAXPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "WCTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "WDCUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "WENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "WETUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-01",
+      "last_month": "2026-08",
+      "n_months": 32,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "WIFUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-07",
+      "last_month": "2026-08",
+      "n_months": 38,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "WLDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "WLFIUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-05",
+      "last_month": "2026-08",
+      "n_months": 4,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "WMTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2022-04",
+      "last_month": "2026-08",
+      "n_months": 53,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "WOOUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-04",
+      "last_month": "2026-08",
+      "n_months": 29,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "WUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XAGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-01",
+      "last_month": "2026-08",
+      "n_months": 32,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XAIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XANUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XAUTUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XAUUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XBIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-04",
+      "last_month": "2026-08",
+      "n_months": 17,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "XCNUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2021-03",
+      "last_month": "2026-08",
+      "n_months": 66,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "XEMUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XLEUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-01",
+      "last_month": "2026-08",
+      "n_months": 80,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XLMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XMRUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XNYUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XPDUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XPINUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XPLUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XPTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-01",
+      "last_month": "2026-08",
+      "n_months": 80,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XTZUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-07",
+      "last_month": "2026-08",
+      "n_months": 38,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XVGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-04",
+      "last_month": "2026-08",
+      "n_months": 41,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "XVSUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-08",
+      "last_month": "2026-08",
+      "n_months": 13,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "YALAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "YBUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-09",
+      "last_month": "2022-04",
+      "n_months": 20,
+      "source": "archive-only",
+      "status": "DELISTED",
+      "symbol": "YFIIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-08",
+      "last_month": "2026-08",
+      "n_months": 73,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "YFIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2023-08",
+      "last_month": "2026-08",
+      "n_months": 37,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "YGGUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZAMAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZBTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-02",
+      "last_month": "2026-08",
+      "n_months": 79,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZECUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-11",
+      "last_month": "2026-08",
+      "n_months": 70,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZENUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-01",
+      "last_month": "2026-08",
+      "n_months": 20,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZEREBROUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZESTUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-02",
+      "last_month": "2026-08",
+      "n_months": 31,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZETAUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-07",
+      "last_month": "2026-08",
+      "n_months": 2,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZHIPUUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZHONGJIUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-06",
+      "last_month": "2026-08",
+      "n_months": 75,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZILUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-09",
+      "last_month": "2026-08",
+      "n_months": 12,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZKCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-05",
+      "last_month": "2026-08",
+      "n_months": 16,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "ZKJUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-12",
+      "last_month": "2026-08",
+      "n_months": 9,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZKPUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-06",
+      "last_month": "2026-08",
+      "n_months": 27,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZKUSDT"
+    },
+    {
+      "contract_type": "TRADIFI_PERPETUAL",
+      "first_month": "2026-06",
+      "last_month": "2026-08",
+      "n_months": 3,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZMUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZORAUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-07",
+      "last_month": "2026-08",
+      "n_months": 14,
+      "source": "exchangeInfo",
+      "status": "SETTLING",
+      "symbol": "ZRCUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2024-06",
+      "last_month": "2026-08",
+      "n_months": 27,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZROUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2020-06",
+      "last_month": "2026-08",
+      "n_months": 75,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "ZRXUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2025-10",
+      "last_month": "2026-08",
+      "n_months": 11,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "\u5e01\u5b89\u4eba\u751fUSDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-01",
+      "last_month": "2026-08",
+      "n_months": 8,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "\u6211\u8e0f\u9a6c\u6765\u4e86USDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-08",
+      "last_month": "2026-08",
+      "n_months": 1,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "\u725b\u6765USDT"
+    },
+    {
+      "contract_type": "PERPETUAL",
+      "first_month": "2026-03",
+      "last_month": "2026-08",
+      "n_months": 6,
+      "source": "exchangeInfo",
+      "status": "TRADING",
+      "symbol": "\u9f99\u867eUSDT"
+    }
+  ],
+  "timeframe": "1d"
+}

@@ -1463,6 +1463,138 @@ emite en vivo (el HMM existe y está testeado, pero el analista no publica
 régimen ni duración esperada, y estimarla de otra cosa sería un número sin
 respaldo). Cablearlo es trabajo pendiente, no un olvido.
 
+### Fase 10 — El panel transversal diario ✅ construida y corrida (2026-09-22)
+
+**Qué la motivó, y por qué no es "otra vuelta al mismo problema".** Explorando
+velas **diarias** aparecieron cuatro mediciones que juntas describen un
+problema distinto del de 15m:
+
+1. **En diario el costo deja de mandar.** Las barreras son múltiplos de sigma,
+   así que crecen con √H mientras el costo sigue fijo: el margen a superar cae
+   de **17,7 pp** (15m, H=16) a **1,4 pp** (1d, H=10).
+2. **Pero un solo símbolo no tiene potencia.** Con 2.491 velas diarias de
+   ETHUSDT —todo lo que existe— y H=5, el IC95% del AUC es **±0,051**. El gate
+   saldría inconcluyente por construcción, y el fold 1 entrenaría con ~415 filas.
+3. **Lo que parecía margen positivo es deriva.** A H=16 el long da +0,2 pp y el
+   short −8,1 pp: espejo. La deriva misma no es significativa (t=1,35).
+4. **La sección transversal solo paga si la pregunta es relativa.** Medido sobre
+   238 perpetuos × 2.456 fechas: la correlación media entre pares de retornos
+   crudos es **+0,422** —PC1 explica el 48,4%— y 238 símbolos equivalen a
+   **2,4 independientes**. Demediando por fecha cae a −0,007 y quedan 238.
+
+De ahí el piso económico, que es el contraste que ordena la fase: **AUC 0,5047
+contra el 0,63 de 15m**, porque el oráculo del spread decil-contra-decil es
+**97,5× el costo del par**.
+
+**El criterio se pre-registró antes de correr nada**
+(`docs/PREREGISTRO_PANEL_DIARIO.md`, commit `605e1f7`): 3 criterios
+confirmatorios, 18 exploratorias declaradas, configuración primaria fijada.
+
+**Resultado: los TRES criterios pasan.** 659 perpetuos cripto × 2.571 fechas,
+284.763 filas evaluadas, 111 features, H=5, 6 folds purgados por fecha:
+
+| criterio | resultado |
+|---|---|
+| 1. discrimina | AUC **0,5541** > 0,55, BSS **+0,0088** > 0, calibración 0,72 pp |
+| 2. supera al trivial | IC **+0,1072** vs +0,0331 (reversal) y −0,0334 (momentum); diferencia pareada **+0,0741**, IC95% [+0,0589, +0,0903] |
+| 3. paga | spread neto **+1,390%** por período de 5 días, IC95% [+0,984%, +1,817%] |
+
+**El placebo está limpio, y era la primera pregunta.** Permutando el resultado
+entre los símbolos de cada fecha —rompe el vínculo símbolo→resultado y deja
+todo lo demás intacto— el AUC cae a **0,5007**, el IC a **+0,0021** (IC95%
+contiene 0) y el spread neto a **−0,046%**. La plomería no fabrica edge. Con el
+piso económico en 0,5047 y la resolución en ±0,004 este control no es opcional:
+un sesgo chico produce exactamente el tamaño de efecto que se busca.
+
+**Estable en los cinco años**, ninguno sostiene al resto:
+
+| año | IC | spread neto | IC95% |
+|---|---|---|---|
+| 2022 | +0,0986 | +0,879% | [+0,017%, +1,800%] |
+| 2023 | +0,0957 | +0,827% | [+0,206%, +1,493%] |
+| 2024 | +0,1037 | +0,888% | [+0,042%, +1,687%] |
+| 2025 | +0,1146 | +1,505% | [+0,660%, +2,318%] |
+| 2026 | +0,1282 | +3,347% | [+1,914%, +4,870%] |
+
+**Tres hallazgos con consecuencia, y el tercero es el que manda:**
+
+**(a) El bloque transversal casi no aporta.** Sin él —el baseline secundario
+declarado— el IC es **+0,0959** contra +0,1072, y el spread neto sale
+*levemente mejor* (+1,424% vs +1,390%). O sea: lo que funciona es la reversión
+de **serie de tiempo** por símbolo, *medida* contra la sección. Los rangos
+transversales como feature agregan poco. La hipótesis H1 pasa, pero el
+mecanismo no es el que la motivó, y sin el bloque el AUC cae a 0,5455 — abajo
+del gate.
+
+**(b) Solo se captura el 5,47% del techo.** El oráculo da +30,56% y el modelo
++1,67%. Es coherente con un IC de 0,107 y conviene tenerlo a la vista: no hay
+nada parecido a "adivinar" cuál sube.
+
+**(c) La cola izquierda es catastrófica, y ese es el veredicto real para ESTE
+usuario.** Asimetría **−1,04**, curtosis **20,3**:
+
+| | |
+|---|---|
+| peor período | **−68,8%** (el siguiente, −32,2%) |
+| mejor período | +28,6% |
+| p1 / p99 | −11,8% / +16,2% |
+| períodos con neto > 0 | 60,5% |
+| media sin los 5 peores | +1,485% (vs +1,390%) |
+
+El edge **no vive en unos pocos períodos** —quitar los cinco peores casi no
+mueve la media— pero un par largo/corto que pierde 68,8% en cinco días liquida
+cualquier cuenta apalancada. Para un usuario averso al riesgo que **ya fue
+liquidado una vez**, ese número pesa más que el Sharpe de 2,16. La firma es la
+de un short squeeze en la pata corta, que es el riesgo clásico de estas
+estrategias.
+
+**Lo que la Fase 10 NO hace.**
+
+- **No habilita el KPI 1.** Sigue sin pasar el gate y sigue en gris (regla 2).
+  Esto es otra pregunta, sobre otro objeto, a otra escala.
+- **No es una estrategia lista para operar.** Se opera **neutral al mercado**
+  —largo y corto a la vez, doble fricción, rotación medida del **44,4%** por
+  rebalanceo— que es una forma de operar distinta de todo lo que BOB asumió y
+  de cómo opera Nichelson. Y el costo modelado (0,14% por pata) está calibrado
+  sobre ETH, no sobre el decil ilíquido de una sección de 170 altcoins.
+- **No mide forward.** Es offline. La Fase 5 enseñó que offline y forward no
+  son lo mismo; la validación forward es una fase aparte.
+- **No toca el vivo.** No cambia `model_version` ni entra al analista.
+
+**El sesgo de supervivencia, corregido y medido.** El universo se reconstruye
+del archivo de `data.binance.vision` y no de `exchangeInfo`, que es solo-vivo:
+864 símbolos USDT, **179 perpetuos de acciones excluidos por bandera del
+exchange** (`TRADIFI_PERPETUAL`) y **31 deslistados recuperados**, entre ellos
+**`LUNAUSDT`** —el colapso de Terra— con sus 471 velas.
+
+**Y el sesgo se colaba una capa más abajo de donde se lo vigilaba.** Con el
+universo ya bien construido, la ingesta por REST falló en 4 símbolos con
+`-1121 Invalid symbol`: **Binance no sirve klines de contratos deslistados**.
+Uno de ellos, `SXPUSDT`, tiene seis años de historia. Se agregó el fallback al
+archivo mensual (`VisionClient.fetch_month_klines`) y los cuatro entraron.
+Tener bien la regla no alcanza si la capa que la materializa no puede.
+
+**El feature engine degeneraba en diario, en silencio.** `window_bars` tiene
+piso de 2 barras, así que 1h, 4h, 12h y 24h caían **todas** a 2: medido sobre
+las 2.491 velas diarias reales, 55 features colapsaban a **34 distintas** —25
+pares duplicados **exactos** y 4 constantes— y el modelo entrenaba igual
+reportando métricas. `WindowSet` separa el perfil de intradía del diario; el de
+intradía **reproduce la matriz de 15m byte a byte sobre 71.344 velas × 55
+features**, verificado contra el código anterior sacado de git, así que los
+artefactos del gate siguen siendo reproducibles.
+
+Se reimprime con:
+
+    uv run python -m bob.data.download_panel --discover   # congela el universo
+    uv run python -m bob.data.download_panel --ingest
+    uv run python -m bob.backtest.panel_runner --until 2026-09-21
+    uv run python -m bob.backtest.panel_runner --until 2026-09-21 --placebo
+    uv run python scripts/diagnose_panel.py
+
+Artefactos versionados en `backend/artifacts/panel-*.txt|.json` y
+`universe-1d.json`. Runtime: ingesta ~9 min (piso por rate limit), corrida
+~2 min.
+
 ### Fase 7 — Alertas Telegram + sentimiento (F&G, CoinGecko)
 ### Fase 8 — Outliers Club + multi-símbolo watchlist
 ### Fase 9 — Validación end-to-end

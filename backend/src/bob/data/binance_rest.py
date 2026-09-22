@@ -232,6 +232,16 @@ class BinanceRestClient:
         data = await self._get("/fapi/v1/time")
         return int(data["serverTime"])
 
+    async def exchange_info(self) -> dict[str, Any]:
+        """`/fapi/v1/exchangeInfo` crudo — contratos, estados y filtros.
+
+        Ojo al usarlo: es **solo-vivo**. Un símbolo deslistado desaparece de
+        acá por completo, así que esta respuesta no sirve para reconstruir un
+        universo histórico (ver `data/panel.py`).
+        """
+        data = await self._get("/fapi/v1/exchangeInfo")
+        return dict(data)
+
     async def exchange_filters(self, symbol: str) -> dict[str, str]:
         """tickSize / stepSize de un símbolo. El cacheo va arriba, no acá."""
         data = await self._get("/fapi/v1/exchangeInfo")

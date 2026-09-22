@@ -33,6 +33,108 @@ HORIZONS_H: Final[tuple[float, ...]] = (1.0, 4.0, 12.0, 24.0, 72.0)
 #: Ventana larga para percentiles y z-scores de contexto (7 días).
 CONTEXT_H: Final[float] = 168.0
 
+#: Un día en horas — para leer los perfiles de abajo sin contar ceros.
+_DAY: Final[float] = 24.0
+
+
+@dataclass(frozen=True)
+class WindowSet:
+    """Las ventanas del feature engine, en horas, para un timeframe dado.
+
+    **Por qué existe esto.** `window_bars` tiene piso de 2 barras. En velas
+    diarias eso hace que 1h, 4h, 12h y 24h caigan **todas** a 2 barras, y el
+    resultado medido sobre las 2.491 velas diarias reales de ETHUSDT es que
+    las 55 features colapsan a ~34 distintas: 25 pares de columnas quedan
+    duplicados **exactos** (`mom_1h` ≡ `mom_4h` ≡ `mom_12h` ≡ `mom_24h`,
+    `rv_1h` ≡ `rv_4h`, …) y 4 quedan constantes. Nada de eso falla
+    ruidosamente —el modelo entrena igual y reporta métricas— que es lo que
+    lo vuelve peligroso.
+
+    El perfil de **intradía es el histórico, valor por valor**. No se toca:
+    el proyecto cuida que el run del 26-08 reproduzca el del 25-08 bit a bit
+    (Fase 4-bis), y mover una sola de estas constantes dejaría los artefactos
+    del gate irreproducibles. Hay un test de regresión que lo fija.
+    """
+
+    momentum: tuple[float, ...]
+    ema_dist: tuple[float, ...]
+    ema_fast: float
+    ema_slow: float
+    realized_vol: tuple[float, ...]
+    vol_short: float
+    vol_long: float
+    intrabar_vol: float
+    vwap: tuple[float, ...]
+    bollinger: float
+    donchian: tuple[float, ...]
+    taker: tuple[float, ...]
+    volume_delta: float
+    context: float
+    #: Las velas diarias abren todas a la misma hora UTC, así que las columnas
+    #: de estacionalidad intradía salen constantes y no aportan.
+    intraday_seasonality: bool = True
+    #: Cómo se nombran las columnas. En diario "mom_1440h" es correcto y
+    #: ilegible, así que el perfil elige la unidad — y de paso las columnas de
+    #: un panel diario **no** pueden confundirse con las de un run de 15m,
+    #: que es exactamente lo que se quiere.
+    unit: str = "h"
+
+    def label(self, hours: float) -> str:
+        if self.unit == "d":
+            return f"{hours / _DAY:g}d"
+        return f"{hours:g}h"
+
+
+#: Intradía: los valores históricos, exactamente como estaban antes de que
+#: existiera este dataclass. Cambiarlos rompe la reproducción del gate.
+INTRADAY_WINDOWS: Final = WindowSet(
+    momentum=HORIZONS_H,
+    ema_dist=(4.0, 24.0, 72.0),
+    ema_fast=3.0,
+    ema_slow=12.0,
+    realized_vol=(1.0, 4.0, 24.0),
+    vol_short=1.0,
+    vol_long=24.0,
+    intrabar_vol=4.0,
+    vwap=(4.0, 24.0),
+    bollinger=4.0,
+    donchian=(4.0, 24.0, 72.0),
+    taker=(1.0, 4.0),
+    volume_delta=4.0,
+    context=CONTEXT_H,
+    intraday_seasonality=True,
+    unit="h",
+)
+
+#: Diario: las mismas *formas* —corto, medio, largo, contexto— expresadas en
+#: cantidades de barras que no colapsan. En barras da momentum (2, 5, 10, 20,
+#: 60), que es el escalonado estándar de la literatura diaria, y un contexto
+#: de 120 barras (~4 meses) para los percentiles. El de intradía usa 672
+#: barras de contexto; copiarlo acá serían 672 días y no queda muestra.
+DAILY_WINDOWS: Final = WindowSet(
+    momentum=(2 * _DAY, 5 * _DAY, 10 * _DAY, 20 * _DAY, 60 * _DAY),
+    ema_dist=(5 * _DAY, 20 * _DAY, 60 * _DAY),
+    ema_fast=5 * _DAY,
+    ema_slow=20 * _DAY,
+    realized_vol=(2 * _DAY, 5 * _DAY, 20 * _DAY),
+    vol_short=2 * _DAY,
+    vol_long=20 * _DAY,
+    intrabar_vol=5 * _DAY,
+    vwap=(5 * _DAY, 20 * _DAY),
+    bollinger=20 * _DAY,
+    donchian=(5 * _DAY, 20 * _DAY, 60 * _DAY),
+    taker=(2 * _DAY, 5 * _DAY),
+    volume_delta=5 * _DAY,
+    context=120 * _DAY,
+    intraday_seasonality=False,
+    unit="d",
+)
+
+
+def windows_for(tf_ms: int) -> WindowSet:
+    """Perfil de ventanas del timeframe. Diario y más grueso usan el suyo."""
+    return DAILY_WINDOWS if tf_ms >= 86_400_000 else INTRADAY_WINDOWS
+
 
 @dataclass(frozen=True)
 class FeatureSet:
@@ -102,6 +204,7 @@ def build_features(series: OHLCVSeries) -> FeatureSet:
         )
 
     tf_ms = series.interval_ms
+    win = windows_for(tf_ms)
     o, h, low, c = series.open, series.high, series.low, series.close
     vol, qvol, tbv = series.volume, series.quote_volume, series.taker_buy_volume
     ntr = series.n_trades.astype(np.float64)
@@ -122,19 +225,19 @@ def build_features(series: OHLCVSeries) -> FeatureSet:
     #    Retorno acumulado a distintos horizontes, escalado por volatilidad:
     #    un +2% en régimen tranquilo no significa lo mismo que en uno agitado.
     # ------------------------------------------------------------------ #
-    for hrs in HORIZONS_H:
+    for hrs in win.momentum:
         w = window_bars(hrs, tf_ms)
         ret = nm.rolling_sum(r1, w)
-        add(f"mom_{hrs:g}h", ret)
-        add(f"mom_{hrs:g}h_vol_adj", nm.safe_div(ret, nm.realized_vol(r1, w)))
+        add(f"mom_{win.label(hrs)}", ret)
+        add(f"mom_{win.label(hrs)}_vol_adj", nm.safe_div(ret, nm.realized_vol(r1, w)))
 
-    for hrs in (4.0, 24.0, 72.0):
+    for hrs in win.ema_dist:
         w = window_bars(hrs, tf_ms)
         ema = nm.ewma(c, w)
-        add(f"ema_dist_{hrs:g}h", nm.safe_div(c - ema, np.maximum(atr14, nm.EPS)))
+        add(f"ema_dist_{win.label(hrs)}", nm.safe_div(c - ema, np.maximum(atr14, nm.EPS)))
 
-    ema_fast = nm.ewma(c, window_bars(3.0, tf_ms))
-    ema_slow = nm.ewma(c, window_bars(12.0, tf_ms))
+    ema_fast = nm.ewma(c, window_bars(win.ema_fast, tf_ms))
+    ema_slow = nm.ewma(c, window_bars(win.ema_slow, tf_ms))
     add("ema_cross", nm.safe_div(ema_fast - ema_slow, np.maximum(atr14, nm.EPS)))
 
     macd = nm.ewma(c, 12) - nm.ewma(c, 26)
@@ -146,22 +249,28 @@ def build_features(series: OHLCVSeries) -> FeatureSet:
     #    cierres, Parkinson el recorrido intrabarra, Garman-Klass el OHLC
     #    completo. Su divergencia informa sobre gaps y colas.
     # ------------------------------------------------------------------ #
-    w_ctx = window_bars(CONTEXT_H, tf_ms)
-    for hrs in (1.0, 4.0, 24.0):
+    w_ctx = window_bars(win.context, tf_ms)
+    for hrs in win.realized_vol:
         w = window_bars(hrs, tf_ms)
         rv = nm.realized_vol(r1, w)
-        add(f"rv_{hrs:g}h", rv)
-        add(f"rv_{hrs:g}h_rank", nm.rolling_rank(rv, w_ctx))
+        add(f"rv_{win.label(hrs)}", rv)
+        add(f"rv_{win.label(hrs)}_rank", nm.rolling_rank(rv, w_ctx))
 
-    add("parkinson_4h", nm.parkinson_vol(h, low, window_bars(4.0, tf_ms)))
-    add("garman_klass_4h", nm.garman_klass_vol(o, h, low, c, window_bars(4.0, tf_ms)))
+    w_intrabar = window_bars(win.intrabar_vol, tf_ms)
+    add(f"parkinson_{win.label(win.intrabar_vol)}", nm.parkinson_vol(h, low, w_intrabar))
+    add(
+        f"garman_klass_{win.label(win.intrabar_vol)}",
+        nm.garman_klass_vol(o, h, low, c, w_intrabar),
+    )
     add("atr_pct", atr_pct)
     add("atr_pct_rank", nm.rolling_rank(atr_pct, w_ctx))
 
     # Term structure de volatilidad: >1 = agitación reciente sobre la basal.
-    rv_short = nm.realized_vol(r1, window_bars(1.0, tf_ms))
-    rv_long = nm.realized_vol(r1, window_bars(24.0, tf_ms))
-    scale = np.sqrt(window_bars(24.0, tf_ms) / window_bars(1.0, tf_ms))
+    w_short = window_bars(win.vol_short, tf_ms)
+    w_long = window_bars(win.vol_long, tf_ms)
+    rv_short = nm.realized_vol(r1, w_short)
+    rv_long = nm.realized_vol(r1, w_long)
+    scale = np.sqrt(w_long / w_short)
     add("vol_term_structure", nm.safe_div(rv_short * scale, rv_long, fill=1.0))
     add("vol_of_vol", nm.safe_div(nm.rolling_std(rv_short, w_ctx), rv_long))
 
@@ -171,12 +280,12 @@ def build_features(series: OHLCVSeries) -> FeatureSet:
     add("rsi_14", nm.rsi(c, 14) / 100.0)
     add("rsi_48", nm.rsi(c, 48) / 100.0)
 
-    for hrs in (4.0, 24.0):
+    for hrs in win.vwap:
         w = window_bars(hrs, tf_ms)
         vwap = nm.rolling_vwap(c, h, low, vol, w)
-        add(f"vwap_dist_{hrs:g}h", nm.safe_div(c - vwap, np.maximum(atr14, nm.EPS)))
+        add(f"vwap_dist_{win.label(hrs)}", nm.safe_div(c - vwap, np.maximum(atr14, nm.EPS)))
 
-    w_bb = window_bars(4.0, tf_ms)
+    w_bb = window_bars(win.bollinger, tf_ms)
     ma = nm.rolling_mean(c, w_bb)
     sd = nm.rolling_std(c, w_bb)
     add("bollinger_pctb", nm.safe_div(c - ma, 2.0 * np.maximum(sd, nm.EPS), fill=0.0))
@@ -184,12 +293,15 @@ def build_features(series: OHLCVSeries) -> FeatureSet:
     # ------------------------------------------------------------------ #
     # 4. Estructura de precio — dónde está el precio en su rango reciente
     # ------------------------------------------------------------------ #
-    for hrs in (4.0, 24.0, 72.0):
+    for hrs in win.donchian:
         w = window_bars(hrs, tf_ms)
         hi = nm.rolling_max(h, w)
         lo = nm.rolling_min(low, w)
-        add(f"donchian_pos_{hrs:g}h", nm.safe_div(c - lo, hi - lo, fill=0.5))
-        add(f"donchian_width_{hrs:g}h", nm.safe_div(hi - lo, np.maximum(atr14, nm.EPS)))
+        add(f"donchian_pos_{win.label(hrs)}", nm.safe_div(c - lo, hi - lo, fill=0.5))
+        add(
+            f"donchian_width_{win.label(hrs)}",
+            nm.safe_div(hi - lo, np.maximum(atr14, nm.EPS)),
+        )
 
     add("close_rank_ctx", nm.rolling_rank(c, w_ctx))
 
@@ -205,14 +317,17 @@ def build_features(series: OHLCVSeries) -> FeatureSet:
     # ------------------------------------------------------------------ #
     taker_ratio = nm.safe_div(tbv, vol, fill=0.5)
     add("taker_buy_ratio", taker_ratio)
-    for hrs in (1.0, 4.0):
+    for hrs in win.taker:
         w = window_bars(hrs, tf_ms)
-        add(f"taker_buy_ratio_ma_{hrs:g}h", nm.rolling_mean(taker_ratio, w) - 0.5)
+        add(f"taker_buy_ratio_ma_{win.label(hrs)}", nm.rolling_mean(taker_ratio, w) - 0.5)
 
     # Volume delta normalizado: (compras - ventas) / total, en [-1, 1].
     add("volume_delta", nm.safe_div(2.0 * tbv - vol, vol))
     volume_delta = nm.safe_div(2.0 * tbv - vol, vol)
-    add("volume_delta_ma_4h", nm.rolling_mean(volume_delta, window_bars(4.0, tf_ms)))
+    add(
+        f"volume_delta_ma_{win.label(win.volume_delta)}",
+        nm.rolling_mean(volume_delta, window_bars(win.volume_delta, tf_ms)),
+    )
 
     # Logaritmo puro, no log1p: bajo un cambio de escala (mismo par a otro
     # nivel de precio, u otro símbolo con otro volumen típico) log(k·x) =
@@ -239,9 +354,15 @@ def build_features(series: OHLCVSeries) -> FeatureSet:
     # 6. Estacionalidad intradía — sesiones Asia / Europa / EE.UU.
     #    Codificada en seno/coseno para que 23:59 y 00:01 queden contiguas.
     # ------------------------------------------------------------------ #
-    hour_of_day = (series.open_time % 86_400_000) / 3_600_000.0
-    add("hour_sin", np.sin(2.0 * np.pi * hour_of_day / 24.0))
-    add("hour_cos", np.cos(2.0 * np.pi * hour_of_day / 24.0))
+    # En velas diarias la hora del día es CONSTANTE —todas abren a las 00:00
+    # UTC— así que las dos columnas salen invariantes. No romperían nada, y
+    # ese es el problema: `assert_columns_trainable` busca columnas sin ningún
+    # valor finito, no columnas constantes, y XGBoost las acepta sin chistar
+    # (Fase 4-bis, hallazgo (a)). Se omiten en vez de dejarlas de adorno.
+    if win.intraday_seasonality:
+        hour_of_day = (series.open_time % 86_400_000) / 3_600_000.0
+        add("hour_sin", np.sin(2.0 * np.pi * hour_of_day / 24.0))
+        add("hour_cos", np.cos(2.0 * np.pi * hour_of_day / 24.0))
     # epoch ms 0 fue jueves; el +4 alinea el índice 0 al lunes.
     day_of_week = ((series.open_time // 86_400_000) + 4) % 7
     add("dow_sin", np.sin(2.0 * np.pi * day_of_week / 7.0))
