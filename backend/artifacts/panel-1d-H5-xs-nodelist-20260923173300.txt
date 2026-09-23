@@ -1,0 +1,55 @@
+==============================================================================
+PANEL TRANSVERSAL DIARIO — panel-1d-H5-xs-nodelist-20260923173300
+==============================================================================
+
+pre-registro    : docs/PREREGISTRO_PANEL_DIARIO.md
+símbolos        : 633
+fechas          : 2571  (2022-02-23 .. 2026-09-16)
+filas evaluadas : 276,721
+features        : 111
+horizonte       : 5 días
+folds           : fold1, fold2, fold3, fold4, fold5, fold6
+costo del par   : 0.280%
+
+------------------------------------------------------------------------------
+DISCRIMINACIÓN (criterio 1: AUC > 0.55 y BSS > 0)
+------------------------------------------------------------------------------
+  tasa base            : 49.84%
+  AUC                  : 0.5549
+  Brier                : 0.24776
+  Brier Skill Score    : +0.00894
+  error de calibración : 0.85 pp
+  -> PASA
+
+------------------------------------------------------------------------------
+CONTRA EL RANKING TRIVIAL (criterio 2: diferencia pareada de IC, IC95% > 0)
+------------------------------------------------------------------------------
+  IC del modelo        : +0.10875  IC95% [+0.09666, +0.12110]
+  IC xs_momentum_30d   : -0.03520
+  IC xs_reversal_5d    : +0.03383
+
+  modelo − xs_momentum_30d   : +0.14395  IC95% [+0.12324, +0.16497]  excluye 0
+  modelo − xs_reversal_5d    : +0.07491  IC95% [+0.05941, +0.09110]  excluye 0
+  mejor baseline: xs_reversal_5d
+  -> PASA
+
+------------------------------------------------------------------------------
+ECONOMÍA (criterio 3: spread neto del par decil > 0, IC95% excluye 0)
+------------------------------------------------------------------------------
+  spread bruto         : +1.8408%  IC95% [+1.4374%, +2.2781%]
+  spread NETO          : +1.5608%  IC95% [+1.1574%, +1.9981%]
+  spread del oráculo   : +30.2726%  (techo)
+  fracción capturada   : 6.08% del techo
+  -> PASA
+
+------------------------------------------------------------------------------
+SE REPORTA SIEMPRE
+------------------------------------------------------------------------------
+  rotación por rebalanceo    : 44.9% de la cartera
+  retornos exactamente cero  : 0.506% de las filas
+  filas con símbolo deslistado dentro del horizonte: 0
+
+==============================================================================
+VEREDICTO: VIABLE  (los tres criterios, no dos)
+  discriminación True | vs. trivial True | economía True
+==============================================================================

@@ -47,10 +47,24 @@ def build_panel(
     *,
     min_months: int = 6,
     until: str | None = None,
+    exclude_delisted: bool = False,
 ) -> PanelData:
-    """Carga el panel del universo **congelado**, nunca de `exchangeInfo` en vivo."""
+    """Carga el panel del universo **congelado**, nunca de `exchangeInfo` en vivo.
+
+    `exclude_delisted=True` es la exploratoria que **mide** el sesgo de
+    supervivencia en vez de asumirlo: reconstruye el universo como lo haría
+    alguien que solo mira `exchangeInfo`. Si el resultado mejora al sacarlos,
+    la mejora es el sesgo.
+    """
     universe = load_universe(timeframe=timeframe)
-    symbols = [m.symbol for m in universe.crypto_perps(min_months=min_months)]
+    metas = universe.crypto_perps(min_months=min_months)
+    if exclude_delisted:
+        metas = [m for m in metas if not m.is_delisted]
+        logger.warning(
+            "EXCLUYENDO deslistados: universo sesgado a propósito ({} símbolos)",
+            len(metas),
+        )
+    symbols = [m.symbol for m in metas]
     logger.info(
         "universo congelado el {} — {} perpetuos cripto",
         universe.discovered_at,
@@ -159,7 +173,22 @@ def main() -> None:
     p.add_argument("--horizon", type=int, default=defaults.horizon)
     p.add_argument("--folds", type=int, default=defaults.n_splits)
     p.add_argument("--quantile", type=float, default=defaults.portfolio_quantile)
-    p.add_argument("--model", default=defaults.model_kind, choices=["gbm", "logistic"])
+    p.add_argument(
+        "--model", default=defaults.model_kind, choices=["gbm", "logistic", "xgb"]
+    )
+    p.add_argument(
+        "--target-cut", default=defaults.target_cut, choices=["median", "tercile"]
+    )
+    p.add_argument(
+        "--uniqueness-weights",
+        action="store_true",
+        help="pondera cada fila por unicidad del label (exploratoria declarada)",
+    )
+    p.add_argument(
+        "--exclude-delisted",
+        action="store_true",
+        help="control del sesgo de supervivencia: saca los deslistados del universo",
+    )
     p.add_argument("--min-history", type=int, default=rule_defaults.min_history_bars)
     p.add_argument("--min-volume", type=float, default=rule_defaults.min_dollar_volume)
     p.add_argument(
@@ -177,7 +206,12 @@ def main() -> None:
     args = p.parse_args()
 
     t0 = time.perf_counter()
-    panel = build_panel(args.timeframe, min_months=args.min_months, until=args.until)
+    panel = build_panel(
+        args.timeframe,
+        min_months=args.min_months,
+        until=args.until,
+        exclude_delisted=args.exclude_delisted,
+    )
     logger.info(
         "panel cargado: {} símbolos x {} fechas ({:,} symbol-days con dato)",
         panel.n_symbols,
@@ -208,11 +242,25 @@ def main() -> None:
         portfolio_quantile=args.quantile,
         model_kind=args.model,
         use_cross_section=not args.no_cross_section,
+        target_cut=args.target_cut,
+        uniqueness_weights=args.uniqueness_weights,
         placebo=args.placebo,
     )
     result = run_panel_experiment(features, panel.open, panel.close, eligible, cfg)
 
     suffix = "xs" if cfg.use_cross_section else "noxs"
+    if cfg.target_cut != "median":
+        suffix += f"-{cfg.target_cut}"
+    if cfg.uniqueness_weights:
+        suffix += "-uniq"
+    if args.exclude_delisted:
+        suffix += "-nodelist"
+    if cfg.model_kind != "gbm":
+        suffix += f"-{cfg.model_kind}"
+    if args.min_volume != rule_defaults.min_dollar_volume:
+        suffix += f"-vol{int(args.min_volume / 1e6)}M"
+    if abs(cfg.portfolio_quantile - defaults.portfolio_quantile) > 1e-9:
+        suffix += f"-q{int(cfg.portfolio_quantile * 100)}"
     if cfg.placebo:
         suffix += "-PLACEBO"
     run_id = (

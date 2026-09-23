@@ -1548,6 +1548,79 @@ liquidado una vez**, ese número pesa más que el Sharpe de 2,16. La firma es la
 de un short squeeze en la pata corta, que es el riesgo clásico de estas
 estrategias.
 
+**Las exploratorias declaradas: 16 de 18 cerradas (2026-09-23).** Se corren con
+`panel_runner` y se tabulan con `uv run python -m bob.backtest.panel_compare`,
+que las pone al lado de la primaria **sin elegir ninguna**: con 18 pruebas, que
+alguna gane por azar es lo esperable, así que una exploratoria que supere a la
+primaria NO la reemplaza. Sirven para lo contrario — para falsificar.
+
+| variante | filas | AUC | IC | neto | veredicto |
+|---|---|---|---|---|---|
+| **PRIMARIA** H=5, mediana | 284.763 | 0,5541 | +0,1072 | +1,390% | ✅ |
+| H=3 | 285.058 | 0,5536 | +0,1061 | +0,881% | ✅ |
+| H=10 | 284.018 | 0,5596 | +0,1192 | +2,907% | ✅ |
+| quintiles q=0,20 | 284.763 | 0,5541 | +0,1072 | +1,016% | ✅ |
+| ventiles q=0,05 | 284.763 | 0,5541 | +0,1072 | +1,833% | ✅ |
+| liquidez >$1M | 398.756 | 0,5525 | +0,1048 | +1,463% | ✅ |
+| liquidez >$20M | 149.713 | 0,5555 | +0,1107 | +1,622% | ✅ |
+| **sin filtro de liquidez** | 465.237 | **0,5498** | +0,1037 | +1,550% | ❌ |
+| sin deslistados | 276.721 | 0,5549 | +0,1088 | +1,561% | ✅ |
+| pesos por unicidad | 284.763 | 0,5533 | +0,1063 | +1,584% | ✅ |
+| **sin bloque transversal** | 284.763 | **0,5455** | +0,0959 | +1,424% | ❌ |
+| *placebo (control)* | 284.763 | *0,5007* | *+0,0021* | *−0,046%* | ✅ falla como debe |
+
+**9 de 11 sostienen los tres criterios**, más los seis sub-períodos anuales.
+Las dos que rompen lo hacen **las dos por el criterio 1**, y las dos dicen algo:
+
+**(a) Sin filtro de liquidez el AUC cae a 0,5498 — y la causa está declarada
+de antemano.** El §6.3 del pre-registro anotó el precio rancio como trampa
+conocida; medido, sin filtro el **10,5% de las filas tiene retorno exactamente
+cero** contra 0,54% en la primaria. El filtro de $5M no era decorativo: es lo
+que saca de la sección los símbolos cuyo precio no se mueve y que fabrican
+reversión de la nada. Nótese que el criterio económico **sí** pasa (+1,550%),
+que es justamente lo que haría un spread inflado por precios que nadie pudo
+operar.
+
+**(b) Y al revés: subir el corte a $20M MEJORA todo.** Con la mitad de las
+filas y solo símbolos líquidos, el IC sube a +0,1107 y el neto a +1,622%. Eso
+contesta el caveat más serio que la fase se había puesto a sí misma —"el costo
+está calibrado sobre ETH, no sobre el decil ilíquido"—: **el edge no vive en
+los microcaps**. No lo cierra (sigue faltando modelar el spread real de cada
+símbolo) pero mueve la sospecha en la dirección buena.
+
+**El sesgo de supervivencia, medido en vez de asumido.** Excluir los
+deslistados —**8.042 filas, el 2,8% de la muestra**— infla el spread neto de
++1,390% a **+1,561%**, o sea un **12% relativo**, con AUC +0,0008 e IC +0,0015.
+Ese es el apalancamiento del sesgo: lo que se muere está concentrado en la cola
+mala, así que sacarlo rinde mucho más de lo que pesa. Un backtest armado con el
+`exchangeInfo` de hoy reportaría +1,56% donde la verdad es +1,39%.
+
+**Dos invariantes que salieron de control gratis:**
+
+- **`q=0,20` y `q=0,05` comparten AUC, BSS e IC exactos con la primaria**
+  (0,5541 / +0,00883 / +0,10722). Tienen que compartirlos: el corte de cartera
+  toca la construcción del par, no el modelo. Si hubieran diferido, el corte
+  estaría filtrándose al entrenamiento.
+- **Los pesos por unicidad no mueven nada** (AUC −0,0008, IC −0,0010), y eso
+  estaba predicho *por construcción*: con horizonte fijo la concurrencia es H
+  en casi todas las fechas, el peso sale casi uniforme, y un peso uniforme no
+  cambia un boosting. Hay un test que fija esa propiedad para que un resultado
+  nulo se lea como "no podía aportar" y no como "no aporta".
+
+**Bug encontrado al implementarlo**, y de los que no fallan: la primera versión
+de `panel_uniqueness_weights` le daba peso **0** a la última fila de cada
+símbolo. La ventana de ocupación de ese label cae más allá del final de la
+serie y `uniqueness_weights` la recorta a longitud cero. Una fila legítima por
+símbolo —659 filas— habría desaparecido del entrenamiento sin que nada se
+quejara. Lo cazaron dos tests, no la lectura del código.
+
+**Las 2 que faltan: XGBoost como estimador y el target por tercil.** La tanda
+se cortó en la décima porque el sistema se quedó sin memoria, no por un fallo
+del código: las dos variantes están implementadas
+(`--model xgb`, `--target-cut tercile`), testeadas y listas para correr. Quedan
+declaradas como pendientes en vez de silenciadas, porque el pre-registro
+comprometió las 18.
+
 **Lo que la Fase 10 NO hace.**
 
 - **No habilita el KPI 1.** Sigue sin pasar el gate y sigue en gris (regla 2).
@@ -1589,7 +1662,8 @@ Se reimprime con:
     uv run python -m bob.data.download_panel --ingest
     uv run python -m bob.backtest.panel_runner --until 2026-09-21
     uv run python -m bob.backtest.panel_runner --until 2026-09-21 --placebo
-    uv run python scripts/diagnose_panel.py
+    uv run python -m bob.backtest.panel_compare   # primaria vs. exploratorias
+    uv run python scripts/diagnose_panel.py       # sub-períodos, cola, oráculo
 
 Artefactos versionados en `backend/artifacts/panel-*.txt|.json` y
 `universe-1d.json`. Runtime: ingesta ~9 min (piso por rate limit), corrida

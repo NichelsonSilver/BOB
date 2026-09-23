@@ -224,22 +224,92 @@ def forward_path_return(
     return ret, delisted
 
 
+def panel_uniqueness_weights(
+    sym_idx: np.ndarray, date_idx: np.ndarray, horizon: int, n_dates: int
+) -> np.ndarray:
+    """Peso por unicidad (López de Prado, cap. 4) aplicado **símbolo a símbolo**.
+
+    El label de la fecha `j` ocupa `j+1 .. j+H`, así que dos fechas
+    consecutivas del mismo símbolo comparten `H−1` de sus `H` barras de
+    futuro. Tratarlas como independientes le da al modelo la ilusión de tener
+    H veces más datos.
+
+    Se calcula **por símbolo y no sobre el panel entero**: la superposición
+    que hay que descontar es la temporal, dentro de una serie. Contar la
+    concurrencia mezclando símbolos mediría otra cosa —cuántos símbolos
+    cotizan ese día— y penalizaría las fechas con sección ancha, que es
+    justo donde el ranking transversal tiene más información.
+
+    Aviso honesto sobre lo que este peso puede y no puede hacer acá: con un
+    horizonte **fijo**, la concurrencia es `H` en casi todas las fechas y el
+    peso sale prácticamente constante. Un peso constante no cambia el ajuste
+    de un boosting. La variación real está solo en los bordes de la vida de
+    cada símbolo —los primeros y últimos `H` días— así que el efecto esperado
+    es chico por construcción, no por casualidad. Se mide igual porque estaba
+    declarado, y el resultado se reporta tal cual salga.
+    """
+    from bob.models.labeling import uniqueness_weights as _uniqueness
+
+    sym_idx = np.asarray(sym_idx, dtype=np.int64)
+    date_idx = np.asarray(date_idx, dtype=np.int64)
+    out = np.ones(sym_idx.shape[0], dtype=np.float64)
+
+    for sym in np.unique(sym_idx):
+        rows = np.flatnonzero(sym_idx == sym)
+        if rows.size < 2:
+            continue
+        dates = date_idx[rows]
+        # Índices locales densos: `uniqueness_weights` razona sobre posiciones
+        # consecutivas de UNA serie, no sobre el eje global del panel.
+        order = np.argsort(dates, kind="stable")
+        local = np.empty(rows.size, dtype=np.int64)
+        local[order] = np.arange(rows.size)
+        # El eje local se extiende `horizon` posiciones más allá del final. Sin
+        # eso, la ÚLTIMA fila de cada símbolo tiene su ventana de ocupación
+        # recortada a longitud cero y sale con peso **0**: una fila legítima
+        # desaparecería del entrenamiento sin que nada fallara. Recortar el
+        # span a `n-1` —lo obvio— produce exactamente ese cero.
+        span = local + horizon
+        w = _uniqueness(span, rows.size + horizon)
+        out[rows] = w[local]
+
+    total = out.sum()
+    if total > 0:
+        out *= out.size / total  # media 1: no cambia la escala del problema
+    return out
+
+
 def relative_target(
-    forward: np.ndarray, eligible: np.ndarray | None = None
+    forward: np.ndarray,
+    eligible: np.ndarray | None = None,
+    *,
+    cut: str = "median",
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Target binario: ¿el símbolo superó la **mediana transversal** de su fecha?
+    """Target binario relativo a la sección transversal de cada fecha.
 
     Devuelve `(y, excess)` — la etiqueta 0/1 y el exceso continuo sobre la
-    mediana, que es lo que después mide el spread del par.
+    mediana, que es lo que después mide el spread del par. El exceso se
+    calcula siempre contra la **mediana**, sin importar el corte: es la
+    magnitud que el par largo/corto realiza, y cambiarla con el corte haría
+    incomparables los spreads entre variantes.
 
-    La tasa base es exactamente 50% por construcción, así que AUC y BSS
-    quedan directamente comparables con los del gate de 15m. Y el factor
-    común de la fecha se cancela: esto mide *orden relativo*, que es la única
-    pregunta que el panel tiene potencia para responder.
+    - `cut="median"` (primaria): `y=1` si supera la mediana. Tasa base
+      exactamente 50% por construcción, así que AUC y BSS quedan
+      directamente comparables con los del gate de 15m.
+    - `cut="tercile"` (exploratoria declarada): `y=1` en el tercil superior,
+      `y=0` en el inferior, **sin etiqueta** en el medio. Descarta un tercio
+      de las filas a cambio de un target menos ambiguo — la fila que cae
+      justo al lado de la mediana es ruido etiquetado como señal.
+
+    En los dos casos el factor común de la fecha se cancela: esto mide
+    *orden relativo*, que es la única pregunta que el panel tiene potencia
+    para responder.
 
     Las fechas con menos de 3 símbolos elegibles quedan sin etiqueta: una
     "mediana" de dos observaciones no define arriba y abajo de nada.
     """
+    if cut not in ("median", "tercile"):
+        raise ValueError(f"cut debe ser 'median' o 'tercile', no {cut!r}")
     f = np.asarray(forward, dtype=np.float64)
     if eligible is not None:
         f = np.where(eligible, f, np.nan)
@@ -256,5 +326,18 @@ def relative_target(
     dev = f - med[None, :]
     ok = np.isfinite(dev) & usable[None, :]
     excess[ok] = dev[ok]
-    y[ok] = (dev[ok] > 0.0).astype(np.int8)
+
+    if cut == "median":
+        y[ok] = (dev[ok] > 0.0).astype(np.int8)
+        return y, excess
+
+    # Tercil: hace falta el corte propio de cada fecha, no el global.
+    lo_q = np.full(n_dates, np.nan)
+    hi_q = np.full(n_dates, np.nan)
+    lo_q[usable] = np.nanpercentile(f[:, usable], 100.0 / 3.0, axis=0)
+    hi_q[usable] = np.nanpercentile(f[:, usable], 200.0 / 3.0, axis=0)
+    top = ok & (f > hi_q[None, :])
+    bottom = ok & (f < lo_q[None, :])
+    y[top] = 1
+    y[bottom] = 0
     return y, excess

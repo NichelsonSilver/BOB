@@ -34,13 +34,13 @@ from sklearn.ensemble import (
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.preprocessing import StandardScaler
-from xgboost import XGBRegressor
+from xgboost import XGBClassifier, XGBRegressor
 
 from bob.models.validation import purged_walk_forward
 
 EPS = 1e-12
 
-ModelKind = Literal["logistic", "gbm"]
+ModelKind = Literal["logistic", "gbm", "xgb"]
 
 #: Estimadores admitidos para el target de volatilidad (el que SÍ pasó el
 #: gate). `ridge` es el lineal de control; `gbm` es el HistGradientBoosting de
@@ -85,6 +85,34 @@ def _gbm_regressor(
         max_bins=128,
         early_stopping=False,
         random_state=seed,
+    )
+
+
+def _xgb_classifier(seed: int) -> XGBClassifier:
+    """XGBoost clasificador con los MISMOS hiperparámetros que `_gbm_classifier`.
+
+    Misma traducción de nombres que `_xgb_regressor` y por el mismo motivo:
+    aislar la variable. Con una salvedad que **no** aplica al regresor y hay
+    que declarar — `min_child_weight` es la suma de hessianos de la hoja, y
+    con pérdida logística el hessiano es `p(1−p) ≤ 0,25`, no 1. O sea 100 acá
+    **no** equivale a `min_samples_leaf=100` de sklearn: exige entre 4 y
+    muchas más muestras según lo puras que sean las hojas. La equivalencia
+    exacta no existe con esta pérdida, así que se deja el mismo número y se
+    declara que la comparación es "mismos hiperparámetros nominales", no
+    "misma capacidad".
+    """
+    return XGBClassifier(
+        n_estimators=250,
+        learning_rate=0.05,
+        max_leaves=15,
+        max_depth=0,
+        grow_policy="lossguide",
+        min_child_weight=100,
+        reg_lambda=1.0,
+        max_bin=128,
+        tree_method="hist",
+        random_state=seed,
+        n_jobs=1,
     )
 
 
@@ -150,6 +178,8 @@ class BarrierProbabilityModel:
     def _new_estimator(self) -> object:
         if self.kind == "logistic":
             return LogisticRegression(C=1.0, max_iter=2000, random_state=self.seed)
+        if self.kind == "xgb":
+            return _xgb_classifier(self.seed)
         return _gbm_classifier(self.seed)
 
     def _fit_estimator(

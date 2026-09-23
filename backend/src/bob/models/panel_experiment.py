@@ -31,6 +31,7 @@ from bob.signals.cross_section import (
     PanelFeatures,
     cross_sectional_rank,
     forward_path_return,
+    panel_uniqueness_weights,
     relative_target,
 )
 
@@ -51,8 +52,12 @@ class PanelConfig:
     embargo_frac: float = 0.01
     portfolio_quantile: float = 0.10
     leg_cost: float = DEFAULT_LEG_COST
-    model_kind: Literal["gbm", "logistic"] = "gbm"
+    model_kind: Literal["gbm", "logistic", "xgb"] = "gbm"
     use_cross_section: bool = True
+    #: Corte del target: "median" (primaria) o "tercile" (exploratoria §4).
+    target_cut: str = "median"
+    #: Pondera cada fila por unicidad del label. Exploratoria declarada.
+    uniqueness_weights: bool = False
     seed: int = 42
     n_boot: int = 20_000
     #: Placebo: permuta el resultado ENTRE símbolos dentro de cada fecha. Rompe
@@ -375,7 +380,7 @@ def run_panel_experiment(
     forward, delisted = forward_path_return(open_, close, cfg.horizon)
     if cfg.placebo:
         forward = _permute_within_dates(forward, eligible, cfg.seed)
-    y_grid, excess = relative_target(forward, eligible)
+    y_grid, excess = relative_target(forward, eligible, cut=cfg.target_cut)
 
     usable = eligible & features.valid & (y_grid >= 0)
     sym_i, date_j = np.nonzero(usable)
@@ -396,6 +401,10 @@ def run_panel_experiment(
     horizon_date = np.minimum(date_j + cfg.horizon, n_dates - 1)
     span = last_row_of_date[horizon_date].astype(np.int64)
 
+    weights: np.ndarray | None = None
+    if cfg.uniqueness_weights:
+        weights = panel_uniqueness_weights(sym_i, date_j, cfg.horizon, n_dates)
+
     splits = purged_walk_forward_by_date(
         n_dates,
         cfg.horizon,
@@ -413,7 +422,7 @@ def run_panel_experiment(
         if tr.size < 50 or te.size == 0:
             continue
         model = BarrierProbabilityModel(kind=cfg.model_kind, seed=cfg.seed)
-        model.fit(X, y, tr, span)
+        model.fit(X, y, tr, span, sample_weight=weights)
         oof[te] = model.predict_proba(X[te])
         tested[te] = True
 
