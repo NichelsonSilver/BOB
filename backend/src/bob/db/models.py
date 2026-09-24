@@ -288,3 +288,73 @@ class ForecastRecord(SQLModel, table=True):
     outcomes_json: str = "{}"  # {direction: resolución del setup proyectado}
     resolved_through: int | None = None  # open_time de la última barra usada
     closed_at: datetime | None = None
+
+
+class PanelForecastRecord(SQLModel, table=True):
+    """Un pronóstico transversal del panel diario, y su resultado a H días.
+
+    Una fila por **(fecha, símbolo)**: el panel no emite una dirección para un
+    par, emite un *ordenamiento* de ~170 símbolos, y el IC de rango que la
+    Fase 10-bis valida solo se puede recalcular si están todos. Guardar solo
+    los deciles bastaría para el spread y **no** para el IC, que es justamente
+    la métrica confirmatoria.
+
+    Único por `forecast_id` = "PANEL-<open_time>-SYMBOL": recorrer la misma
+    fecha dos veces no duplica filas ni infla la muestra.
+
+    **`is_backfill` es el campo que sostiene la fase entera** (§5 del
+    pre-registro). El panel usa solo klines y Binance las sirve para siempre,
+    así que cualquier fecha se puede reconstruir después — y una corrida que
+    se ponga al día retroactivamente es indistinguible de un backtest. Una
+    fila entra a la muestra confirmatoria solo si se computó **antes del
+    cierre de la barra de entrada**; lo demás se persiste igual, marcado, y
+    queda fuera del IC que decide.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    forecast_id: str = Field(index=True, unique=True)
+    symbol: str = Field(index=True)
+    timeframe: str = Field(default="1d", index=True)
+    #: open_time de la fecha CERRADA sobre la que se decidió (epoch ms UTC).
+    #: La entrada es el `open` de la fecha siguiente, igual que en el
+    #: etiquetado de la Fase 10.
+    open_time: int = Field(index=True)
+
+    #: Probabilidad calibrada de superar la mediana transversal de la fecha.
+    probability: float
+    #: Rango de esa probabilidad dentro de la sección del día, en [0, 1]. Se
+    #: persiste en vez de recalcularse porque depende de qué símbolos eran
+    #: elegibles ESE día, y la regla de pertenencia mira volumen de los 30
+    #: días previos: reconstruirla después daría otro conjunto.
+    cross_section_rank: float
+    #: Cuántos símbolos elegibles tenía la sección. Sin esto no se puede
+    #: saber si un decil eran 17 símbolos o 3.
+    section_width: int = 0
+
+    reference_close: str  # cierre de la barra de decisión (str por precisión)
+
+    features_json: str = "{}"  # regla 10 — vector completo
+    model_version: str = ""
+    fit_through_ms: int = 0  # hasta dónde llegaban las etiquetas del ajuste
+    n_train: int = 0
+    horizon_bars: int = 0
+
+    emitted_at: datetime = Field(default_factory=_utcnow, index=True)
+    #: True si se computó DESPUÉS del cierre de la barra de entrada. No
+    #: invalida el número —es el mismo cálculo— pero no es evidencia forward.
+    is_backfill: bool = Field(default=False, index=True)
+
+    # --- Resultado forward (NULL hasta que el horizonte cierra) --------- #
+    #: "open" = faltan barras; "resolved" = medido; "gap" = el horizonte pasó
+    #: pero al símbolo le faltan barras y medirlo mentiría; "delisted" = dejó
+    #: de cotizar dentro del horizonte y se resolvió al último precio.
+    status: str = Field(default="open", index=True)
+    entry_price: str | None = None  # open de la fecha t+1
+    exit_price: str | None = None  # close de t+H, o el último disponible
+    realized_return: float | None = None  # log-retorno del camino
+    #: Retorno relativo a la mediana transversal de su fecha. Es la cantidad
+    #: contra la que se mide el IC, y se guarda porque la mediana depende de
+    #: qué símbolos resolvieron ese día.
+    relative_return: float | None = None
+    resolved_through: int | None = None  # open_time de la última barra usada
+    closed_at: datetime | None = None

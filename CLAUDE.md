@@ -1719,6 +1719,107 @@ Artefactos versionados en `backend/artifacts/panel-*.txt|.json` y
 `universe-1d.json`. Runtime: ingesta ~9 min (piso por rate limit), corrida
 ~2 min.
 
+### Fase 10-bis — Validación forward del panel 🟡 EN CURSO (arrancada 2026-09-24)
+
+La Fase 10 pasó sus tres criterios **offline**. La Fase 5 dejó escrito que
+offline y forward no son lo mismo, así que esto mide si el ordenamiento
+sobrevive cuando los pronósticos se emiten **antes de que el resultado
+exista**.
+
+**Criterio pre-registrado antes de emitir nada**
+(`docs/PREREGISTRO_PANEL_FORWARD.md`, commit `99532e8`).
+
+**La medición de potencia se hizo ANTES de fijar el criterio, y decide la
+forma entera de la fase.** Sobre las 1.667 fechas del artefacto primario,
+por fecha:
+
+| serie | media | desvío | t por fecha | días para excluir 0 |
+|---|---|---|---|---|
+| IC de rango | +0,1072 | 0,1495 | **0,7173** | **37** |
+| spread neto | +1,390% | 5,512% | **0,2522** | **302** |
+
+**El IC se puede confirmar; la economía no.** El spread pediría 302 días a
+efecto completo y **1.208 —3,3 años— si cae a la mitad**, que es el desenlace
+más probable. Así que **el criterio económico de la Fase 10 no se traslada**:
+el spread se reporta siempre con su IC y no puede aprobar ni reprobar nada.
+Una métrica sin potencia no se vuelve veredicto por reportarla con más
+decimales.
+
+**Corte primario: 180 días** (decisión de Nichelson entre 45/90/180). Detecta
+un IC de 0,049 — el 46% del offline — y es el único corte que separa "se
+sostuvo a la mitad" de "se evaporó":
+
+| días | bloques | IC mínimo detectable | % del offline |
+|---|---|---|---|
+| 45 | 9 | 0,098 | 91% |
+| 90 | 18 | 0,069 | 64% |
+| **180** | **36** | **0,049** | **46%** |
+| 365 | 73 | 0,034 | 32% |
+
+Las miradas intermedias quedan **declaradas descriptivas y sin veredicto**, y
+el reporte se niega a emitir uno antes del corte — a 45 días el número va a
+ser ruidoso y va a tentar.
+
+**El pareado NO sirve acá, y la intuición era razonable.** Restarle al IC del
+modelo el del ranking trivial —como hace la Fase 5-bis con EWMA— **empeora**
+la potencia: t cae de 0,717 a 0,378. La causa es la correlación por fecha,
+**+0,217** y **−0,171**: con `var(A−B) = var(A) + var(B) − 2·cov`, covarianza
+casi nula y un baseline tan disperso como el modelo, restar **agrega**
+varianza. El pareado ayuda cuando las series comparten el ruido; estas no.
+Queda escrito porque el proyecto usa pareado en todos lados: **no es una regla
+universal, es una propiedad de las series concretas.**
+
+**La trampa específica: todo es recuperable.** El panel usa solo klines y
+Binance las sirve para siempre, así que no hace falta proceso vivo —alcanza un
+comando diario idempotente— y **no hay ventana de 30 días que se pierda**,
+que era la restricción más cara de la Fase 5. Pero si cualquier fecha se
+reconstruye después, **una corrida que se ponga al día es indistinguible de un
+backtest**. Lo único que separa esta validación de un backtest es *cuándo* se
+computó cada pronóstico.
+
+> **Regla que sostiene la fase:** una fila entra a la muestra confirmatoria
+> solo si se computó dentro de la gracia posterior al cierre de su barra de
+> decisión. Lo demás se persiste igual, marcado `is_backfill`, y queda fuera
+> del IC que decide.
+
+**Corrección del propio pre-registro, hecha antes de emitir un solo dato.**
+§5 decía "antes del cierre de la barra `t+1`", o sea 24 h. Está mal: la
+entrada es al **open** de `t+1`, así que computar 20 h después significa
+conocer ya el 80% del primer día del horizonte — lookahead parcial sobre uno
+de los cinco días que se miden. `FORWARD_GRACE_MS` son **2 horas**, que deja
+la exposición bajo el 2% del horizonte y sigue siendo operable con una corrida
+diaria. Es un endurecimiento, no un aflojamiento, y `emitted_at` se guarda
+exacto: quien quiera leer el resultado con la regla original de 24 h puede
+hacerlo sin volver a correr nada.
+
+**Lo construido:**
+
+1. ✅ `db/models.py` → `PanelForecastRecord`: una fila por **(fecha, símbolo)**.
+   Guardar solo los deciles bastaría para el spread y **no** para el IC, que
+   es justamente la métrica confirmatoria. Con el vector completo (regla 10)
+2. ✅ `models/panel_production.py`: **un** ajuste consultable por fecha, el
+   papel que `production.fit_bundle` cumple para el vivo de 15m. Las últimas
+   `H` fechas quedan fuera del train solas — su etiqueta no terminó de ocurrir
+3. ✅ `paper/panel_forward.py`: emisión diaria idempotente, resolución a los
+   H días contra **la mediana de su propia fecha**, y reporte con IC por
+   bloques + artefacto
+4. ✅ 14 tests. El que decide —que el backfill no entre al IC confirmatorio—
+   **falla contra una implementación que lo deja entrar**, verificado en las
+   dos direcciones. Más control negativo (ruido → no confirma) y positivo
+   (señal inyectada → confirma)
+
+**Operación:**
+
+    uv run python -m bob.data.download_panel --ingest    # una vez por día
+    uv run python -m bob.paper.panel_forward --emit
+    uv run python -m bob.paper.panel_forward --report    # cuando se quiera mirar
+
+**Lo que esta fase NO pretende.** No habilita el KPI 1. No vuelve operable el
+panel ni aunque apruebe —se opera neutral al mercado, con 44,4% de rotación y
+una cola izquierda que perdió **−68,8%** en su peor período—. No mide la
+economía, por falta de potencia. Y no toca el vivo de 15m: no cambia
+`model_version` del analista.
+
 ### Fase 7 — Alertas Telegram + sentimiento (F&G, CoinGecko)
 ### Fase 8 — Outliers Club + multi-símbolo watchlist
 ### Fase 9 — Validación end-to-end
