@@ -158,7 +158,17 @@ def assemble_panel_features(
         base_names = [n for n, keep in zip(base_names, finite_any, strict=True) if keep]
 
     names = list(base_names)
-    blocks = [cube]
+    n_base = len(base_names)
+
+    # La matriz final se **preasigna y se llena en su lugar**. La versión
+    # anterior armaba los tres bloques como arrays sueltos y los concatenaba,
+    # lo que en el pico sostiene cada número dos veces: sobre el panel real
+    # —659 símbolos × 2.571 fechas × 111 columnas— son ~3 GB en vez de ~1,5, y
+    # eso alcanzó para que el sistema matara la corrida. El resultado es
+    # idéntico: solo cambia dónde se escriben los mismos valores.
+    n_total = n_base + len(MARKET_FEATURES) + (n_base if add_cross_sectional else 0)
+    X = np.empty((n_sym, n_dates, n_total), dtype=np.float64)
+    X[:, :, :n_base] = cube
 
     # ---------------------------------------------------------------- #
     # Bloque 2: contexto de mercado
@@ -171,32 +181,25 @@ def assemble_panel_features(
     factor_5d = nm.rolling_sum(np.nan_to_num(factor, nan=0.0), 5)
     factor_vol = nm.rolling_std(np.nan_to_num(factor, nan=0.0), 20)
     beta = rolling_beta(returns, factor, BETA_WINDOW)
-    resid = returns - beta * factor[None, :]
 
-    market = np.stack(
-        [
-            np.broadcast_to(factor, (n_sym, n_dates)),
-            np.broadcast_to(factor_5d, (n_sym, n_dates)),
-            np.broadcast_to(factor_vol, (n_sym, n_dates)),
-            beta,
-            resid,
-        ],
-        axis=2,
-    )
-    blocks.append(market)
+    X[:, :, n_base + 0] = factor[None, :]
+    X[:, :, n_base + 1] = factor_5d[None, :]
+    X[:, :, n_base + 2] = factor_vol[None, :]
+    X[:, :, n_base + 3] = beta
+    X[:, :, n_base + 4] = returns - beta * factor[None, :]
     names.extend(MARKET_FEATURES)
+    del returns, beta
 
     # ---------------------------------------------------------------- #
     # Bloque 3: rangos transversales
     # ---------------------------------------------------------------- #
     if add_cross_sectional:
-        ranks = np.empty_like(cube)
-        for f in range(cube.shape[2]):
-            ranks[:, :, f] = cross_sectional_rank(cube[:, :, f], eligible)
-        blocks.append(ranks)
+        offset = n_base + len(MARKET_FEATURES)
+        for f in range(n_base):
+            X[:, :, offset + f] = cross_sectional_rank(cube[:, :, f], eligible)
         names.extend(f"{n}{XS_SUFFIX}" for n in base_names)
 
-    X = np.concatenate(blocks, axis=2)
+    del cube
     valid = np.all(np.isfinite(X), axis=2)
     return PanelFeatures(
         X=X,

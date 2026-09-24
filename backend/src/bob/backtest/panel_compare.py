@@ -59,6 +59,21 @@ class PanelRun:
     def is_placebo(self) -> bool:
         return "PLACEBO" in self.variant
 
+    @property
+    def outcome_selected(self) -> bool:
+        """¿La población evaluada la define el RESULTADO y no una regla causal?
+
+        El corte por tercil descarta el tercio del medio **según dónde terminó
+        el retorno**, así que evalúa sobre ~2/3 de la sección elegidos con
+        información futura. Sus AUC/BSS/IC contestan una pregunta condicional
+        legítima —"entre los que van a moverse a un extremo, ¿cuál es cuál?"—
+        pero su spread NO es alcanzable: al decidir no se sabe cuáles van a
+        quedar en el medio. Marcarlo es obligatorio; si no, la fila se lee
+        como si compitiera con la primaria y es la que mejor se ve.
+        """
+        cfg = self.data.get("config") or {}
+        return bool(isinstance(cfg, dict) and cfg.get("target_cut", "median") != "median")
+
     def get(self, key: str, default: float = float("nan")) -> float:
         value = self.data.get(key, default)
         return float(value) if isinstance(value, (int, float)) else default
@@ -125,7 +140,10 @@ def render_comparison(runs: list[PanelRun]) -> str:
         w(row(primary, "PRIMARIA (H=5, mediana)"))
         w("-" * 104)
     for run in others:
-        w(row(run, run.variant.removeprefix("1d-")))
+        label = run.variant.removeprefix("1d-")
+        if run.outcome_selected:
+            label += " ⚠"
+        w(row(run, label))
     if placebo is not None:
         w("-" * 104)
         w(row(placebo, "PLACEBO (control)"))
@@ -144,6 +162,14 @@ def render_comparison(runs: list[PanelRun]) -> str:
     if placebo is not None:
         ok = not bool(placebo.data.get("criteria", {}).get("viable"))
         w(f"  placebo NO viable (debe ser) : {ok}")
+    flagged = [r.variant.removeprefix("1d-") for r in evaluables if r.outcome_selected]
+    if flagged:
+        w("")
+        w(f"  ⚠ POBLACIÓN DEFINIDA POR EL RESULTADO: {flagged}")
+        w("    Descartan filas según dónde terminó el retorno, así que evalúan")
+        w("    sobre una sección elegida con información futura. Su AUC sube")
+        w("    porque el problema es más fácil, no porque el modelo sea mejor,")
+        w("    y su spread NO es alcanzable. NO comparar con la primaria.")
     w("")
     w("  Una exploratoria que supere a la primaria NO la reemplaza: con 18")
     w("  pruebas, que alguna gane por azar es lo esperable. Lo que informan es")

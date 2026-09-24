@@ -18,7 +18,11 @@ from bob.data.panel import (
     load_universe,
     save_universe,
 )
-from bob.signals.panel_features import _contiguous_segments, assemble_panel_features
+from bob.signals.panel_features import (
+    MARKET_FEATURES,
+    _contiguous_segments,
+    assemble_panel_features,
+)
 from bob.signals.universe import eligibility_mask
 
 DAY = 86_400_000
@@ -217,3 +221,27 @@ def test_ensamblado_de_panel_vacio() -> None:
     eligible = np.zeros((1, 1), dtype=bool)
     feats = assemble_panel_features(panel, eligible)
     assert feats.X.shape[2] == 0 and not feats.valid.any()
+
+
+def test_ensamblado_llena_la_matriz_en_su_lugar() -> None:
+    """La matriz se preasigna y se llena; no se concatenan bloques sueltos.
+
+    Concatenar sostiene cada número dos veces en el pico — sobre el panel real
+    son ~3 GB en vez de ~1,5, y eso alcanzó para que el sistema matara una
+    corrida. Este test fija la propiedad observable del arreglo: la matriz es
+    contigua y tiene exactamente el ancho de los tres bloques, sin copias
+    intermedias que la dupliquen.
+    """
+    panel = _fake_panel(n_sym=8, n_dates=300)
+    eligible = eligibility_mask(panel.close, panel.quote_volume)
+    con = assemble_panel_features(panel, eligible)
+    sin = assemble_panel_features(panel, eligible, add_cross_sectional=False)
+
+    n_market = 5
+    n_base = len(sin.names) - n_market
+    assert len(con.names) == 2 * n_base + n_market
+    assert con.X.flags["C_CONTIGUOUS"]
+    # El bloque transversal va DESPUÉS del de mercado, y son los mismos
+    # nombres del bloque base con su sufijo.
+    assert con.names[n_base : n_base + n_market] == list(MARKET_FEATURES)
+    assert con.names[n_base + n_market :] == [f"{n}__xs" for n in con.names[:n_base]]

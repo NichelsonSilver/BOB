@@ -1548,7 +1548,7 @@ liquidado una vez**, ese número pesa más que el Sharpe de 2,16. La firma es la
 de un short squeeze en la pata corta, que es el riesgo clásico de estas
 estrategias.
 
-**Las exploratorias declaradas: 16 de 18 cerradas (2026-09-23).** Se corren con
+**Las exploratorias declaradas: las 18 cerradas (2026-09-24).** Se corren con
 `panel_runner` y se tabulan con `uv run python -m bob.backtest.panel_compare`,
 que las pone al lado de la primaria **sin elegir ninguna**: con 18 pruebas, que
 alguna gane por azar es lo esperable, así que una exploratoria que supere a la
@@ -1566,10 +1566,12 @@ primaria NO la reemplaza. Sirven para lo contrario — para falsificar.
 | **sin filtro de liquidez** | 465.237 | **0,5498** | +0,1037 | +1,550% | ❌ |
 | sin deslistados | 276.721 | 0,5549 | +0,1088 | +1,561% | ✅ |
 | pesos por unicidad | 284.763 | 0,5533 | +0,1063 | +1,584% | ✅ |
+| XGBoost como estimador | 284.763 | 0,5540 | +0,1087 | +1,473% | ✅ |
+| **target por tercil** ⚠ | 190.044 | *0,5737* | *+0,1246* | *+2,136%* | ⚠ no comparable |
 | **sin bloque transversal** | 284.763 | **0,5455** | +0,0959 | +1,424% | ❌ |
 | *placebo (control)* | 284.763 | *0,5007* | *+0,0021* | *−0,046%* | ✅ falla como debe |
 
-**9 de 11 sostienen los tres criterios**, más los seis sub-períodos anuales.
+**11 de 13 sostienen los tres criterios**, más los seis sub-períodos anuales.
 Las dos que rompen lo hacen **las dos por el criterio 1**, y las dos dicen algo:
 
 **(a) Sin filtro de liquidez el AUC cae a 0,5498 — y la causa está declarada
@@ -1614,12 +1616,60 @@ serie y `uniqueness_weights` la recorta a longitud cero. Una fila legítima por
 símbolo —659 filas— habría desaparecido del entrenamiento sin que nada se
 quejara. Lo cazaron dos tests, no la lectura del código.
 
-**Las 2 que faltan: XGBoost como estimador y el target por tercil.** La tanda
-se cortó en la décima porque el sistema se quedó sin memoria, no por un fallo
-del código: las dos variantes están implementadas
-(`--model xgb`, `--target-cut tercile`), testeadas y listas para correr. Quedan
-declaradas como pendientes en vez de silenciadas, porque el pre-registro
-comprometió las 18.
+**XGBoost: empate, igual que en la Fase 4-bis.** AUC 0,5540 contra 0,5541 del
+GBM, IC +0,1087 contra +0,1072, neto +1,473% contra +1,390%. Con los mismos
+hiperparámetros nominales, dos boostings competentes caen dentro del ruido. La
+ventaja sobre el ranking trivial viene de las features y del diseño del target,
+no de la librería — el mismo hallazgo que el target de volatilidad ya había
+dado, ahora replicado en otro problema. El default sigue en `gbm`.
+
+Caveat que corresponde declarar y que el regresor no tenía:
+`min_child_weight` es la suma de hessianos de la hoja, y con pérdida logística
+el hessiano es `p(1−p) ≤ 0,25`, no 1. O sea 100 **no** equivale a
+`min_samples_leaf=100` de sklearn. La comparación es "mismos hiperparámetros
+nominales", no "misma capacidad".
+
+**El target por tercil sale mejor en TODAS las métricas, y es un artefacto.**
+AUC 0,5737, BSS +0,0163, IC +0,1246, neto +2,136% — la mejor fila de la tabla.
+No se adopta, y ni siquiera se compara: **evalúa sobre el 67,1% de la sección,
+y cuál 67% lo decide el retorno futuro**. El tercio del medio se descarta *por
+dónde terminó*, así que el spread del par decil se calcula eligiendo el top 10%
+entre símbolos que ya se sabe que se movieron a un extremo. Al decidir no se
+sabe cuáles van a quedar en el medio: **ese spread no es alcanzable**.
+
+Sus AUC/BSS/IC contestan una pregunta condicional legítima —"entre los que van
+a moverse a un extremo, ¿cuál es cuál?"— pero suben porque el problema quedó
+más fácil, no porque el modelo sea mejor. `panel_compare` marca la fila con ⚠ y
+lo dice en el pie; sin esa marca es exactamente la fila que alguien leería como
+"acá está el producto". Hay un test que fija la marca.
+
+**Corrección de registro (24-09).** El cierre del 23-09 decía "16 de 18, la
+tanda se cortó por memoria y faltan XGBoost y el tercil". Era falso: **las 11
+corridas habían terminado**. La cronología, por marca de tiempo de los
+archivos:
+
+| | |
+|---|---|
+| 14:45:44 | se escribe el artefacto de **XGBoost** |
+| 14:47:05 | commit `f5023d4` — lo arrastra sin que nadie lo notara |
+| 14:47:33 | se escribe el del **tercil**, 28 s después del commit |
+
+El proceso de la tanda sí lo mató el sistema por presión de memoria, pero
+**después** de la última corrida. Lo que falló fue la lectura: se corrió el
+comparador antes de que esas dos terminaran y se reportó su ausencia como
+definitiva, en vez de volver a mirar el directorio antes de escribir el
+veredicto. Un artefacto en disco es el estado; la salida de un comparador
+corrido antes, no.
+
+**El problema de memoria era real igual, y se arregló.**
+`assemble_panel_features` armaba los tres bloques como arrays sueltos y los
+concatenaba, lo que en el pico sostiene cada número **dos veces**: ~3 GB en vez
+de ~1,5 sobre el panel real, en una máquina de 7 GB con 0,76 GB libres. Ahora
+la matriz se preasigna y se llena en su lugar. **El control es que las dos
+corridas rehechas reproducen bit a bit sus artefactos del día anterior** —las
+1.667 series por fecha incluidas— atravesando el cambio, que es la prueba de
+que la refactorización es neutra sobre el panel completo y no solo en un
+fixture.
 
 **Lo que la Fase 10 NO hace.**
 

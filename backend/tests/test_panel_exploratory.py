@@ -231,3 +231,42 @@ def test_comparador_ignora_json_corrupto(tmp_path) -> None:  # noqa: ANN001
     (tmp_path / "panel-roto-20260923120000.json").write_text("{no es json", encoding="utf-8")
     _write_artifact(tmp_path, "1d-H5-xs", viable=True, ic=0.1)
     assert len(load_runs(tmp_path)) == 1
+
+
+def test_comparador_marca_la_poblacion_definida_por_el_resultado(tmp_path) -> None:  # noqa: ANN001
+    """El tercil descarta filas SEGÚN dónde terminó el retorno.
+
+    Eso le sube el AUC porque el problema queda más fácil, no porque el modelo
+    sea mejor, y su spread no es alcanzable: al decidir no se sabe cuáles van
+    a quedar en el tercio del medio. Sin la marca, esa fila se lee como si
+    compitiera con la primaria — y es justo la que mejor se ve.
+    """
+    import json
+
+    from bob.backtest.panel_compare import load_runs, render_comparison
+
+    for variant, cut in (("1d-H5-xs", "median"), ("1d-H5-xs-tercile", "tercile")):
+        payload = {
+            "config": {"target_cut": cut},
+            "n_rows": 1000,
+            "auc": 0.57,
+            "criteria": {"viable": True},
+        }
+        (tmp_path / f"panel-{variant}-20260924120000.json").write_text(
+            json.dumps(payload), encoding="utf-8"
+        )
+
+    runs = load_runs(tmp_path)
+    flagged = {r.variant for r in runs if r.outcome_selected}
+    assert flagged == {"1d-H5-xs-tercile"}
+
+    text = render_comparison(runs)
+    assert "POBLACIÓN DEFINIDA POR EL RESULTADO" in text
+    assert "NO comparar con la primaria" in text
+
+
+def test_comparador_no_marca_la_primaria(tmp_path) -> None:  # noqa: ANN001
+    from bob.backtest.panel_compare import load_runs
+
+    _write_artifact(tmp_path, "1d-H5-xs", viable=True, ic=0.1)
+    assert not any(r.outcome_selected for r in load_runs(tmp_path))
