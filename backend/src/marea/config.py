@@ -1,7 +1,8 @@
 """Settings de MAREA. Credenciales de fuentes gratuitas, todas opcionales.
 
-Se leen de `backend/.env` y de `.env.local` en la raíz del repo (ese gana), los
-dos ignorados por git. Ninguna es obligatoria para importar el paquete: cada
+Viven en `backend/.env`, el mismo archivo que usa `bob` e ignorado por git
+(decisión del 2026-09-27: un solo lugar para los secretos). `.env.local` en la
+raíz se sigue leyendo solo por compatibilidad y, si existe, gana. Ninguna es obligatoria para importar el paquete: cada
 conector falla con un mensaje claro recién cuando se lo usa sin su key.
 """
 

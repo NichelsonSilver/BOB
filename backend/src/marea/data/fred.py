@@ -58,7 +58,7 @@ class FredClient:
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         if not api_key:
-            raise FredError("falta API_FRED en .env.local")
+            raise FredError("falta API_FRED en backend/.env")
         self._key = api_key
         self._http = http or httpx.Client(base_url=BASE_URL, timeout=60.0)
         self._min_interval = min_interval_s

@@ -4,13 +4,16 @@
 > código (2026-09-27). Lo que sigue son mediciones, no la documentación de los
 > proveedores.
 
+Credenciales: todas en `backend/.env` (ignorado por git), con los nombres de
+`.env.example`. Nunca en el repo ni en un artefacto.
+
 ## Estado por fuente
 
 | fuente | qué da | acceso | estado |
 |---|---|---|---|
 | **FRED / ALFRED** | liquidez, tasas, crédito, FX, commodities, cripto (25 series) | API key gratis (`API_FRED`) | ✅ ingestado |
 | **Tiingo** | precios diarios de 23 ETFs (acciones por región, Tesoro, crédito, oro, plata, commodities, cobre, REITs, dólar, ECH) | registro gratis (`API_TIINGO`); 50 req/hora, 1.000/día, 500 símbolos/mes; **licencia de uso interno** | ✅ ingestado |
-| **BCCh** (SieteRestWS) | USD/CLP diario, TPM, cobre | registro gratis (`BCCH_USER`, `BCCH_PASS`) | ⏳ falta registro |
+| **BCCh** (SieteRestWS) | USD/CLP diario, TPM, cobre | registro gratis (`BCCH_USER`, `BCCH_PASS`) | ⏳ faltan credenciales. La página pública de indicadores diarios **no** sirve: muestra solo el día, y reconstruir historia por scraping de HTML es la clase de fuente frágil que se descartó con Stooq |
 | **CFTC** (Socrata) | posicionamiento COT | sin key | ✅ verificado, pendiente de conectar |
 | **Treasury** (fiscaldata) | TGA diario | sin key | ✅ verificado, **no se usa por ahora**: `WTREGEN` semanal alcanza para liquidez neta semanal |
 | ~~Stooq~~ | — | — | ❌ **descartado**: responde con un desafío anti-bot de prueba de trabajo en JavaScript. Resolverlo por código sería saltarse su protección |

@@ -59,7 +59,7 @@ class TiingoClient:
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         if not api_key:
-            raise TiingoError("falta API_TIINGO en .env.local")
+            raise TiingoError("falta API_TIINGO en backend/.env")
         self._http = http or httpx.Client(
             base_url=BASE_URL,
             timeout=60.0,
