@@ -3,6 +3,7 @@
     uv run python -m marea.data.ingest fred              # todo el catálogo
     uv run python -m marea.data.ingest fred --series M2SL NFCI
     uv run python -m marea.data.ingest fred --full       # re-baja desde cero
+    uv run python -m marea.data.ingest etf               # ETFs (Tiingo)
 
 Incremental: si FRED no actualizó la serie desde la última corrida
 (`last_updated` igual) no se pide nada. Si sí, se piden solo las vintages desde
@@ -23,9 +24,10 @@ from loguru import logger
 
 from bob.utils.console import enable_utf8_stdout
 from marea.config import DB_PATH, MareaSettings
-from marea.data import store
-from marea.data.catalog import BY_ID, FRED_SERIES
+from marea.data import ingest_etf, store
+from marea.data.catalog import BY_ID, ETF_BY_TICKER, ETFS, FRED_SERIES
 from marea.data.fred import FredClient, FredError
+from marea.data.tiingo import TiingoClient
 from marea.pit import Period, first_release_lag_days, stitch
 
 
@@ -127,7 +129,12 @@ def main(argv: list[str] | None = None) -> int:
     p_fred = sub.add_parser("fred", help="series de FRED/ALFRED con vintages")
     p_fred.add_argument("--series", nargs="+", help="ids del catálogo (default: todos)")
     p_fred.add_argument("--full", action="store_true", help="re-bajar desde cero")
+    p_etf = sub.add_parser("etf", help="precios diarios de ETFs (Tiingo)")
+    p_etf.add_argument("--tickers", nargs="+", help="tickers del catálogo (default: todos)")
     args = parser.parse_args(argv)
+
+    if args.source == "etf":
+        return _main_etf(parser, args.tickers)
 
     ids: list[str] = args.series or [s.id for s in FRED_SERIES]
     unknown = [i for i in ids if i not in BY_ID]
@@ -152,6 +159,23 @@ def main(argv: list[str] | None = None) -> int:
         client.close()
         conn.close()
     _print(reports, client.requests_made)
+    return 1 if any(r.status.startswith("error") for r in reports) else 0
+
+
+def _main_etf(parser: argparse.ArgumentParser, requested: list[str] | None) -> int:
+    tickers = requested or [e.ticker for e in ETFS]
+    unknown = [t for t in tickers if t not in ETF_BY_TICKER]
+    if unknown:
+        parser.error(f"fuera del catálogo: {', '.join(unknown)} (ver marea.data.catalog)")
+    key = MareaSettings().api_tiingo
+    client = TiingoClient(key.get_secret_value() if key else "")
+    conn = store.connect(DB_PATH)
+    try:
+        reports = ingest_etf.run(client, conn, tickers)
+    finally:
+        client.close()
+        conn.close()
+    ingest_etf.print_reports(reports, client.requests_made)
     return 1 if any(r.status.startswith("error") for r in reports) else 0
 
 

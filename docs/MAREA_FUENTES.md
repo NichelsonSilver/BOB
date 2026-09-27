@@ -9,7 +9,7 @@
 | fuente | qué da | acceso | estado |
 |---|---|---|---|
 | **FRED / ALFRED** | liquidez, tasas, crédito, FX, commodities, cripto (25 series) | API key gratis (`API_FRED`) | ✅ ingestado |
-| **Tiingo** | precios diarios de ETFs (acciones por región, Tesoro, oro, REITs, ECH, cobre) | registro gratis (`API_TIINGO`); 1.000 req/día, 500 símbolos/mes; **licencia de uso interno** | ⏳ falta la key |
+| **Tiingo** | precios diarios de 23 ETFs (acciones por región, Tesoro, crédito, oro, plata, commodities, cobre, REITs, dólar, ECH) | registro gratis (`API_TIINGO`); 50 req/hora, 1.000/día, 500 símbolos/mes; **licencia de uso interno** | ✅ ingestado |
 | **BCCh** (SieteRestWS) | USD/CLP diario, TPM, cobre | registro gratis (`BCCH_USER`, `BCCH_PASS`) | ⏳ falta registro |
 | **CFTC** (Socrata) | posicionamiento COT | sin key | ✅ verificado, pendiente de conectar |
 | **Treasury** (fiscaldata) | TGA diario | sin key | ✅ verificado, **no se usa por ahora**: `WTREGEN` semanal alcanza para liquidez neta semanal |
@@ -82,12 +82,58 @@ agrega historia vieja en vintages posteriores, y eso no es una publicación.
   BCE, BoJ) convertidos a USD.
 - **SP500**: licencia S&P, solo 10 años. El índice sale de Tiingo (SPY).
 
+## Tiingo: por qué cierre crudo y no `adjClose`
+
+Tiingo recalcula **todo** el historial ajustado cada vez que hay un dividendo.
+Una ingesta incremental que guardara `adjClose` mezclaría dos bases de ajuste
+y fabricaría un retorno falso en el borde. Se guarda el cierre crudo, el
+dividendo y el split, y el retorno total se calcula en `marea.returns`:
+
+    r_t = (close_t + div_t) · split_t / close_{t-1} − 1
+
+**Control cruzado, y una predicción equivocada que quedó corregida.** Se
+compone ese retorno y se compara con la razón de `adjClose`. La primera
+versión suponía que Tiingo ajusta con el factor multiplicativo
+`1 − div/close_prev` y predecía una brecha chica y no nula. Medido: **~1e-10 %
+en los 23 ETFs**, incluidos 289 dividendos de TLT y 4 splits inversos de UNG.
+Tiingo usa la misma convención aditiva, así que el control es una
+**identidad**: por encima de 1e-6 % el ETF sale con error (un split o un
+dividendo mal leído). Hay un test que lo fuerza omitiendo un split.
+
+Cada corrida vuelve a pedir los últimos 14 días y **cuenta** los cierres que
+cambiaron. Los huecos se miden contra el calendario del propio universo (un día
+hábil es uno en que cotizó al menos la mitad de los ETFs).
+
+| ETF | desde | | ETF | desde |
+|---|---|---|---|---|
+| SPY | 1993-01 | | TIP | 2003-12 |
+| QQQ | 1999-03 | | LQD | 2002-07 |
+| IWM | 2000-05 | | HYG | 2007-04 |
+| EFA | 2001-08 | | GLD | 2004-11 |
+| EEM | 2003-04 | | SLV | 2006-04 |
+| FXI | 2004-10 | | USO, UNG, DBA | 2006–2007 |
+| EWJ | 1996-04 | | **CPER** (cobre) | **2011-11** |
+| **ECH** (Chile) | 2007-11 | | VNQ | 2004-09 |
+| SHY, IEF, TLT | 2002-07 | | **REET** | **2014-07** |
+| | | | UUP | 2007-03 |
+
+Corrida del 2026-09-27: 23/23, 0 huecos, 0 cierres revisados, 23 requests.
+**La historia común a todo el universo arranca en 2014-07** (por REET); sin
+REET, en 2011-11 (CPER); sin los dos, en 2007-11. Esto entra directo en la
+medición de potencia de la M3.
+
+USO, UNG, DBA, CPER y UUP son **fondos de futuros**: su retorno incluye el
+costo de roll y se separa del spot en contango. Es el retorno que obtiene
+quien los compra, que es lo que importa para el ranking; no es el precio del
+commodity.
+
 ## Operación
 
     cd backend
     uv run python -m marea.data.ingest fred                  # incremental
     uv run python -m marea.data.ingest fred --series M2SL
     uv run python -m marea.data.ingest fred --full           # desde cero, ~2 min
+    uv run python -m marea.data.ingest etf                   # 23 ETFs, ~45 s
 
 Si FRED no actualizó una serie desde la última corrida, se consulta solo su
 metadata: una corrida sin cambios cuesta 1 request por serie. La base es

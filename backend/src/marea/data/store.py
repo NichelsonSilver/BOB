@@ -14,6 +14,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
+from marea.data.tiingo import DailyBar
 from marea.pit import Period
 
 _SCHEMA = """
@@ -37,6 +38,20 @@ CREATE TABLE IF NOT EXISTS fred_period (
     realtime_end   TEXT NOT NULL,
     value          REAL,
     PRIMARY KEY (series_id, obs_date, realtime_start)
+);
+CREATE TABLE IF NOT EXISTS etf_bar (
+    ticker       TEXT NOT NULL,
+    day          TEXT NOT NULL,
+    open         REAL NOT NULL,
+    high         REAL NOT NULL,
+    low          REAL NOT NULL,
+    close        REAL NOT NULL,
+    volume       REAL NOT NULL,
+    div_cash     REAL NOT NULL,
+    split_factor REAL NOT NULL,
+    -- Solo control cruzado: Tiingo lo recalcula hacia atras en cada dividendo.
+    adj_close    REAL NOT NULL,
+    PRIMARY KEY (ticker, day)
 );
 """
 
@@ -110,3 +125,40 @@ def upsert_series_meta(
                 datetime.now(UTC).isoformat(timespec="seconds"),
             ),
         )
+
+
+def last_bar_day(conn: sqlite3.Connection, ticker: str) -> date | None:
+    row = conn.execute("SELECT MAX(day) FROM etf_bar WHERE ticker = ?", (ticker,)).fetchone()
+    return date.fromisoformat(row[0]) if row and row[0] else None
+
+
+def load_bars(conn: sqlite3.Connection, ticker: str) -> list[DailyBar]:
+    rows = conn.execute(
+        "SELECT day, open, high, low, close, volume, div_cash, split_factor, adj_close "
+        "FROM etf_bar WHERE ticker = ? ORDER BY day",
+        (ticker,),
+    )
+    return [DailyBar(date.fromisoformat(d), *vals) for d, *vals in rows]
+
+
+def upsert_bars(conn: sqlite3.Connection, ticker: str, bars: Iterable[DailyBar]) -> int:
+    rows = [
+        (
+            ticker,
+            b.day.isoformat(),
+            b.open,
+            b.high,
+            b.low,
+            b.close,
+            b.volume,
+            b.div_cash,
+            b.split_factor,
+            b.adj_close,
+        )
+        for b in bars
+    ]
+    with conn:
+        conn.executemany(
+            "INSERT OR REPLACE INTO etf_bar VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows
+        )
+    return len(rows)

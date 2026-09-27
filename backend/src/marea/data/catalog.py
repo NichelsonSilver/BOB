@@ -97,3 +97,53 @@ EXCLUDED: dict[str, str] = {
 }
 
 BY_ID: dict[str, FredSeries] = {s.id: s for s in FRED_SERIES}
+
+
+AssetBlock = Literal[
+    "acciones", "renta_fija", "reserva_valor", "commodities", "real_estate", "divisas"
+]
+
+
+@dataclass(frozen=True)
+class Etf:
+    ticker: str
+    block: AssetBlock
+    why: str
+    caveat: str = ""
+
+
+#: Universo de ETFs (Tiingo). Verificado el 2026-09-27: los 23 existen. La
+#: historia COMÚN a todos arranca en 2014-07 (REET); sin REET, en 2011-11
+#: (CPER); sin los dos, en 2007-11 (ECH). Eso importa para la potencia de la M3.
+ETFS: tuple[Etf, ...] = (
+    Etf("SPY", "acciones", "S&P 500"),
+    Etf("QQQ", "acciones", "Nasdaq 100"),
+    Etf("IWM", "acciones", "Russell 2000 (small caps EE.UU.)"),
+    Etf("EFA", "acciones", "Desarrollados ex-EE.UU."),
+    Etf("EEM", "acciones", "Emergentes"),
+    Etf("FXI", "acciones", "China large caps"),
+    Etf("EWJ", "acciones", "Japón"),
+    Etf("ECH", "acciones", "Chile", caveat="desde 2007-11"),
+    Etf("SHY", "renta_fija", "Tesoro 1-3 años"),
+    Etf("IEF", "renta_fija", "Tesoro 7-10 años"),
+    Etf("TLT", "renta_fija", "Tesoro 20+ años"),
+    Etf("TIP", "renta_fija", "Tesoro indexado a inflación"),
+    Etf("LQD", "renta_fija", "Corporativos grado de inversión"),
+    Etf("HYG", "renta_fija", "High yield"),
+    Etf("GLD", "reserva_valor", "Oro"),
+    Etf("SLV", "reserva_valor", "Plata"),
+    Etf(
+        "USO",
+        "commodities",
+        "Petróleo",
+        caveat="fondo de futuros: el roll lo separa del spot en contango",
+    ),
+    Etf("UNG", "commodities", "Gas natural", caveat="fondo de futuros: roll severo"),
+    Etf("DBA", "commodities", "Agrícolas", caveat="fondo de futuros"),
+    Etf("CPER", "commodities", "Cobre", caveat="desde 2011-11; fondo de futuros"),
+    Etf("VNQ", "real_estate", "REITs EE.UU.", caveat="proxy declarado: no es inmobiliario físico"),
+    Etf("REET", "real_estate", "REITs globales", caveat="desde 2014-07; proxy declarado"),
+    Etf("UUP", "divisas", "Dólar (futuros DXY)", caveat="fondo de futuros"),
+)
+
+ETF_BY_TICKER: dict[str, Etf] = {e.ticker: e for e in ETFS}
