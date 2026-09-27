@@ -1,7 +1,99 @@
-# BOB — Asistente de Decisión para Trading Intradía
+# MAREA — Analista de Liquidez Global (módulo cripto: BOB)
 
 > Contexto estratégico del ecosistema (memoria de LUPE):
 > @../lupe/contexto/MEMORIA.md
+
+## IDENTIDAD VIGENTE (2026-09-26) — MAREA
+
+Por decisión explícita de Nichelson, el proyecto se reestructura y agranda su
+alcance. **Registro completo de la decisión: `docs/REESTRUCTURACION_MAREA.md`.
+Leerlo antes de trabajar en cualquier fase M.**
+
+**MAREA** es un analista de **liquidez global y de flujos entre clases de
+activo**, con horizonte de **semanas a meses**. Mapea, sigue y monitorea
+hacia dónde se mueve la liquidez mundial y qué clases de activo la reciben, y
+entrega un panel que ayuda a Nichelson a decidir inversiones alineadas con la
+macro global. **Nunca ejecuta órdenes** y **sugiere inclinaciones entre clases
+de activo, no operaciones**.
+
+Cuatro capas:
+
+1. **Liquidez**: balance Fed − TGA − RRP, M2, dólar, tasas reales, crédito,
+   condiciones financieras, COT. **Monitoreo, sin pronóstico.**
+2. **Activos macro**: ranking relativo sobre ~35 proxies (acciones, Tesoro,
+   crédito, oro/plata, commodities, cobre, REITs, divisas, cripto). **Pronóstico
+   con pre-registro y gate propio — condicionado a que la medición de potencia
+   de la M3 lo permita.**
+3. **Cripto = módulo BOB**: todo lo que sigue más abajo en este documento. Es
+   el activo principal dentro del estudio macro y tiene su propio panel.
+4. **Narrativa**: noticias que Nichelson pega en una sesión. **Nunca es feature
+   del modelo**; su función es marcar divergencias entre lo que se dice y lo
+   que muestran los datos, con peso bajo y declarado.
+
+**Decisiones de diseño fijadas (26-09):** agentes y skills **solo en Claude
+Code** (`.claude/agents/`, `.claude/skills/`), sin LLM en el camino de cálculo
+ni costo de API en runtime; **solo datos gratuitos** (proxy declarado donde no
+existan); **lente Chile** (cobre, USD/CLP, ECH, BCCh); **vivo de 15m
+congelado** como módulo, sin borrar nada.
+
+**Qué NO se renombra todavía:** el paquete Python `bob`, el directorio
+`proyectos/bob` y la DB. La tarea programada `BOB_panel_forward_diario` corre
+`bob.paper.panel_forward` desde una ruta absoluta, y la Fase 10-bis tiene 180
+días por delante. El código macro nuevo vive en el paquete hermano
+**`marea`** del mismo backend.
+
+### Fases de MAREA
+
+| fase | contenido | estado |
+|---|---|---|
+| **M0** | Decisión, este documento, agentes y skills | ✅ 2026-09-26 |
+| **M1** | Ingesta macro gratuita en `marea/data/` (FRED, Treasury, CFTC, Stooq, BCCh) — verificar ToS y keys ANTES de escribir código | pendiente |
+| **M2** | Monitor de liquidez + página macro del dashboard | pendiente |
+| **M3** | Medición de potencia → pre-registro → gate del ranking. "No hay potencia" es un desenlace legítimo declarado de antemano | pendiente |
+| **M4** | `/noticia` con registro persistente + memo semanal `/informe` | pendiente |
+
+Al final de cada una, resumir y esperar confirmación (igual que las fases de
+BOB).
+
+### Agentes y skills
+
+| agente | rol | skill |
+|---|---|---|
+| `ingesta` | Corre las CLIs de datos, reporta cobertura y huecos; nunca rellena | `/ingesta` |
+| `liquidez` | Lee el régimen de liquidez global y su cambio | `/liquidez` |
+| `cross-asset` | Ranking, fuerza relativa, correlaciones, rotación | `/ranking` |
+| `cripto` | Módulo BOB: panel diario y su corrida forward | `/cripto` |
+| `noticias` | Clasifica, contrasta con datos, evalúa manipulación, registra | `/noticia` |
+| `auditor` | Lookahead, pre-registro, potencia, regla 2 | `/auditar` |
+| `coordinador` | Integra todo en un memo que separa lo medido de lo narrado | `/informe` |
+
+Los agentes **leen y calculan con el código del repo**; no inventan cifras.
+Una cifra en un memo que no salga de un comando o de un artefacto es un bug de
+la misma gravedad que un lookahead.
+
+### Regla 12 (nueva, vigente hasta el corte de la Fase 10-bis)
+
+**No se cambia el comportamiento de la corrida forward del panel.** Su
+árbol de dependencias es ancho: `paper/panel_forward.py`,
+`models/panel_production.py`, `models/panel_experiment.py`,
+`models/forecast.py`, `backtest/panel_runner.py`, `data/panel.py`,
+`data/download_panel.py`, `signals/{cross_section,panel_features,universe,features,numeric}.py`,
+`paper/forward_eval.py` y `backend/scripts/panel_daily.ps1`. Cambiarlo a mitad
+de muestra mezcla dos modelos en la misma validación, que es exactamente lo
+que la Fase 4-bis enseñó a no hacer.
+
+Como `marea` va a importar parte de ese árbol (`numeric`, `metrics`,
+`validation`), la regla operativa es: **cualquier commit que toque un módulo
+de esa lista debe reproducir bit a bit el artefacto primario del panel**
+(`panel_runner --until 2026-09-21`) antes de entrar. Si no reproduce, no entra.
+Lo nuevo se escribe en `marea/`, no se "generaliza" lo de `bob/`.
+
+---
+
+## MÓDULO BOB — identidad original (cripto)
+
+> Todo lo que sigue es la historia y el estado del módulo cripto. Sigue
+> vigente como tal; donde dice "BOB" se lee "el módulo cripto de MAREA".
 
 ## IDENTIDAD DEL PROYECTO
 
@@ -1910,3 +2002,7 @@ economía, por falta de potencia. Y no toca el vivo de 15m: no cambia
 Al abrir sesión en este repo: leer este documento, revisar en qué fase está
 el proyecto (git log + estado de tests), y continuar la fase en curso. Ante
 decisiones no cubiertas aquí: preguntar. No asumir.
+
+Desde el 26-09 hay dos frentes y no se mezclan: la **fase M en curso** de
+MAREA (tabla al inicio) y la **corrida forward del panel**, que avanza sola por
+tarea programada. Para mirar esta última sin tocarla: `/cripto`.
