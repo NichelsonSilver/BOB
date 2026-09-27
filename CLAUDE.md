@@ -47,7 +47,7 @@ días por delante. El código macro nuevo vive en el paquete hermano
 | fase | contenido | estado |
 |---|---|---|
 | **M0** | Decisión, este documento, agentes y skills | ✅ 2026-09-26 |
-| **M1** | Ingesta macro gratuita en `marea/data/`. Hecho: FRED con vintages (25 series, point-in-time) y Tiingo (23 ETFs). Falta: BCCh (registro), CFTC. Stooq descartado. Detalle: `docs/MAREA_FUENTES.md` | 🟡 en curso |
+| **M1** | Ingesta macro gratuita en `marea/data/`. Hecho: FRED con vintages (25 series, point-in-time), Tiingo (23 ETFs) y CFTC (13 mercados COT). Falta: BCCh (credenciales rechazadas por la API). Stooq descartado. Detalle: `docs/MAREA_FUENTES.md` | 🟡 en curso |
 | **M2** | Monitor de liquidez + página macro del dashboard | pendiente |
 | **M3** | Medición de potencia → pre-registro → gate del ranking. "No hay potencia" es un desenlace legítimo declarado de antemano | pendiente |
 | **M4** | `/noticia` con registro persistente + memo semanal `/informe` | pendiente |

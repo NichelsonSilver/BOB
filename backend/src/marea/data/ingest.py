@@ -4,6 +4,7 @@
     uv run python -m marea.data.ingest fred --series M2SL NFCI
     uv run python -m marea.data.ingest fred --full       # re-baja desde cero
     uv run python -m marea.data.ingest etf               # ETFs (Tiingo)
+    uv run python -m marea.data.ingest cot               # posicionamiento CFTC
 
 Incremental: si FRED no actualizó la serie desde la última corrida
 (`last_updated` igual) no se pide nada. Si sí, se piden solo las vintages desde
@@ -24,8 +25,16 @@ from loguru import logger
 
 from bob.utils.console import enable_utf8_stdout
 from marea.config import DB_PATH, MareaSettings
-from marea.data import ingest_etf, store
-from marea.data.catalog import BY_ID, ETF_BY_TICKER, ETFS, FRED_SERIES
+from marea.data import ingest_cot, ingest_etf, store
+from marea.data.catalog import (
+    BY_ID,
+    COT_BY_CODE,
+    COT_MARKETS,
+    ETF_BY_TICKER,
+    ETFS,
+    FRED_SERIES,
+)
+from marea.data.cftc import CftcClient
 from marea.data.fred import FredClient, FredError
 from marea.data.tiingo import TiingoClient
 from marea.pit import Period, first_release_lag_days, stitch
@@ -131,10 +140,14 @@ def main(argv: list[str] | None = None) -> int:
     p_fred.add_argument("--full", action="store_true", help="re-bajar desde cero")
     p_etf = sub.add_parser("etf", help="precios diarios de ETFs (Tiingo)")
     p_etf.add_argument("--tickers", nargs="+", help="tickers del catálogo (default: todos)")
+    p_cot = sub.add_parser("cot", help="posicionamiento COT de la CFTC")
+    p_cot.add_argument("--codes", nargs="+", help="códigos de contrato (default: todos)")
     args = parser.parse_args(argv)
 
     if args.source == "etf":
         return _main_etf(parser, args.tickers)
+    if args.source == "cot":
+        return _main_cot(parser, args.codes)
 
     ids: list[str] = args.series or [s.id for s in FRED_SERIES]
     unknown = [i for i in ids if i not in BY_ID]
@@ -176,6 +189,22 @@ def _main_etf(parser: argparse.ArgumentParser, requested: list[str] | None) -> i
         client.close()
         conn.close()
     ingest_etf.print_reports(reports, client.requests_made)
+    return 1 if any(r.status.startswith("error") for r in reports) else 0
+
+
+def _main_cot(parser: argparse.ArgumentParser, requested: list[str] | None) -> int:
+    codes = requested or [m.code for m in COT_MARKETS]
+    unknown = [c for c in codes if c not in COT_BY_CODE]
+    if unknown:
+        parser.error(f"fuera del catálogo: {', '.join(unknown)} (ver marea.data.catalog)")
+    client = CftcClient()
+    conn = store.connect(DB_PATH)
+    try:
+        reports = ingest_cot.run(client, conn, [COT_BY_CODE[c] for c in codes])
+    finally:
+        client.close()
+        conn.close()
+    ingest_cot.print_reports(reports, client.requests_made)
     return 1 if any(r.status.startswith("error") for r in reports) else 0
 
 

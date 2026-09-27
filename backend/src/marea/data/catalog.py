@@ -147,3 +147,34 @@ ETFS: tuple[Etf, ...] = (
 )
 
 ETF_BY_TICKER: dict[str, Etf] = {e.ticker: e for e in ETFS}
+
+
+@dataclass(frozen=True)
+class CotMarket:
+    code: str
+    report: Literal["tff", "disagg"]
+    name: str
+    #: ETF del universo cuyo subyacente es este futuro (para cruzar flujo y precio).
+    etf: str | None
+
+
+#: Mercados del COT, verificados por CÓDIGO el 2026-09-27: 1.059 semanas desde
+#: 2006-06 sin huecos (bitcoin: 442 desde 2018-04). Los nombres cambiaron en
+#: 2022-02; el código no.
+COT_MARKETS: tuple[CotMarket, ...] = (
+    CotMarket("13874A", "tff", "E-mini S&P 500", "SPY"),
+    CotMarket("042601", "tff", "Tesoro 2 años", "SHY"),
+    CotMarket("043602", "tff", "Tesoro 10 años", "IEF"),
+    CotMarket("020601", "tff", "Tesoro bono largo", "TLT"),
+    CotMarket("099741", "tff", "Euro FX", None),
+    CotMarket("097741", "tff", "Yen", None),
+    CotMarket("098662", "tff", "Índice dólar (ICE)", "UUP"),
+    CotMarket("133741", "tff", "Bitcoin (CME)", None),
+    CotMarket("088691", "disagg", "Oro", "GLD"),
+    CotMarket("084691", "disagg", "Plata", "SLV"),
+    CotMarket("067651", "disagg", "Petróleo WTI", "USO"),
+    CotMarket("023651", "disagg", "Gas natural", "UNG"),
+    CotMarket("085692", "disagg", "Cobre", "CPER"),
+)
+
+COT_BY_CODE: dict[str, CotMarket] = {m.code: m for m in COT_MARKETS}

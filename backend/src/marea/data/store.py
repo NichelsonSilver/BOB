@@ -14,6 +14,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
+from marea.data.cftc import CotRow
 from marea.data.tiingo import DailyBar
 from marea.pit import Period
 
@@ -52,6 +53,18 @@ CREATE TABLE IF NOT EXISTS etf_bar (
     -- Solo control cruzado: Tiingo lo recalcula hacia atras en cada dividendo.
     adj_close    REAL NOT NULL,
     PRIMARY KEY (ticker, day)
+);
+CREATE TABLE IF NOT EXISTS cot (
+    code           TEXT NOT NULL,
+    report_date    TEXT NOT NULL,  -- "al martes"
+    available_date TEXT NOT NULL,  -- cuando se conoce: ver marea.data.cftc
+    name           TEXT NOT NULL,
+    open_interest  REAL NOT NULL,
+    spec_long      REAL NOT NULL,
+    spec_short     REAL NOT NULL,
+    inst_long      REAL,
+    inst_short     REAL,
+    PRIMARY KEY (code, report_date)
 );
 """
 
@@ -162,3 +175,39 @@ def upsert_bars(conn: sqlite3.Connection, ticker: str, bars: Iterable[DailyBar])
             "INSERT OR REPLACE INTO etf_bar VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows
         )
     return len(rows)
+
+
+def last_cot_date(conn: sqlite3.Connection, code: str) -> date | None:
+    row = conn.execute("SELECT MAX(report_date) FROM cot WHERE code = ?", (code,)).fetchone()
+    return date.fromisoformat(row[0]) if row and row[0] else None
+
+
+def load_cot(conn: sqlite3.Connection, code: str) -> list[CotRow]:
+    rows = conn.execute(
+        "SELECT code, report_date, available_date, name, open_interest, spec_long, "
+        "spec_short, inst_long, inst_short FROM cot WHERE code = ? ORDER BY report_date",
+        (code,),
+    )
+    return [
+        CotRow(c, date.fromisoformat(r), date.fromisoformat(a), *rest) for c, r, a, *rest in rows
+    ]
+
+
+def upsert_cot(conn: sqlite3.Connection, rows: Iterable[CotRow]) -> int:
+    data = [
+        (
+            r.code,
+            r.report_date.isoformat(),
+            r.available_date.isoformat(),
+            r.name,
+            r.open_interest,
+            r.spec_long,
+            r.spec_short,
+            r.inst_long,
+            r.inst_short,
+        )
+        for r in rows
+    ]
+    with conn:
+        conn.executemany("INSERT OR REPLACE INTO cot VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
+    return len(data)

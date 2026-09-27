@@ -14,7 +14,7 @@ Credenciales: todas en `backend/.env` (ignorado por git), con los nombres de
 | **FRED / ALFRED** | liquidez, tasas, crédito, FX, commodities, cripto (25 series) | API key gratis (`API_FRED`) | ✅ ingestado |
 | **Tiingo** | precios diarios de 23 ETFs (acciones por región, Tesoro, crédito, oro, plata, commodities, cobre, REITs, dólar, ECH) | registro gratis (`API_TIINGO`); 50 req/hora, 1.000/día, 500 símbolos/mes; **licencia de uso interno** | ✅ ingestado |
 | **BCCh** (SieteRestWS) | USD/CLP diario, TPM, cobre | registro gratis (`BCCH_USER`, `BCCH_PASS`) | ⏳ faltan credenciales. La página pública de indicadores diarios **no** sirve: muestra solo el día, y reconstruir historia por scraping de HTML es la clase de fuente frágil que se descartó con Stooq |
-| **CFTC** (Socrata) | posicionamiento COT | sin key | ✅ verificado, pendiente de conectar |
+| **CFTC** (Socrata) | posicionamiento COT de 13 mercados | sin key | ✅ ingestado |
 | **Treasury** (fiscaldata) | TGA diario | sin key | ✅ verificado, **no se usa por ahora**: `WTREGEN` semanal alcanza para liquidez neta semanal |
 | ~~Stooq~~ | — | — | ❌ **descartado**: responde con un desafío anti-bot de prueba de trabajo en JavaScript. Resolverlo por código sería saltarse su protección |
 | ~~yfinance~~ | — | — | ❌ no es una API oficial y su ruptura es silenciosa |
@@ -130,6 +130,26 @@ costo de roll y se separa del spot en contango. Es el retorno que obtiene
 quien los compra, que es lo que importa para el ranking; no es el precio del
 commodity.
 
+## CFTC: posicionamiento COT
+
+13 mercados: E-mini S&P, Tesoro 2a/10a/largo, euro, yen, índice dólar,
+bitcoin (CME), oro, plata, WTI, gas y cobre. 1.059 semanas desde 2006-06 (bitcoin
+442 desde 2018-04), **0 semanas faltantes**, 13 requests.
+
+- **Se indexa por código de contrato, nunca por nombre.** La CFTC renombró los
+  mercados en febrero de 2022; filtrando por nombre, el Tesoro, el petróleo y el
+  cobre parecen empezar en 2022.
+- **Dos reportes.** Financieros en *Traders in Financial Futures*
+  (especulador = fondos apalancados, institucional = asset managers);
+  commodities en *Disaggregated* (especulador = managed money).
+- **Fecha del dato ≠ fecha de publicación.** El reporte es "al martes" y se
+  publica el viernes (lunes con feriado). `available_date` = fecha del reporte
+  + 6 días. Usar el martes sería lookahead.
+- **No todos los reportes son de martes**: 14 están fechados en lunes o
+  miércoles por feriados. La primera métrica de huecos contaba martes y los
+  marcaba como faltantes; se cuentan semanas ISO.
+- Cada corrida re-pide 4 semanas y **cuenta** las revisiones de la CFTC.
+
 ## Operación
 
     cd backend
@@ -137,6 +157,7 @@ commodity.
     uv run python -m marea.data.ingest fred --series M2SL
     uv run python -m marea.data.ingest fred --full           # desde cero, ~2 min
     uv run python -m marea.data.ingest etf                   # 23 ETFs, ~45 s
+    uv run python -m marea.data.ingest cot                   # 13 mercados COT, ~17 s
 
 Si FRED no actualizó una serie desde la última corrida, se consulta solo su
 metadata: una corrida sin cambios cuesta 1 request por serie. La base es

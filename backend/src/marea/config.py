@@ -2,8 +2,9 @@
 
 Viven en `backend/.env`, el mismo archivo que usa `bob` e ignorado por git
 (decisión del 2026-09-27: un solo lugar para los secretos). `.env.local` en la
-raíz se sigue leyendo solo por compatibilidad y, si existe, gana. Ninguna es obligatoria para importar el paquete: cada
-conector falla con un mensaje claro recién cuando se lo usa sin su key.
+raíz se sigue leyendo solo por compatibilidad y, si existe, gana. Ninguna es
+obligatoria para importar el paquete: cada conector falla con un mensaje claro
+recién cuando se lo usa sin su key.
 """
 
 from __future__ import annotations
