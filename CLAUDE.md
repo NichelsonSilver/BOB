@@ -1808,11 +1808,46 @@ hacerlo sin volver a correr nada.
    dos direcciones. Más control negativo (ruido → no confirma) y positivo
    (señal inyectada → confirma)
 
-**Operación:**
+**Operación: está PROGRAMADA, no se corre a mano** (2026-09-26).
 
-    uv run python -m bob.data.download_panel --ingest    # una vez por día
-    uv run python -m bob.paper.panel_forward --emit
-    uv run python -m bob.paper.panel_forward --report    # cuando se quiera mirar
+La restricción operativa sale de la regla de gracia: para que una emisión
+cuente como forward, el comando tiene que correr dentro de las **2 h
+posteriores a las 00:00 UTC**. Corrido a mano cuando uno se acuerda, la
+mayoría de los días salen `backfill` y la validación no avanza — lo que pasó
+exactamente con la primera emisión, que se hizo 13,7 h tarde.
+
+Tarea de Windows **`BOB_panel_forward_diario`**, todos los días a las **21:05
+locales = 00:05 UTC**, corriendo `backend/scripts/panel_daily.ps1`:
+
+    uv run python -m bob.data.download_panel --ingest --concurrency 4   # ~12 min
+    uv run python -m bob.paper.panel_forward --emit                     # ~1 min
+
+**Los tres flags que en NODO dejaron una ventana de scraping vacía reportando
+éxito** están desactivados de entrada: `DisallowStartIfOnBatteries` y
+`StopIfGoingOnBatteries` vienen en `True` por defecto, y en un portátil eso es
+**cero corridas con batería mientras la tarea informa `Last Result: 0`**. Van
+`-AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+-WakeToRun`.
+
+**El log va en UTC a propósito** (`backend/logs/panel_daily.log`). La Fase 5
+perdió un análisis entero por atribuir barras con un log en hora local
+atravesando el cambio de horario del 06-09: un offset fijo de +3 h reasignaba
+tramos completos entre "proceso abajo" y "analista mudo", y daba 84/28 en vez
+de 90/22. Con UTC no hay nada que convertir. Cada corrida escribe si la
+emisión **cuenta como forward o salió backfill**, que es el dato que decide si
+el día entra a la muestra.
+
+**Por qué 21:05 y no otra hora.** La vela diaria cierra a las 00:00 UTC, así
+que antes de eso no hay nada nuevo que predecir. Con Chile en UTC-3 las 21:05
+locales son las 00:05 UTC — cinco minutos después del cierre, con ~1 h 45 min
+de margen sobre la gracia. **Cuando termine el horario de verano** el offset
+pasa a UTC-4 y esas mismas 21:05 serán 01:05 UTC: sigue después del cierre y
+sigue dentro de la gracia, con 55 min de margen. No hay que reprogramar nada,
+y queda escrito para que nadie lo "arregle" mirando el reloj equivocado.
+
+Para mirar el estado, cuando se quiera (sin veredicto antes del corte):
+
+    uv run python -m bob.paper.panel_forward --report
 
 **Lo que esta fase NO pretende.** No habilita el KPI 1. No vuelve operable el
 panel ni aunque apruebe —se opera neutral al mercado, con 44,4% de rotación y
