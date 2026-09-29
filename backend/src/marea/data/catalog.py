@@ -178,3 +178,66 @@ COT_MARKETS: tuple[CotMarket, ...] = (
 )
 
 COT_BY_CODE: dict[str, CotMarket] = {m.code: m for m in COT_MARKETS}
+
+
+@dataclass(frozen=True)
+class BcchSeries:
+    id: str
+    name: str
+    start: str  # primera observación según el catálogo del BCCh
+    #: Días entre la fecha del dato y cuándo se conoce. DECLARADO, no medido:
+    #: el BCCh no publica vintages. Ver la razón de cada uno.
+    lag_days: int
+    lag_why: str
+
+
+#: Series diarias del BCCh, códigos verificados contra `SearchSeries` el
+#: 2026-09-27. El IPSA no está en la base diaria: la renta variable chilena
+#: sale de ECH (Tiingo).
+BCCH_SERIES: tuple[BcchSeries, ...] = (
+    BcchSeries(
+        "F073.TCO.PRE.Z.D",
+        "Dólar observado (CLP/USD)",
+        "1982-08-09",
+        0,
+        "el valor del día d se calcula con el día hábil anterior y se publica antes de d: "
+        "el 27-09 (domingo) ya estaba el del 28-09",
+    ),
+    BcchSeries(
+        "F022.TPM.TIN.D001.NO.Z.D",
+        "TPM Chile",
+        "1997-02-07",
+        0,
+        "la tasa vigente en d se anuncia en la reunión previa",
+    ),
+    BcchSeries(
+        "F019.PPB.PRE.100.D",
+        "Cobre refinado BML (USD/lb)",
+        "2012-10-05",
+        0,
+        "el BCCh lo estampa como el dólar observado: el 27-09 ya estaba el del 28-09",
+    ),
+    BcchSeries(
+        "F022.BCLP.TIS.AN10.NO.Z.D",
+        "BCP 10 años, mercado secundario",
+        "2004-07-15",
+        1,
+        "tasa de transacciones del día d: se conoce al cierre, se usa desde d+1",
+    ),
+    BcchSeries(
+        "F019.TPM.TIN.20.D",
+        "Tasa de política BCE",
+        "1998-12-23",
+        1,
+        "la carga el BCCh; margen de un día por el tiempo de carga",
+    ),
+    BcchSeries(
+        "F019.TPM.TIN.30.D",
+        "Tasa de política Banco de Japón",
+        "2008-10-31",
+        1,
+        "la carga el BCCh; margen de un día por el tiempo de carga",
+    ),
+)
+
+BCCH_BY_ID: dict[str, BcchSeries] = {s.id: s for s in BCCH_SERIES}

@@ -66,6 +66,13 @@ CREATE TABLE IF NOT EXISTS cot (
     inst_short     REAL,
     PRIMARY KEY (code, report_date)
 );
+CREATE TABLE IF NOT EXISTS bcch_obs (
+    series_id      TEXT NOT NULL,
+    day            TEXT NOT NULL,
+    available_date TEXT NOT NULL,  -- day + lag declarado en el catalogo
+    value          REAL NOT NULL,
+    PRIMARY KEY (series_id, day)
+);
 """
 
 
@@ -210,4 +217,22 @@ def upsert_cot(conn: sqlite3.Connection, rows: Iterable[CotRow]) -> int:
     ]
     with conn:
         conn.executemany("INSERT OR REPLACE INTO cot VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
+    return len(data)
+
+
+def load_bcch(conn: sqlite3.Connection, series_id: str) -> list[tuple[date, date, float]]:
+    """(día, fecha en que se conoce, valor), ordenado por día."""
+    rows = conn.execute(
+        "SELECT day, available_date, value FROM bcch_obs WHERE series_id = ? ORDER BY day",
+        (series_id,),
+    )
+    return [(date.fromisoformat(d), date.fromisoformat(a), v) for d, a, v in rows]
+
+
+def upsert_bcch(
+    conn: sqlite3.Connection, series_id: str, rows: Iterable[tuple[date, date, float]]
+) -> int:
+    data = [(series_id, d.isoformat(), a.isoformat(), v) for d, a, v in rows]
+    with conn:
+        conn.executemany("INSERT OR REPLACE INTO bcch_obs VALUES (?, ?, ?, ?)", data)
     return len(data)

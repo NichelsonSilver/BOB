@@ -267,3 +267,22 @@ class TestCli:
 
         with pytest.raises(SystemExit):
             main(["fred", "--series", "INVENTADA"])
+
+
+def test_todo_sigue_aunque_una_fuente_falle(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from marea.data import ingest
+
+    monkeypatch.setattr(ingest, "_main_fred", lambda *_a, **_k: 0)
+    monkeypatch.setattr(
+        ingest, "_main_etf", lambda *_a: (_ for _ in ()).throw(RuntimeError("sin red"))
+    )
+    monkeypatch.setattr(ingest, "_main_cot", lambda *_a: 1)
+    monkeypatch.setattr(ingest, "_main_bcch", lambda *_a: 0)
+    assert ingest.main(["todo"]) == 1
+    out = capsys.readouterr().out
+    assert "2/4 fuentes sin error; fallaron: Tiingo, CFTC" in out
+    monkeypatch.setattr(ingest, "_main_etf", lambda *_a: 0)
+    monkeypatch.setattr(ingest, "_main_cot", lambda *_a: 0)
+    assert ingest.main(["todo"]) == 0

@@ -12,8 +12,8 @@ Credenciales: todas en `backend/.env` (ignorado por git), con los nombres de
 | fuente | qué da | acceso | estado |
 |---|---|---|---|
 | **FRED / ALFRED** | liquidez, tasas, crédito, FX, commodities, cripto (25 series) | API key gratis (`API_FRED`) | ✅ ingestado |
-| **Tiingo** | precios diarios de 23 ETFs (acciones por región, Tesoro, crédito, oro, plata, commodities, cobre, REITs, dólar, ECH) | registro gratis (`API_TIINGO`); 50 req/hora, 1.000/día, 500 símbolos/mes; **licencia de uso interno** | ✅ ingestado |
-| **BCCh** (SieteRestWS) | USD/CLP diario, TPM, cobre | registro gratis (`BCCH_USER`, `BCCH_PASS`) | ⏳ faltan credenciales. La página pública de indicadores diarios **no** sirve: muestra solo el día, y reconstruir historia por scraping de HTML es la clase de fuente frágil que se descartó con Stooq |
+| **Tiingo** | precios diarios de 23 ETFs (acciones por región, Tesoro, crédito, oro, plata, commodities, cobre, REITs, dólar, ECH) | registro gratis (`API_TIINGO`); 50 req/hora, 1.000/día, 500 símbolos/mes; **licencia de uso interno**. Un 429 = cuota de la hora agotada: la corrida no espera, omite el resto y la siguiente lo completa | ✅ ingestado |
+| **BCCh** (SieteRestWS) | dólar observado, TPM, cobre diario, BCP 10a, tasas de política BCE y BoJ | registro gratis + activación (`BCCH_USER`, `BCCH_PASS`) | ✅ ingestado |
 | **CFTC** (Socrata) | posicionamiento COT de 13 mercados | sin key | ✅ ingestado |
 | **Treasury** (fiscaldata) | TGA diario | sin key | ✅ verificado, **no se usa por ahora**: `WTREGEN` semanal alcanza para liquidez neta semanal |
 | ~~Stooq~~ | — | — | ❌ **descartado**: responde con un desafío anti-bot de prueba de trabajo en JavaScript. Resolverlo por código sería saltarse su protección |
@@ -150,6 +150,37 @@ bitcoin (CME), oro, plata, WTI, gas y cobre. 1.059 semanas desde 2006-06 (bitcoi
   marcaba como faltantes; se cuentan semanas ISO.
 - Cada corrida re-pide 4 semanas y **cuenta** las revisiones de la CFTC.
 
+## BCCh: Banco Central de Chile
+
+6 series diarias, 6 requests: dólar observado (desde 1982), TPM (1997), cobre
+refinado BML (2012), BCP 10 años secundario (2004) y las tasas de política del
+BCE (1998) y del Banco de Japón (2008). El IPSA **no** está en la base diaria:
+la renta variable chilena sale de ECH (Tiingo). El cobre diario del BCCh
+reemplaza con ventaja al `PCOPPUSDM` de FRED (mensual, con 717 días de rezago
+máximo).
+
+Lo que costó conectarla, para que no se repita:
+
+- **Dos pasos de alta**: registro en la Base de Datos Estadísticos **y**
+  activación iniciando sesión en el sitio de la API. Antes del segundo, la API
+  responde `-5 Invalid username or password` con credenciales correctas.
+- **`pass` es la contraseña de la cuenta**, no el token largo que muestra el
+  sitio (probado: con el token también responde `-5`).
+- **Los errores vienen con HTTP 200**; el estado real es el campo `Codigo`.
+- **Responde en ISO-8859-1**; leerlo como UTF-8 revienta en "dólar".
+- La página pública de indicadores diarios **no** sirve como fuente: muestra
+  solo el día, y reconstruir historia por scraping de HTML es la clase de
+  fuente frágil que se descartó con Stooq.
+
+**Cuándo se conoce cada dato.** El BCCh no publica vintages, así que el rezago
+es **declarado**, no medido, y va en el catálogo con su razón. El domingo
+27-09 ya estaban publicados el dólar observado y el cobre **del lunes 28**: el
+BCCh estampa el día d con datos del hábil anterior, así que usar su fecha no es
+lookahead (rezago 0). La TPM se anuncia antes de regir (0). El BCP 10 años es
+la tasa de transacciones del día (1). BCE y BoJ los carga el BCCh (1, margen de
+carga). Cada corrida re-pide 14 días y **cuenta** revisiones, que es lo único
+observable sin vintages.
+
 ## Operación
 
     cd backend
@@ -158,7 +189,28 @@ bitcoin (CME), oro, plata, WTI, gas y cobre. 1.059 semanas desde 2006-06 (bitcoi
     uv run python -m marea.data.ingest fred --full           # desde cero, ~2 min
     uv run python -m marea.data.ingest etf                   # 23 ETFs, ~45 s
     uv run python -m marea.data.ingest cot                   # 13 mercados COT, ~17 s
+    uv run python -m marea.data.ingest bcch                  # 6 series BCCh, ~12 s
+    uv run python -m marea.data.ingest todo                  # las cuatro en orden
 
 Si FRED no actualizó una serie desde la última corrida, se consulta solo su
 metadata: una corrida sin cambios cuesta 1 request por serie. La base es
 `backend/marea.db`, separada de `bob.db`.
+
+## Cierre de la M1 (2026-09-29)
+
+Corrida `todo` sobre las cuatro fuentes reales: **4/4 sin error, 1 min 50 s,
+95 requests** (FRED 53, Tiingo 23, CFTC 13, BCCh 6). Incremental: una barra
+nueva por ETF, 0 cierres revisados, 0 huecos, control contra `adjClose` en
+~1e-10 %.
+
+| fuente | contenido | desde | cuándo se conoce cada dato |
+|---|---|---|---|
+| FRED/ALFRED | 25 series de liquidez, tasas, crédito, FX, commodities, cripto | 1954–2023 según serie | **medido**: historial de vintages (`marea.pit.as_of`) |
+| Tiingo | 23 ETFs | 1993–2014 según ETF; universo común desde 2014-07 | cierre del día d, conocido al cierre |
+| CFTC | 13 mercados COT | 2006-06 (bitcoin 2018-04) | reporte + 6 días |
+| BCCh | 6 series diarias | 1982–2012 según serie | **declarado** por serie en el catálogo |
+
+Lo que la M1 deja resuelto para la M2 es la pregunta que decide si un
+monitor de liquidez es honesto: **qué se sabía en cada fecha**. Es exacta en
+FRED, declarada y conservadora en las otras tres.
+

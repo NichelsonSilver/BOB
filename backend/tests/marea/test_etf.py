@@ -13,7 +13,7 @@ import pytest
 
 from marea.data import ingest_etf, store
 from marea.data.ingest_etf import adj_close_gap_pct, calendar_gaps, sync_ticker
-from marea.data.tiingo import DailyBar, TiingoClient, TiingoError
+from marea.data.tiingo import DailyBar, TiingoClient, TiingoError, TiingoQuotaError
 from marea.returns import total_returns
 
 D = date.fromisoformat
@@ -100,10 +100,17 @@ class TestClient:
             DailyBar(D("2026-09-01"), 81.87, 81.87, 81.87, 81.87, 1000.0, 0.314686, 1.0, 81.87)
         ]
 
-    def test_429_espera_y_reintenta(self) -> None:
+    def test_5xx_reintenta_y_429_corta_sin_esperar(self) -> None:
         fake = FakeTiingo({"SPY": [row("2026-09-25", 700.0)]})
-        fake.fail_next = [429, 503]
+        fake.fail_next = [503]
         assert len(client(fake).daily("SPY", D("2026-01-01"), D("2026-12-31"))) == 1
+        waits: list[float] = []
+        fake.fail_next = [429]
+        c = client(fake)
+        c._sleep = waits.append  # noqa: SLF001
+        with pytest.raises(TiingoQuotaError, match="cuota"):
+            c.daily("SPY", D("2026-01-01"))
+        assert waits == []  # esperar no devuelve la cuota
 
     def test_error_con_detalle(self) -> None:
         with pytest.raises(TiingoError, match="not found"):
@@ -172,6 +179,23 @@ class TestControls:
 
 
 class TestRun:
+    def test_cuota_agotada_omite_el_resto_sin_pedirlo(self, conn: sqlite3.Connection) -> None:
+        good = adj_series([("2026-09-01", 100.0, 0.0, 1.0), ("2026-09-02", 101.0, 0.0, 1.0)])
+        fake = FakeTiingo({"A": good, "B": good, "C": good})
+        original = fake.handler
+        seen: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            t = request.url.path.split("/")[-2]
+            seen.append(t)
+            return httpx.Response(429, json={"detail": "hourly"}) if t == "B" else original(request)
+
+        fake.handler = handler  # type: ignore[method-assign]
+        reports = {r.ticker: r for r in ingest_etf.run(client(fake), conn, ["A", "B", "C"])}
+        assert reports["A"].status == "nuevo"
+        assert "cuota" in reports["B"].status and "omitido" in reports["C"].status
+        assert seen == ["A", "B"]  # C no se pidió
+
     def test_split_mal_leido_sale_con_error(self, conn: sqlite3.Connection) -> None:
         good = adj_series([("2026-09-01", 100.0, 0.0, 1.0), ("2026-09-02", 50.0, 0.0, 2.0)])
         bad = [dict(r) for r in good]

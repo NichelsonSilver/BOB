@@ -28,7 +28,7 @@ from datetime import date, timedelta
 import numpy as np
 
 from marea.data import store
-from marea.data.tiingo import DailyBar, TiingoClient
+from marea.data.tiingo import DailyBar, TiingoClient, TiingoQuotaError
 from marea.returns import total_returns
 
 OVERLAP_DAYS = 14
@@ -114,9 +114,16 @@ def print_reports(reports: list[EtfReport], requests_made: int) -> None:
 
 def run(client: TiingoClient, conn: sqlite3.Connection, tickers: list[str]) -> list[EtfReport]:
     partial: dict[str, tuple[str, int, int]] = {}
+    quota_hit = False
     for t in tickers:
+        if quota_hit:
+            partial[t] = ("error: omitido, cuota de Tiingo agotada", 0, 0)
+            continue
         try:
             partial[t] = sync_ticker(client, conn, t)
+        except TiingoQuotaError as exc:
+            quota_hit = True
+            partial[t] = (f"error: {exc}", 0, 0)
         except Exception as exc:  # noqa: BLE001 — un ETF roto no tira la corrida
             partial[t] = (f"error: {type(exc).__name__}: {exc}", 0, 0)
 

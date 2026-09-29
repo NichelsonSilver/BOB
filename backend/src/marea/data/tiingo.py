@@ -9,8 +9,12 @@ Tres decisiones, cada una con su razón medida o declarada:
    `marea.returns` a partir del crudo, y `adjClose` se guarda solo como
    control cruzado.
 2. **Rate limit del plan gratuito: 50 requests/hora, 1.000/día.** Con 23 ETFs
-   la carga inicial son 23 requests; se espacia igual (regla 7) y un 429 espera
-   en vez de reintentar en ráfaga.
+   la carga inicial son 23 requests y se espacian igual (regla 7). **Un 429 no
+   se reintenta**: significa que la cuota de la hora se agotó, y esperar un
+   minuto no la devuelve. La primera versión esperaba 75 s por reintento y ETF
+   por ETF; medido el 2026-09-27, una corrida con la cuota agotada tardó 10
+   minutos para terminar fallando igual. Ahora se levanta `TiingoQuotaError` y
+   la corrida marca el resto como omitido; la próxima, idempotente, lo completa.
 3. **Licencia de uso interno.** Los precios no salen del equipo de Nichelson:
    ni al repo, ni a un artefacto publicado. Métricas sí.
 """
@@ -23,17 +27,18 @@ from dataclasses import dataclass
 from datetime import date
 
 import httpx
-from loguru import logger
 
 BASE_URL = "https://api.tiingo.com/tiingo"
-#: 50/hora = 1 cada 72 s como máximo sostenido; la carga inicial (23) cabe en
-#: la hora con 2 s de separación, y un 429 activa la espera larga.
+#: 50/hora; la carga diaria (23) cabe con 2 s de separación.
 MIN_INTERVAL_S = 2.0
-WAIT_ON_429_S = 75.0
 
 
 class TiingoError(RuntimeError):
     pass
+
+
+class TiingoQuotaError(TiingoError):
+    """Cuota por hora agotada (429). No tiene sentido seguir pidiendo en esta corrida."""
 
 
 @dataclass(frozen=True)
@@ -82,10 +87,8 @@ class TiingoClient:
             self._last_call = time.monotonic()
             self.requests_made += 1
             r = self._http.get(path, params=params)
-            if r.status_code == 429 and attempt < self._max_retries:
-                logger.warning("Tiingo 429 (límite por hora), espero {} s", WAIT_ON_429_S)
-                self._sleep(WAIT_ON_429_S)
-                continue
+            if r.status_code == 429:
+                raise TiingoQuotaError(f"{path}: cuota de Tiingo agotada (50 requests/hora)")
             if r.status_code >= 500 and attempt < self._max_retries:
                 self._sleep(2.0**attempt)
                 continue

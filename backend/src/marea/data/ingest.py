@@ -5,6 +5,8 @@
     uv run python -m marea.data.ingest fred --full       # re-baja desde cero
     uv run python -m marea.data.ingest etf               # ETFs (Tiingo)
     uv run python -m marea.data.ingest cot               # posicionamiento CFTC
+    uv run python -m marea.data.ingest bcch              # Banco Central de Chile
+    uv run python -m marea.data.ingest todo              # las cuatro, en orden
 
 Incremental: si FRED no actualizó la serie desde la última corrida
 (`last_updated` igual) no se pide nada. Si sí, se piden solo las vintages desde
@@ -18,15 +20,19 @@ from __future__ import annotations
 import argparse
 import sqlite3
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 
 from loguru import logger
 
 from bob.utils.console import enable_utf8_stdout
 from marea.config import DB_PATH, MareaSettings
-from marea.data import ingest_cot, ingest_etf, store
+from marea.data import ingest_bcch, ingest_cot, ingest_etf, store
+from marea.data.bcch import BcchClient
 from marea.data.catalog import (
+    BCCH_BY_ID,
+    BCCH_SERIES,
     BY_ID,
     COT_BY_CODE,
     COT_MARKETS,
@@ -142,14 +148,47 @@ def main(argv: list[str] | None = None) -> int:
     p_etf.add_argument("--tickers", nargs="+", help="tickers del catálogo (default: todos)")
     p_cot = sub.add_parser("cot", help="posicionamiento COT de la CFTC")
     p_cot.add_argument("--codes", nargs="+", help="códigos de contrato (default: todos)")
+    p_bcch = sub.add_parser("bcch", help="series diarias del Banco Central de Chile")
+    p_bcch.add_argument("--series", nargs="+", dest="bcch_series", help="ids del catálogo")
+    sub.add_parser("todo", help="las cuatro fuentes, con sus catálogos completos")
     args = parser.parse_args(argv)
 
+    if args.source == "todo":
+        return _main_all(parser)
+    if args.source == "bcch":
+        return _main_bcch(parser, args.bcch_series)
     if args.source == "etf":
         return _main_etf(parser, args.tickers)
     if args.source == "cot":
         return _main_cot(parser, args.codes)
+    return _main_fred(parser, args.series, args.full)
 
-    ids: list[str] = args.series or [s.id for s in FRED_SERIES]
+
+def _main_all(parser: argparse.ArgumentParser) -> int:
+    """Corre las cuatro fuentes. Una que falle (sin key, sin red) no frena a las otras."""
+    steps: list[tuple[str, Callable[[], int]]] = [
+        ("FRED", lambda: _main_fred(parser, None, full=False)),
+        ("Tiingo", lambda: _main_etf(parser, None)),
+        ("CFTC", lambda: _main_cot(parser, None)),
+        ("BCCh", lambda: _main_bcch(parser, None)),
+    ]
+    failed: list[str] = []
+    for name, step in steps:
+        print(f"\n=== {name} ===")
+        try:
+            code = step()
+        except Exception as exc:  # noqa: BLE001 — una fuente caída no tira las demás
+            logger.error("{}: {}", name, exc)
+            code = 1
+        if code:
+            failed.append(name)
+    tail = f"; fallaron: {', '.join(failed)}" if failed else ""
+    print(f"\n=== resumen: {len(steps) - len(failed)}/{len(steps)} fuentes sin error{tail}")
+    return 1 if failed else 0
+
+
+def _main_fred(parser: argparse.ArgumentParser, requested: list[str] | None, full: bool) -> int:
+    ids: list[str] = requested or [s.id for s in FRED_SERIES]
     unknown = [i for i in ids if i not in BY_ID]
     if unknown:
         parser.error(f"fuera del catálogo: {', '.join(unknown)} (ver marea.data.catalog)")
@@ -161,7 +200,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         for sid in ids:
             try:
-                reports.append(sync_series(client, conn, sid, full=args.full))
+                reports.append(sync_series(client, conn, sid, full=full))
             except FredError as exc:
                 logger.error("{}: {}", sid, exc)
                 reports.append(SyncReport(sid, f"error: {exc}"))
@@ -189,6 +228,26 @@ def _main_etf(parser: argparse.ArgumentParser, requested: list[str] | None) -> i
         client.close()
         conn.close()
     ingest_etf.print_reports(reports, client.requests_made)
+    return 1 if any(r.status.startswith("error") for r in reports) else 0
+
+
+def _main_bcch(parser: argparse.ArgumentParser, requested: list[str] | None) -> int:
+    ids = requested or [s.id for s in BCCH_SERIES]
+    unknown = [i for i in ids if i not in BCCH_BY_ID]
+    if unknown:
+        parser.error(f"fuera del catálogo: {', '.join(unknown)} (ver marea.data.catalog)")
+    cfg = MareaSettings()
+    client = BcchClient(
+        cfg.bcch_user or "", cfg.bcch_pass.get_secret_value() if cfg.bcch_pass else ""
+    )
+    conn = store.connect(DB_PATH)
+    try:
+        today = datetime.now(UTC).date()
+        reports = ingest_bcch.run(client, conn, [BCCH_BY_ID[i] for i in ids], today)
+    finally:
+        client.close()
+        conn.close()
+    ingest_bcch.print_reports(reports, client.requests_made)
     return 1 if any(r.status.startswith("error") for r in reports) else 0
 
 
