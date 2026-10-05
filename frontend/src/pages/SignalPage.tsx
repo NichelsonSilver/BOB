@@ -75,6 +75,13 @@ export function SignalPage() {
     enabled: enabled && Boolean(latest.data?.forecast),
     retry: false,
   });
+  const stopFilter = useQuery({
+    queryKey: ["stopfilter"],
+    queryFn: () => api.stopFilter(),
+    enabled,
+    retry: false,
+    staleTime: 300_000,
+  });
   const recent = useQuery({
     queryKey: ["history", symbol, timeframe, 96],
     queryFn: () => api.history({ ...target, limit: 96 }),
@@ -141,6 +148,7 @@ export function SignalPage() {
           <RegimeFilter
             regime={forecast.regime}
             evidence={riskFilter.data ?? null}
+            stopEvidence={stopFilter.data ?? null}
           />
 
           {/* --- Chart + proyección ------------------------------------- */}

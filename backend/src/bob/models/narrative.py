@@ -124,8 +124,8 @@ def _volatility(s: MarketSnapshot) -> dict[str, Any]:
     if s.regime_elevated:
         parts.append(
             "El filtro de régimen está ELEVADO: es el tipo de momento en que se concentran "
-            "las liquidaciones, y la sigma subestima los picos. Lo prudente es esperar o "
-            "entrar con menos riesgo."
+            "las liquidaciones y en que el mismo stop salta bastante más seguido. Lo prudente "
+            "es esperar o entrar con menos riesgo."
         )
     elif s.regime_elevated is not None:
         parts.append("El filtro de régimen está en normal: no hay alerta de volatilidad.")

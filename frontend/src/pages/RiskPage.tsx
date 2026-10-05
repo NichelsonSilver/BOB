@@ -7,7 +7,7 @@ import { useTarget } from "../hooks/useTarget";
 import { api } from "../lib/api";
 import { isNum, multiplier, num, pct, price, stamp } from "../lib/format";
 import { tickPrice, useAppStore } from "../stores/appStore";
-import type { SizingResponse } from "../types";
+import type { SizingResponse, StopFilterEvidence } from "../types";
 
 /**
  * Calculadora de riesgo: cuánto comprar dado cuánto se está dispuesto a perder.
@@ -114,6 +114,12 @@ export function RiskPage() {
   const riskFilter = useQuery({
     queryKey: ["riskfilter"],
     queryFn: () => api.riskFilter(),
+    retry: false,
+    staleTime: 300_000,
+  });
+  const stopFilter = useQuery({
+    queryKey: ["stopfilter"],
+    queryFn: () => api.stopFilter(),
     retry: false,
     staleTime: 300_000,
   });
@@ -233,7 +239,11 @@ export function RiskPage() {
         {/* --- Resultado --------------------------------------------------- */}
         <div className="space-y-4 xl:col-span-2">
           {fresh ? (
-            <RegimeFilter regime={forecast.regime} evidence={riskFilter.data ?? null} />
+            <RegimeFilter
+              regime={forecast.regime}
+              evidence={riskFilter.data ?? null}
+              stopEvidence={stopFilter.data ?? null}
+            />
           ) : (
             <Card title="Filtro de régimen" right={<Badge tone="muted">sin estado</Badge>}>
               <p className="text-sm text-neutral-500">
@@ -257,6 +267,7 @@ export function RiskPage() {
           {s && (
             <SizingResult
               s={s}
+              calibration={stopFilter.data ?? null}
               horizonHours={
                 fresh && lastCandle.data
                   ? (forecast.horizon_bars * lastCandle.data.interval_ms) / 3_600_000
@@ -270,7 +281,25 @@ export function RiskPage() {
   );
 }
 
-function SizingResult({ s, horizonHours }: { s: SizingResponse; horizonHours: number | null }) {
+function SizingResult({
+  s,
+  horizonHours,
+  calibration,
+}: {
+  s: SizingResponse;
+  horizonHours: number | null;
+  calibration: StopFilterEvidence | null;
+}) {
+  const gap = (k: string) => calibration?.calibration_gap[k];
+  const touchHint = calibration
+    ? `Fórmula de camino aleatorio sobre la sigma pronosticada. Medido con stop a ${pct(
+        calibration.stop_pct,
+        1,
+      )}: brecha observado − predicho ${pct(gap("normal"), 1)} en normal y ${pct(
+        gap("elevado"),
+        1,
+      )} en elevado (calibrada). Dimensiona, no predice dirección.`
+    : "Fórmula de camino aleatorio sobre la sigma pronosticada; sin medición de calibración. Dimensiona, no predice dirección.";
   const dirTone = s.direction === "long" ? "text-accent" : "text-danger";
   const danger = s.warnings.some((w) => w.level === "danger");
   return (
@@ -362,7 +391,7 @@ function SizingResult({ s, horizonHours }: { s: SizingResponse; horizonHours: nu
               <Row
                 label="P(el ruido toca el stop)"
                 value={`≈ ${pct(s.p_touch_stop, 0)}`}
-                hint="Camino sin deriva y colas normales: subestima en cripto, más en régimen elevado. Dimensiona, no predice."
+                hint={touchHint}
               />
               {s.p_touch_target !== null && (
                 <Row label="P(el ruido toca el objetivo)" value={`≈ ${pct(s.p_touch_target, 0)}`} />

@@ -118,3 +118,18 @@ misma y **la medición es inválida**, pase lo que pase con C1 y C2.
 - El filtro original y su artefacto no se tocan. Esta es una lectura nueva
   del mismo objeto, no un reemplazo.
 - No se toca la corrida forward del panel (regla 12).
+
+---
+
+**Resultado (enlace agregado después de correr, sin tocar lo de arriba):**
+`backend/artifacts/stopfilter-ETHUSDT-15m-price+deriv-gbm-20261005170642.txt|.json`.
+
+- El control **reproduce** (lift 20x = 3,077).
+- **C1 PASA**: lift 1,701, IC95% [1,654; 1,754]; diferencia contra EWMA
+  +0,189, IC95% [+0,149; +0,234]. El stop salta ×2,03: 55,9% de los setups
+  en elevado contra 27,5% en normal.
+- **C2: la calculadora queda como está.** La brecha es −0,8 pp en normal y
+  −1,3 pp en elevado: sobreestima levemente y no subestima. La sospecha
+  declarada en §3 resultó falsa a esta distancia.
+- La expectancy no cambia con el régimen (−0,140 R contra −0,142 R), y no
+  hubo pérdidas peores que la planeada.

@@ -1,6 +1,6 @@
 import { Badge, Card } from "../common/Card";
 import { count, num, pct } from "../../lib/format";
-import type { RegimeState, RiskFilterEvidence } from "../../types";
+import type { RegimeState, RiskFilterEvidence, StopFilterEvidence } from "../../types";
 
 /**
  * Filtro de régimen — **lo único del stack que pasó su criterio como regla de
@@ -58,9 +58,13 @@ function Meter({ percentile, q }: { percentile: number; q: number }) {
 export function RegimeFilter({
   regime,
   evidence,
+  stopEvidence = null,
 }: {
   regime: RegimeState | null;
   evidence: RiskFilterEvidence | null;
+  /** La lectura con stop (05-10). Es la que le importa a quien opera con
+   *  stop y leverage bajo; sin ella se cae al texto de alcance genérico. */
+  stopEvidence?: StopFilterEvidence | null;
 }) {
   if (!regime) {
     return (
@@ -146,12 +150,33 @@ export function RegimeFilter({
             liquidaban.
           </p>
           <p className="mt-1">
-            Alcance: se midió a {num(evidence.leverage, 0)}x sin stop. A 5x no
-            hubo una sola liquidación en dos años y a 10x salió sin potencia.
-            Operando con stop y leverage bajo, lo que el estado te dice no es
-            "te van a liquidar", sino que viene movimiento grande: el mismo
-            stop salta más seguido y la sigma subestima la cola.
+            Alcance: eso se midió a {num(evidence.leverage, 0)}x sin stop. A
+            5x no hubo una sola liquidación en dos años.
           </p>
+          {stopEvidence && stopEvidence.reproduces && stopEvidence.c1_pass ? (
+            <p className="mt-1">
+              <span className="text-neutral-300">Con stop a {pct(stopEvidence.stop_pct, 1)}</span>,
+              que es lo que te importa operando con poco leverage: en régimen
+              elevado el stop salta{" "}
+              <span className="text-neutral-300">
+                {num(stopEvidence.hit_rate_ratio, 2)} veces más seguido
+              </span>{" "}
+              ({pct(stopEvidence.hit_rate_elevated, 0)} de los setups en{" "}
+              {stopEvidence.horizon_bars} velas, contra{" "}
+              {pct(stopEvidence.hit_rate_normal, 0)} en normal). Lift{" "}
+              {num(stopEvidence.lift, 2)}, IC95%{" "}
+              {num(stopEvidence.lift_ci95[0], 2)}–{num(stopEvidence.lift_ci95[1], 2)},
+              mejor que el mismo filtro con EWMA. La ganancia esperada no cambia
+              ({num(stopEvidence.expectancy_r.elevado, 2)} R en elevado contra{" "}
+              {num(stopEvidence.expectancy_r.normal, 2)} R en normal): se toca
+              más el stop y también el objetivo. Lo que cambia son las rachas.
+            </p>
+          ) : (
+            <p className="mt-1">
+              Sin medición con stop: no hay evidencia de cómo se comporta un
+              stop en régimen elevado.
+            </p>
+          )}
           <p className="mt-2 text-neutral-600">
             El filtro <strong>no dice hacia dónde entrar</strong> — no tiene
             opinión direccional, y el KPI 1 sigue sin pasar el gate. Tampoco

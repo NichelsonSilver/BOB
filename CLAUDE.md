@@ -2019,6 +2019,33 @@ no se mezcla con la fase M en curso.
    liquidación a 20x en forward no tiene potencia en plazos razonables; si
    se hace, la pregunta tiene que ser otra y pre-registrada.
 
+5. ✅ **Lectura del mercado en lenguaje natural** (`models/narrative.py`,
+   `/api/analysis/narrative`, arriba de la página Signal). Se arma con
+   plantillas, sin LLM. Cada sección declara su respaldo: validado,
+   descriptivo, sin ventaja medida o alcance. Un test prohíbe frases que
+   pronostiquen dirección. Al leer el primer texto apareció un bug de
+   `cluster_levels`: encadenaba pivotes en escalera y producía
+   "resistencias" de 37 toques. Corregido, con un test que falla contra el
+   código previo.
+6. ✅ **El filtro leído con stop** (`docs/PREREGISTRO_FILTRO_STOP.md`,
+   commit `015c9eb`, antes de correr). Un stop a `d` es una liquidación a
+   otra distancia, así que se reutilizó la maquinaria de la 5-bis, con un
+   control que reproduce su lift a 20x (3,077). Resultados:
+   - **C1 pasa.** Con stop a 1%, el stop salta **×2,03** en régimen
+     elevado (55,9% contra 27,5% de los setups en 4 h). Lift 1,70 [1,65;
+     1,75], mejor que EWMA.
+   - **C2: la `P(toque)` de la calculadora está calibrada.** La brecha es
+     −0,8 / −1,3 pp, o sea que sobreestima levemente. La advertencia
+     "subestima, más en régimen elevado" era falsa y se sacó de la UI, de
+     `sizing.py`, de `narrative.py` y del docstring de `prob_touch`. La cola
+     extrema de la Fase 5 sigue siendo cierta, pero a otra escala.
+   - **La expectancy no cambia con el régimen** (−0,14 R en los dos): el
+     filtro cambia la frecuencia de los stops, y con ella las rachas, no la
+     ganancia esperada.
+
+   `RegimeFilter` y la calculadora citan esto desde
+   `/api/backtest/stopfilter`, no desde el TSX.
+
 ### Fase 7 — Alertas Telegram + sentimiento (F&G, CoinGecko)
 ### Fase 8 — Outliers Club + multi-símbolo watchlist
 ### Fase 9 — Validación end-to-end

@@ -26,6 +26,7 @@ import type {
   RunsResponse,
   SettingsResponse,
   SizingResponse,
+  StopFilterEvidence,
   TechnicalResponse,
   TechnicalTf,
 } from "../types";
@@ -105,6 +106,8 @@ export const api = {
   forward: () => request<ForwardArtifact>("/api/backtest/forward"),
 
   riskFilter: () => request<RiskFilterEvidence>("/api/backtest/riskfilter"),
+
+  stopFilter: () => request<StopFilterEvidence>("/api/backtest/stopfilter"),
 
   settings: () => request<SettingsResponse>("/api/settings"),
 

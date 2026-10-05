@@ -42,6 +42,7 @@ FORWARD_PREFIX = "forward-"
 #: Igual que el anterior: los artefactos del filtro de régimen (Fase 5-bis)
 #: comparten directorio y tienen su propio esquema.
 RISKFILTER_PREFIX = "riskfilter-"
+STOPFILTER_PREFIX = "stopfilter-"
 
 #: El timestamp con que `runner.build_run_id` cierra el nombre: `...-YYYYmmddHHMMSS`.
 _STAMP_RE = re.compile(r"(\d{14})$")
@@ -317,3 +318,47 @@ async def forward() -> dict[str, Any]:
         lambda: json.loads(path.read_text(encoding="utf-8"))
     )
     return {"artifact_id": path.stem, "frozen": True, "report": raw}
+
+
+@router.get("/backtest/stopfilter")
+async def stopfilter() -> dict[str, Any]:
+    """El filtro de régimen leído con stop (`PREREGISTRO_FILTRO_STOP.md`).
+
+    Es la evidencia de las dos frases que la página Riesgo le dice a un
+    operador con stop: cuánto más seguido salta el stop en régimen elevado, y
+    qué tan calibrada está la P de toque de la calculadora. Sale del artefacto
+    por la misma razón que el resto: si se remide, el dashboard cambia solo.
+    """
+    paths = sorted(p for p in ARTIFACTS_DIR.glob(f"{STOPFILTER_PREFIX}*.json") if p.is_file())
+    if not paths:
+        raise HTTPException(status_code=404, detail="no hay medición del filtro con stop")
+    path = paths[-1]
+    raw: dict[str, Any] = await in_thread(lambda: json.loads(path.read_text(encoding="utf-8")))
+    primary = raw.get("primary", {})
+    cal = raw.get("calibration", {})
+    bracket = raw.get("bracket", {})
+
+    def rate(label: str) -> float | None:
+        c = cal.get(label)
+        return None if c is None else c.get("observed")
+
+    return {
+        "artifact_id": path.stem,
+        "preregistration": raw.get("config", {}).get("preregistration"),
+        "reproduces": raw.get("reproduction", {}).get("ok", False),
+        "c1_pass": raw.get("verdict", {}).get("c1_pass", False),
+        "stop_pct": raw.get("config", {}).get("primary_stop"),
+        "horizon_bars": raw.get("config", {}).get("horizon"),
+        "hit_rate_ratio": primary.get("hit_rate_ratio", {}).get("model"),
+        "hit_rate_normal": rate("normal"),
+        "hit_rate_elevated": rate("elevado"),
+        "lift": primary.get("lifts", {}).get("model", {}).get("lift"),
+        "lift_ci95": primary.get("lift_ci95"),
+        "diff_vs_baseline_ci95": primary.get("diff_ci95"),
+        "calibration_gap": {k: v.get("gap") for k, v in cal.items()},
+        "calibration_gap_ci95": {k: v.get("gap_ci95") for k, v in cal.items()},
+        "calculator_needs_correction": raw.get("verdict", {}).get(
+            "calculator_needs_correction", []
+        ),
+        "expectancy_r": {k: v.get("mean_r") for k, v in bracket.items()},
+    }

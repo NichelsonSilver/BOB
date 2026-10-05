@@ -318,8 +318,8 @@ def _warnings(s: Sizing, min_notional: float) -> list[SizingWarning]:
                 "danger" if s.leverage >= ELEVATED_LEVERAGE else "warn",
                 "Filtro de régimen ELEVADO: la volatilidad pronosticada está en el "
                 "20% más alto de su historia. Es donde se concentran las liquidaciones "
-                "(evitarlo evitó el 52% a 20x) y donde la sigma subestima el "
-                "movimiento. Mejor no entrar, o hacerlo con menos riesgo y stop más ancho.",
+                "(evitarlo evitó el 52% a 20x) y donde el mismo stop salta bastante más "
+                "seguido. Mejor no entrar, o hacerlo con menos riesgo y stop más ancho.",
             )
         )
     return out

@@ -749,3 +749,23 @@ export type NarrativeResponse = {
   headline: string;
   sections: NarrativeSection[];
 };
+
+/** El filtro leído con stop (PREREGISTRO_FILTRO_STOP.md), desde su artefacto. */
+export type StopFilterEvidence = {
+  artifact_id: string;
+  preregistration: string | null;
+  reproduces: boolean;
+  c1_pass: boolean;
+  stop_pct: number;
+  horizon_bars: number;
+  hit_rate_ratio: number;
+  hit_rate_normal: number;
+  hit_rate_elevated: number;
+  lift: number;
+  lift_ci95: [number, number];
+  diff_vs_baseline_ci95: [number, number];
+  calibration_gap: Record<string, number>;
+  calibration_gap_ci95: Record<string, [number, number]>;
+  calculator_needs_correction: string[];
+  expectancy_r: Record<string, number>;
+};

@@ -652,3 +652,32 @@ def test_mapa_tecnico_trae_zonas_y_la_evidencia_del_backtest(
 
 def test_narrativa_404_sin_pronosticos(client: TestClient) -> None:
     assert client.get(f"/api/analysis/narrative?symbol={SYMBOL}").status_code == 404
+
+
+def test_stopfilter_sale_del_artefacto(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert client.get("/api/backtest/stopfilter").status_code in (200, 404)
+    monkeypatch.setattr(backtest_routes, "ARTIFACTS_DIR", tmp_path)
+    assert client.get("/api/backtest/stopfilter").status_code == 404
+    art = {
+        "config": {"preregistration": "docs/PREREGISTRO_FILTRO_STOP.md", "primary_stop": 0.01,
+                   "horizon": 16},
+        "reproduction": {"ok": True},
+        "verdict": {"c1_pass": True, "calculator_needs_correction": []},
+        "primary": {"hit_rate_ratio": {"model": 2.03}, "lifts": {"model": {"lift": 1.7}},
+                    "lift_ci95": [1.65, 1.75], "diff_ci95": [0.15, 0.23]},
+        "calibration": {"normal": {"observed": 0.275, "gap": -0.008, "gap_ci95": [-0.016, -0.001]},
+                        "elevado": {"observed": 0.559, "gap": -0.013,
+                                    "gap_ci95": [-0.026, -0.001]}},
+        "bracket": {"normal": {"mean_r": -0.14}, "elevado": {"mean_r": -0.142}},
+    }
+    (tmp_path / "stopfilter-ETHUSDT-15m-price+deriv-gbm-20261005170642.json").write_text(
+        json.dumps(art), encoding="utf-8"
+    )
+    body = client.get("/api/backtest/stopfilter").json()
+    assert body["c1_pass"] and body["reproduces"]
+    assert body["hit_rate_elevated"] == 0.559 and body["hit_rate_ratio"] == 2.03
+    # No se cuela en el listado del gate.
+    runs = client.get("/api/backtest/runs").json()["runs"]
+    assert all(not r["run_id"].startswith("stopfilter-") for r in runs)

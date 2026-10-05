@@ -269,8 +269,16 @@ def prob_touch(distance_pct: float, sigma_horizon: float) -> float:
     Primer paso de un movimiento browniano sin deriva: P = erfc(d / (σ·√2)),
     que es exactamente 2·Φ(−d/σ). Es una **aproximación declarada**, no una
     probabilidad calibrada: asume caminata aleatoria, sin deriva y con colas
-    normales, y las colas de cripto son más gordas — así que subestima. Sirve
-    para dimensionar riesgo ("la liquidación está a 3σ"), no para operar.
+    normales, y las colas de cripto son más gordas. Sirve para dimensionar
+    riesgo ("la liquidación está a 3σ"), no para operar.
+
+    **Medido (05-10, `PREREGISTRO_FILTRO_STOP.md`)**: con la sigma OOF del
+    modelo, a 4 h y con un stop a 1%, NO subestima. La brecha observado −
+    predicho es −0,8 pp en régimen normal y −1,3 pp en elevado, o sea que
+    sobreestima levemente, y en los dos regímenes igual. La sospecha de las
+    colas gordas vale para la cola extrema (techo de la sigma, Fase 5), no a
+    la distancia de un stop típico. Con stop a 2% la brecha sí es positiva
+    en régimen normal (+2,9 pp, exploratoria).
     """
     if sigma_horizon <= 0:
         return float("nan")

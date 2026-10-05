@@ -1,0 +1,617 @@
+{
+  "config": {
+    "symbol": "ETHUSDT",
+    "timeframe": "15m",
+    "until": "2026-09-14T00:45",
+    "n_bars": 71344,
+    "features": "price+deriv",
+    "vol_model": "gbm",
+    "horizon": 16,
+    "min_warmup": 2000,
+    "primary_stop": 0.01,
+    "q": 0.8,
+    "baseline": "ewma",
+    "n_boot": 5000,
+    "seed": 0,
+    "cost_pct": 0.0014,
+    "bracket_r": 2.0,
+    "calibration_tolerance": 0.05,
+    "preregistration": "docs/PREREGISTRO_FILTRO_STOP.md"
+  },
+  "primary": {
+    "n_bars": 43422,
+    "n_events": 28514,
+    "event_rate": 0.32833586661139513,
+    "lifts": {
+      "model": {
+        "label": "model",
+        "n": 43422,
+        "n_rejected": 7333,
+        "n_events": 28514,
+        "n_events_rejected": 8193,
+        "lift": 1.7014255396835982,
+        "reject_rate": 0.16887752752061166,
+        "capture_rate": 0.2873325384021884,
+        "false_reject_rate": 0.1109720555460312
+      },
+      "ewma": {
+        "label": "ewma",
+        "n": 43422,
+        "n_rejected": 7110,
+        "n_events": 28514,
+        "n_events_rejected": 7061,
+        "lift": 1.5123359936594918,
+        "reject_rate": 0.16374188199530193,
+        "capture_rate": 0.2476327418110402,
+        "false_reject_rate": 0.12273272758443339
+      },
+      "garch": {
+        "label": "garch",
+        "n": 43422,
+        "n_rejected": 7436,
+        "n_events": 28514,
+        "n_events_rejected": 7536,
+        "lift": 1.5433100575190024,
+        "reject_rate": 0.17124959697849015,
+        "capture_rate": 0.2642912253629796,
+        "false_reject_rate": 0.12576718669638265
+      },
+      "har": {
+        "label": "har",
+        "n": 43422,
+        "n_rejected": 7079,
+        "n_events": 28514,
+        "n_events_rejected": 7351,
+        "lift": 1.5813433921521147,
+        "reject_rate": 0.16302795817788218,
+        "capture_rate": 0.2578031844006453,
+        "false_reject_rate": 0.11669809703411624
+      }
+    },
+    "lift_ci95": [
+      1.653645502368344,
+      1.753725914431658
+    ],
+    "diff_vs_baseline": 0.18908954602410644,
+    "diff_ci95": [
+      0.1487572496615972,
+      0.23409019949900975
+    ],
+    "hit_rate_ratio": {
+      "model": 2.031300891858721,
+      "ewma": 1.7138885387216365,
+      "garch": 1.7747744009560724,
+      "har": 1.820262273965676
+    },
+    "beats_chance": true,
+    "beats_baseline": true
+  },
+  "calibration": {
+    "todas": {
+      "label": "todas",
+      "n_bars": 41422,
+      "predicted": 0.33438105049540834,
+      "observed": 0.3252257254599005,
+      "gap": -0.00915532503550781,
+      "gap_ci95": [
+        -0.01571899153565487,
+        -0.0028843297393888146
+      ],
+      "ratio": 0.9726200841167776,
+      "needs_correction": false
+    },
+    "normal": {
+      "label": "normal",
+      "n_bars": 34089,
+      "predicted": 0.2833161048556531,
+      "observed": 0.2750154008624483,
+      "gap": -0.008300703993204817,
+      "gap_ci95": [
+        -0.01558161946164232,
+        -0.001377697731907623
+      ],
+      "ratio": 0.9707016161420334,
+      "needs_correction": false
+    },
+    "elevado": {
+      "label": "elevado",
+      "n_bars": 7333,
+      "predicted": 0.5717672405831783,
+      "observed": 0.5586390290467749,
+      "gap": -0.013128211536403422,
+      "gap_ci95": [
+        -0.025820313884451225,
+        -0.0007559835125028354
+      ],
+      "ratio": 0.9770392379895476,
+      "needs_correction": false
+    }
+  },
+  "reproduction": {
+    "lift_20x": 3.0766699821384127,
+    "expected": 3.077,
+    "ok": true
+  },
+  "verdict": {
+    "c1_pass": true,
+    "calculator_needs_correction": []
+  },
+  "exploratory": [
+    {
+      "stop": 0.005,
+      "q": 0.8,
+      "n_bars": 43422,
+      "n_events": 50788,
+      "event_rate": 0.5848187554695776,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 7333,
+          "n_events": 50788,
+          "n_events_rejected": 11364,
+          "lift": 1.3249462251004895,
+          "reject_rate": 0.16887752752061166,
+          "capture_rate": 0.22375364259273844,
+          "false_reject_rate": 0.0915797648102951
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 7110,
+          "n_events": 50788,
+          "n_events_rejected": 10336,
+          "lift": 1.2428869040794712,
+          "reject_rate": 0.16374188199530193,
+          "capture_rate": 0.20351264078128692,
+          "false_reject_rate": 0.10772132238739739
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 7436,
+          "n_events": 50788,
+          "n_events_rejected": 10936,
+          "lift": 1.2573837186616705,
+          "reject_rate": 0.17124959697849015,
+          "capture_rate": 0.21532645506812634,
+          "false_reject_rate": 0.10916352340803195
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 7079,
+          "n_events": 50788,
+          "n_events_rejected": 10535,
+          "lift": 1.2723639031293708,
+          "reject_rate": 0.16302795817788218,
+          "capture_rate": 0.207430889186422,
+          "false_reject_rate": 0.10048258264921234
+        }
+      },
+      "lift_ci95": [
+        1.30426080732395,
+        1.3469454717245621
+      ],
+      "diff_vs_baseline": 0.08205932102101832,
+      "diff_ci95": [
+        0.06253553183259063,
+        0.10180681535325523
+      ],
+      "hit_rate_ratio": {
+        "model": 1.4308763616114335,
+        "ewma": 1.3144378042230267,
+        "garch": 1.338294901397858,
+        "har": 1.3539274898620985
+      },
+      "beats_chance": true,
+      "beats_baseline": true,
+      "calibration": {
+        "todas": {
+          "label": "todas",
+          "n_bars": 41422,
+          "predicted": 0.6100114363756964,
+          "observed": 0.5828303799913089,
+          "gap": -0.027181056384387503,
+          "gap_ci95": [
+            -0.03294686308008573,
+            -0.021366207481043606
+          ],
+          "ratio": 0.955441726558636,
+          "needs_correction": false
+        },
+        "normal": {
+          "label": "normal",
+          "n_bars": 34089,
+          "predicted": 0.5741400451029751,
+          "observed": 0.5415236586582182,
+          "gap": -0.03261638644475695,
+          "gap_ci95": [
+            -0.03900417774230934,
+            -0.0260948637653764
+          ],
+          "ratio": 0.9431908874447051,
+          "needs_correction": false
+        },
+        "elevado": {
+          "label": "elevado",
+          "n_bars": 7333,
+          "predicted": 0.7767671785134027,
+          "observed": 0.7748534024273831,
+          "gap": -0.001913776086019614,
+          "gap_ci95": [
+            -0.011078171072385762,
+            0.007274058580549981
+          ],
+          "ratio": 0.9975362294662318,
+          "needs_correction": false
+        }
+      }
+    },
+    {
+      "stop": 0.02,
+      "q": 0.8,
+      "n_bars": 43422,
+      "n_events": 9917,
+      "event_rate": 0.11419326608631569,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 7333,
+          "n_events": 9917,
+          "n_events_rejected": 3974,
+          "lift": 2.3728795174776773,
+          "reject_rate": 0.16887752752061166,
+          "capture_rate": 0.4007260260159322,
+          "false_reject_rate": 0.13898891156551016
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 7110,
+          "n_events": 9917,
+          "n_events_rejected": 3152,
+          "lift": 1.9410919918019984,
+          "reject_rate": 0.16374188199530193,
+          "capture_rate": 0.3178380558636684,
+          "false_reject_rate": 0.1438766622902232
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 7436,
+          "n_events": 9917,
+          "n_events_rejected": 3292,
+          "lift": 1.9384292532809844,
+          "reject_rate": 0.17124959697849015,
+          "capture_rate": 0.3319552283956842,
+          "false_reject_rate": 0.15053232285153456
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 7079,
+          "n_events": 9917,
+          "n_events_rejected": 3337,
+          "lift": 2.0640195384653492,
+          "reject_rate": 0.16302795817788218,
+          "capture_rate": 0.33649289099526064,
+          "false_reject_rate": 0.1406658260428718
+        }
+      },
+      "lift_ci95": [
+        2.245337020476686,
+        2.508715168961008
+      ],
+      "diff_vs_baseline": 0.4317875256756789,
+      "diff_ci95": [
+        0.3090277434310983,
+        0.5555033907922582
+      ],
+      "hit_rate_ratio": {
+        "model": 3.3650234474145244,
+        "ewma": 2.4098812968043366,
+        "garch": 2.437780400964009,
+        "har": 2.6422544856385763
+      },
+      "beats_chance": true,
+      "beats_baseline": true,
+      "calibration": {
+        "todas": {
+          "label": "todas",
+          "n_bars": 41422,
+          "predicted": 0.08908698609784207,
+          "observed": 0.11423881029404664,
+          "gap": 0.02515182419620457,
+          "gap_ci95": [
+            0.019856697770825896,
+            0.030827412869826338
+          ],
+          "ratio": 1.282328825992395,
+          "needs_correction": false
+        },
+        "normal": {
+          "label": "normal",
+          "n_bars": 34089,
+          "predicted": 0.05149527804110742,
+          "observed": 0.08052450937252487,
+          "gap": 0.029029231331417445,
+          "gap_ci95": [
+            0.023725562937667224,
+            0.034719049919704606
+          ],
+          "ratio": 1.5637260819961807,
+          "needs_correction": false
+        },
+        "elevado": {
+          "label": "elevado",
+          "n_bars": 7333,
+          "predicted": 0.2638399843176741,
+          "observed": 0.2709668621300968,
+          "gap": 0.007126877812422716,
+          "gap_ci95": [
+            -0.008097860799263614,
+            0.022435968192948755
+          ],
+          "ratio": 1.02701212187703,
+          "needs_correction": false
+        }
+      }
+    },
+    {
+      "stop": 0.01,
+      "q": 0.7,
+      "n_bars": 43422,
+      "n_events": 28514,
+      "event_rate": 0.32833586661139513,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 10770,
+          "n_events": 28514,
+          "n_events_rejected": 11473,
+          "lift": 1.6222320150410405,
+          "reject_rate": 0.24803095205195522,
+          "capture_rate": 0.402363751139791,
+          "false_reject_rate": 0.17258700497171267
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 10595,
+          "n_events": 28514,
+          "n_events_rejected": 9942,
+          "lift": 1.4289744888405496,
+          "reject_rate": 0.24400073695361799,
+          "capture_rate": 0.3486708283650137,
+          "false_reject_rate": 0.19283387622149836
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 11055,
+          "n_events": 28514,
+          "n_events_rejected": 10488,
+          "lift": 1.4447264021035062,
+          "reject_rate": 0.25459444521210445,
+          "capture_rate": 0.3678193168268219,
+          "false_reject_rate": 0.19924567118121037
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 10184,
+          "n_events": 28514,
+          "n_events_rejected": 9970,
+          "lift": 1.4908311050852434,
+          "reject_rate": 0.23453548892266593,
+          "capture_rate": 0.3496528021322859,
+          "false_reject_rate": 0.1782616149494257
+        }
+      },
+      "lift_ci95": [
+        1.5803088469458457,
+        1.6657882291336013
+      ],
+      "diff_vs_baseline": 0.19325752620049097,
+      "diff_ci95": [
+        0.15871674542436284,
+        0.22853968388365783
+      ],
+      "hit_rate_ratio": {
+        "model": 2.1107159572635568,
+        "ewma": 1.7014907514948112,
+        "garch": 1.7508056304208632,
+        "har": 1.8017784032853992
+      },
+      "beats_chance": true,
+      "beats_baseline": true,
+      "calibration": {
+        "todas": {
+          "label": "todas",
+          "n_bars": 41422,
+          "predicted": 0.33438105049540834,
+          "observed": 0.3252257254599005,
+          "gap": -0.00915532503550781,
+          "gap_ci95": [
+            -0.015659324863425708,
+            -0.0028843297393888094
+          ],
+          "ratio": 0.9726200841167776,
+          "needs_correction": false
+        },
+        "normal": {
+          "label": "normal",
+          "n_bars": 30652,
+          "predicted": 0.26201274381206163,
+          "observed": 0.2523489494975858,
+          "gap": -0.009663794314475838,
+          "gap_ci95": [
+            -0.017167827635446622,
+            -0.002378687754322474
+          ],
+          "ratio": 0.9631170828797261,
+          "needs_correction": false
+        },
+        "elevado": {
+          "label": "elevado",
+          "n_bars": 10770,
+          "predicted": 0.5403451485880679,
+          "observed": 0.5326369545032498,
+          "gap": -0.007708194084818154,
+          "gap_ci95": [
+            -0.01856406024272543,
+            0.002693788653795461
+          ],
+          "ratio": 0.9857346843865262,
+          "needs_correction": false
+        }
+      }
+    },
+    {
+      "stop": 0.01,
+      "q": 0.9,
+      "n_bars": 43422,
+      "n_events": 28514,
+      "event_rate": 0.32833586661139513,
+      "lifts": {
+        "model": {
+          "label": "model",
+          "n": 43422,
+          "n_rejected": 4016,
+          "n_events": 28514,
+          "n_events_rejected": 4816,
+          "lift": 1.8261836570390948,
+          "reject_rate": 0.09248767905669937,
+          "capture_rate": 0.16889948797082135,
+          "false_reject_rate": 0.05513457911880679
+        },
+        "ewma": {
+          "label": "ewma",
+          "n": 43422,
+          "n_rejected": 3789,
+          "n_events": 28514,
+          "n_events_rejected": 4088,
+          "lift": 1.6430014987289931,
+          "reject_rate": 0.08725991432914192,
+          "capture_rate": 0.1433681700217437,
+          "false_reject_rate": 0.0598319903994514
+        },
+        "garch": {
+          "label": "garch",
+          "n": 43422,
+          "n_rejected": 3780,
+          "n_events": 28514,
+          "n_events_rejected": 4157,
+          "lift": 1.6747111137831485,
+          "reject_rate": 0.08705264612408456,
+          "capture_rate": 0.14578803394823595,
+          "false_reject_rate": 0.05834047659866278
+        },
+        "har": {
+          "label": "har",
+          "n": 43422,
+          "n_rejected": 3831,
+          "n_events": 28514,
+          "n_events_rejected": 4294,
+          "lift": 1.7068744040831387,
+          "reject_rate": 0.08822716595274285,
+          "capture_rate": 0.15059269130953215,
+          "false_reject_rate": 0.0577404423109892
+        }
+      },
+      "lift_ci95": [
+        1.7653853341506913,
+        1.8910794593802587
+      ],
+      "diff_vs_baseline": 0.18318215831010165,
+      "diff_ci95": [
+        0.12879591420458972,
+        0.24138748756933381
+      ],
+      "hit_rate_ratio": {
+        "model": 2.0272695992367136,
+        "ewma": 1.776535526188689,
+        "garch": 1.8167401825218026,
+        "har": 1.8603074931070174
+      },
+      "beats_chance": true,
+      "beats_baseline": true,
+      "calibration": {
+        "todas": {
+          "label": "todas",
+          "n_bars": 41422,
+          "predicted": 0.33438105049540834,
+          "observed": 0.3252257254599005,
+          "gap": -0.00915532503550781,
+          "gap_ci95": [
+            -0.015659324863425708,
+            -0.0028843297393888094
+          ],
+          "ratio": 0.9726200841167776,
+          "needs_correction": false
+        },
+        "normal": {
+          "label": "normal",
+          "n_bars": 37406,
+          "predicted": 0.30459656407918284,
+          "observed": 0.29576805860022454,
+          "gap": -0.008828505478958304,
+          "gap_ci95": [
+            -0.015848072112181314,
+            -0.002065170833145125
+          ],
+          "ratio": 0.9710157417381003,
+          "needs_correction": false
+        },
+        "elevado": {
+          "label": "elevado",
+          "n_bars": 4016,
+          "predicted": 0.6118009954369745,
+          "observed": 0.599601593625498,
+          "gap": -0.012199401811476496,
+          "gap_ci95": [
+            -0.028590392069908994,
+            0.00470582786536477
+          ],
+          "ratio": 0.9800598529546962,
+          "needs_correction": false
+        }
+      }
+    }
+  ],
+  "bracket": {
+    "todas": {
+      "mean_r": -0.14062963416825489,
+      "ci95": [
+        -0.14806515308025145,
+        -0.13280669319654012
+      ],
+      "worst_r": -1.140000000000012,
+      "beyond_stop_rate": 0.0,
+      "n_setups": 82842
+    },
+    "normal": {
+      "mean_r": -0.14027890078078217,
+      "ci95": [
+        -0.14765406161848296,
+        -0.1325513440188701
+      ],
+      "worst_r": -1.140000000000012,
+      "beyond_stop_rate": 0.0,
+      "n_setups": 68176
+    },
+    "elevado": {
+      "mean_r": -0.14226004460220668,
+      "ci95": [
+        -0.16531023373780643,
+        -0.119119673857901
+      ],
+      "worst_r": -1.1400000000000117,
+      "beyond_stop_rate": 0.0,
+      "n_setups": 14666
+    }
+  }
+}
