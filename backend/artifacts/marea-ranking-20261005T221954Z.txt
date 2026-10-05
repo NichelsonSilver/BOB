@@ -1,0 +1,39 @@
+GATE DEL RANKING MACRO — MAREA M3
+run marea-ranking-20261005T221954Z · pre-registro docs/PREREGISTRO_RANKING_MACRO.md (836e603)
+primaria: 22 ETFs · H=4 semanas · test 2017-01-27 .. 2026-08-28 (501 fechas, 11022 filas)
+
+CRITERIOS CONFIRMATORIOS (§5)
+  1. ordena          IC medio +0.0359  IC95% [-0.0075, +0.0779]  -> NO PASA
+  2. supera trivial  vs momentum_12_1: diferencia -0.0031  IC95% [-0.0699, +0.0635]  -> NO PASA
+  VEREDICTO: NO VIABLE — no hay orden detectable a esta potencia
+
+REPORTADO, NO DECIDE
+  3. probabilidad    AUC 0.5156 · BSS +0.00083 · calibración 7.17 pp -> regla 2 NO cumple (ninguna probabilidad se muestra como operable)
+  4. spread neto tercio sup − inf  -0.3529% por período  IC95% [-0.0086, +0.0015]  (costo del par 0.40%; sin potencia declarada)
+  5. aporte de la liquidez (modelo − sin bloque C)  -0.0215  IC95% [-0.0523, +0.0113]  (sin potencia declarada)
+  6. rotación del tercio superior 29.3% por rebalanceo · fracción del oráculo 0.5%
+
+  baselines triviales (mismo período de test):
+    momentum_12_1    IC +0.0377  IC95% [-0.0092, +0.0837]
+    reversion_4s     IC +0.0160  IC95% [-0.0265, +0.0601]
+    oráculo          IC +1.0000
+  IC por año: 2017 -0.011 (n=49) · 2018 +0.101 (n=52) · 2019 +0.053 (n=50) · 2020 -0.007 (n=53) · 2021 -0.025 (n=52) · 2022 -0.001 (n=52) · 2023 +0.035 (n=52) · 2024 +0.114 (n=52) · 2025 +0.012 (n=52) · 2026 +0.112 (n=35)
+  IC según SPY en el horizonte: SPY cae -0.093 (n=147) · SPY sube +0.090 (n=352)
+  IC según régimen de liquidez M2: contractivo +0.041 (n=106) · expansivo +0.029 (n=101) · neutro +0.038 (n=134) · sin dato +0.035 (n=158)
+  NaN del bloque C en el train, por fold: 6%, 5%, 4%, 3%, 2%, 2%
+
+TODAS LAS CORRIDAS (solo la primaria decide)
+  variante                      filas       IC                IC95%  vs trivial     AUC     neto
+  PRIMARIA                      11022  +0.0359   [-0.0075, +0.0779]     -0.0031  0.5156  -0.353%
+  placebo (control)             11022  +0.0032   [-0.0149, +0.0223]     -0.0017  0.4927  -0.478%
+  H = 1 semana                  11088  +0.0386   [+0.0105, +0.0662]     +0.0011  0.5256  -0.254%
+  H = 13 semanas                10824  +0.1144   [+0.0488, +0.1731]     +0.0466  0.5633  +0.706%
+  23 ETFs desde 2014-07          9453  +0.0401   [-0.0088, +0.0896]     +0.0141  0.5271  -0.408%
+  21 ETFs desde 2007-11 (sin F  13356  +0.0645   [+0.0280, +0.1019]     +0.0231  0.5297  -0.324%
+  sin bloque C (liquidez)       11022  +0.0580   [+0.0182, +0.0948]     +0.0193  0.5286  -0.340%
+  sin bloque B (transversal)    11022  +0.0166   [-0.0273, +0.0624]     -0.0200  0.5061  -0.482%
+  XGBoost                       11022  +0.0477   [+0.0018, +0.0904]     +0.0100  0.5260  -0.177%
+  entrada al cierre de t        11044  +0.0338   [-0.0086, +0.0746]     -0.0144  0.5223  -0.264%
+  DESVIACIÓN DECLARADA: exploratoria '21 ETFs desde 2007-11' corre sin la Fed neta en el bloque C: no existe antes de 2014 y dejaba la columna entera en NaN en los folds internos de calibración (sklearn: 'window shape cannot be larger than input array shape'). Encontrado por el error, sin ver resultados de esa variante. La primaria no cambia.
+
+recursos: 112.8 s · RAM pico 476 MB

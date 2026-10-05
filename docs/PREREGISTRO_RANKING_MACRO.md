@@ -298,3 +298,12 @@ compra, que es lo que se ordena; no es el precio del commodity.
   `bob.models.validation` y `bob.models.forecast` sin modificarlos (regla 12).
 - **No pronostica la liquidez.** El bloque C usa el estado medido de la M2
   como feature; la M2 sigue siendo monitoreo.
+
+---
+
+## Resultado (enlace, agregado después de correr)
+
+Artefacto: `backend/artifacts/marea-ranking-20261005T221954Z.txt|json`.
+**No viable**: IC +0,0359, IC95% [−0,0075, +0,0779], no pasa el criterio 1.
+Una desviación declarada en una exploratoria (21 ETFs sin Fed neta); la
+primaria corrió tal como está registrada arriba.
