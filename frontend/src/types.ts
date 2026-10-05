@@ -727,3 +727,25 @@ export type TechnicalResponse = {
     rules: RuleEvidence[];
   } | null;
 };
+
+// --------------------------------------------------------------------- //
+// Lectura del mercado (/api/analysis/narrative)
+// --------------------------------------------------------------------- //
+
+export type NarrativeSection = {
+  title: string;
+  basis: "validado" | "descriptivo" | "sin ventaja medida" | "alcance";
+  tone: "ok" | "warn" | "neutral" | "muted";
+  text: string;
+};
+
+export type NarrativeResponse = {
+  symbol: string;
+  timeframe: string;
+  forecast_open_time: number;
+  map_last_time: number;
+  age_bars: number;
+  is_stale: boolean;
+  headline: string;
+  sections: NarrativeSection[];
+};

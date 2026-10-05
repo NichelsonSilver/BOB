@@ -22,10 +22,19 @@ from typing import Any, Literal
 import numpy as np
 from fastapi import APIRouter, HTTPException, Query
 
-from bob.api.routes._common import SymbolQuery, in_thread, resolve, with_session
+from bob.api.routes._common import (
+    SymbolQuery,
+    bars_since,
+    in_thread,
+    latest_forecast,
+    resolve,
+    with_session,
+)
 from bob.api.routes.market import _read_candles
 from bob.backtest.technical_runner import ARTIFACT_DIR, resample
+from bob.data.binance_rest import INTERVAL_MS
 from bob.data.store import OHLCVSeries
+from bob.models.narrative import MarketSnapshot, market_narrative
 from bob.signals.technical import technical_map
 
 router = APIRouter(tags=["technical"])
@@ -128,3 +137,70 @@ async def technical(
 ) -> dict[str, Any]:
     sym, _ = resolve(symbol, None)
     return await in_thread(lambda: _build(sym, tf))
+
+
+#: Más viejo que esto, el pronóstico ya no describe el mercado de ahora.
+STALE_AFTER_BARS = 2
+
+
+def _cone(cones: list[dict[str, Any]], nominal: float) -> tuple[float, float] | None:
+    for c in cones:
+        if abs(float(c.get("nominal", 0.0)) - nominal) < 1e-6:
+            return float(c["price_lo"]), float(c["price_hi"])
+    return None
+
+
+def _narrative(symbol: str, tf: str) -> dict[str, Any]:
+    record = with_session(lambda s: latest_forecast(s, symbol, tf))
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"sin pronósticos de {symbol} {tf}")
+    m15 = _build(symbol, "15m")
+    try:
+        m1h: dict[str, Any] | None = _build(symbol, "1h")
+    except HTTPException:
+        m1h = None
+    closes = m15["series"]["close"]
+    bars_24h = int(24 * 3_600_000 // INTERVAL_MS["15m"])
+    change = closes[-1] / closes[-1 - bars_24h] - 1.0 if len(closes) > bars_24h else None
+    regime = json.loads(record.regime_json) if record.regime_json else {}
+    cones = json.loads(record.cones_json)
+    ev = m15.get("evidence") or {}
+    snap = MarketSnapshot(
+        symbol=symbol,
+        price=float(m15["last_close"]),
+        horizon_hours=record.horizon_bars * INTERVAL_MS[tf] / 3_600_000,
+        sigma_horizon=float(record.sigma_forecast),
+        sigma_ratio=(
+            record.sigma_forecast / record.sigma_backward if record.sigma_backward > 0 else None
+        ),
+        regime_percentile=regime.get("percentile"),
+        regime_elevated=regime.get("elevated"),
+        cone80=_cone(cones, 0.80),
+        cone95=_cone(cones, 0.95),
+        change_24h=change,
+        map_15m=m15,
+        map_1h=m1h,
+        features=json.loads(record.features_json),
+        technical_mean_r={r["rule"]: r["mean_r"] for r in ev.get("rules", [])},
+    )
+    age = bars_since(record.open_time, tf)
+    return {
+        "symbol": symbol,
+        "timeframe": tf,
+        "forecast_open_time": record.open_time,
+        "map_last_time": m15["last_time"],
+        "age_bars": age,
+        "is_stale": age > STALE_AFTER_BARS,
+        **market_narrative(snap),
+    }
+
+
+@router.get("/analysis/narrative")
+async def narrative(symbol: str | None = SymbolQuery()) -> dict[str, Any]:
+    """Lectura del mercado en lenguaje natural, armada con plantillas.
+
+    Sin LLM: cada frase sale de una cifra del pronóstico, del mapa técnico o
+    del vector de features guardado (ver `models/narrative.py`).
+    """
+    sym, tf = resolve(symbol, None)
+    return await in_thread(lambda: _narrative(sym, tf))

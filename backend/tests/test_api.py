@@ -648,3 +648,7 @@ def test_mapa_tecnico_trae_zonas_y_la_evidencia_del_backtest(
     assert client.get(f"/api/analysis/technical?symbol={SYMBOL}&tf=1h").status_code == 200
     assert client.get(f"/api/analysis/technical?symbol={SYMBOL}&tf=5m").status_code == 422
     assert client.get("/api/analysis/technical?symbol=NADAUSDT").status_code == 404
+
+
+def test_narrativa_404_sin_pronosticos(client: TestClient) -> None:
+    assert client.get(f"/api/analysis/narrative?symbol={SYMBOL}").status_code == 404

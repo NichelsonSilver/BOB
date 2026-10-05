@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Badge, Card, ErrorBox, Loading, Row } from "../components/common/Card";
 import { TargetBar } from "../components/layout/TargetBar";
 import { AnalystStrip, coverageLabel } from "../components/signal/AnalystStrip";
+import { MarketNarrative } from "../components/signal/MarketNarrative";
 import { PriceChart } from "../components/signal/PriceChart";
 import { ProjectionPanel } from "../components/signal/ProjectionPanel";
 import { RegimeFilter } from "../components/signal/RegimeFilter";
@@ -68,6 +69,12 @@ export function SignalPage() {
     retry: false,
     staleTime: 300_000, // los artefactos no cambian solos
   });
+  const narrative = useQuery({
+    queryKey: ["narrative", symbol, latest.data?.forecast?.open_time],
+    queryFn: () => api.narrative({ symbol }),
+    enabled: enabled && Boolean(latest.data?.forecast),
+    retry: false,
+  });
   const recent = useQuery({
     queryKey: ["history", symbol, timeframe, 96],
     queryFn: () => api.history({ ...target, limit: 96 }),
@@ -129,6 +136,8 @@ export function SignalPage() {
         <>
           {/* El filtro va PRIMERO porque es lo único accionable: el resto de
               la página describe, esto decide. Ver RegimeFilter.tsx. */}
+          {narrative.data && <MarketNarrative data={narrative.data} />}
+
           <RegimeFilter
             regime={forecast.regime}
             evidence={riskFilter.data ?? null}

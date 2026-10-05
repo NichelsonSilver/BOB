@@ -19,6 +19,7 @@ import type {
   HealthResponse,
   HistoryResponse,
   LatestResponse,
+  NarrativeResponse,
   ProjectionResponse,
   RiskFilterEvidence,
   RunDetail,
@@ -106,6 +107,9 @@ export const api = {
   riskFilter: () => request<RiskFilterEvidence>("/api/backtest/riskfilter"),
 
   settings: () => request<SettingsResponse>("/api/settings"),
+
+  narrative: (t: { symbol?: string }) =>
+    request<NarrativeResponse>(`/api/analysis/narrative${query(t)}`),
 
   technical: (p: { symbol?: string; tf: TechnicalTf }) =>
     request<TechnicalResponse>(`/api/analysis/technical${query(p)}`),

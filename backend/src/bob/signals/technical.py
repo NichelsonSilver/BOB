@@ -333,7 +333,11 @@ def cluster_levels(
     pts = sorted((pv for pv in pivots if pv.pivot_idx >= since_idx), key=lambda pv: pv.price)
     groups: list[list[Level]] = []
     for pv in pts:
-        if groups and pv.price - groups[-1][-1].price <= tol:
+        # Contra el PRIMER pivote del grupo, no el último: comparar con el
+        # último encadena — una escalera de pivotes a 0,9·tol uno de otro
+        # termina en un solo "nivel" de decenas de toques y varios ATR de
+        # ancho (medido el 05-10: 37 toques con tolerancia de 2,4 USD).
+        if groups and pv.price - groups[-1][0].price <= tol:
             groups[-1].append(pv)
         else:
             groups.append([pv])

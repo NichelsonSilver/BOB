@@ -353,3 +353,12 @@ def test_technical_map_usa_el_mismo_scan_y_funde_maximos_iguales() -> None:
         assert all(b - a > tol for a, b in zip(prices, prices[1:], strict=False))
     assert sum(p["equal"] for p in pools) == len(full.levels)
     assert len(m["series"]["time"]) == 200  # type: ignore[index]
+
+
+def test_cluster_levels_no_encadena_una_escalera_de_pivotes() -> None:
+    # Diez pivotes a 0,9·tol uno de otro: comparando con el último se
+    # funden en un "nivel" de 10 toques y 8·tol de ancho.
+    pv = [Level(100.0 + 0.9 * i, i, i + 3, "high") for i in range(10)]
+    out = cluster_levels(pv, tol=1.0, price_now=90.0)
+    assert max(x.touches for x in out) <= 2
+    assert len(out) == 5
