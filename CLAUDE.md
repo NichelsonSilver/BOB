@@ -49,7 +49,7 @@ días por delante. El código macro nuevo vive en el paquete hermano
 | **M0** | Decisión, este documento, agentes y skills | ✅ 2026-09-26 |
 | **M1** | Ingesta macro gratuita en `marea/data/`: FRED con vintages (25 series, point-in-time), Tiingo (23 ETFs), CFTC (13 mercados COT) y BCCh (6 series). `uv run python -m marea.data.ingest todo` actualiza las cuatro en ~2 min. Stooq descartado. Detalle: `docs/MAREA_FUENTES.md` | ✅ 2026-09-29 |
 | **M2** | Monitor de liquidez point-in-time (`marea/liquidity.py`, `marea/monitor.py`) + página **Macro**. Régimen por percentil del cambio a 13 semanas contra el pasado estricto; compuesto de pesos iguales declarados (Fed neta, M2, dólar, tasa real, NFCI). Reconstruir una fecha pasada reproduce la historia fila por fila. Límites: compuesto desde 2020-02 y etiqueta inestable (racha mediana 3 semanas). Detalle: `docs/MAREA_MONITOR.md` | ✅ 2026-10-05 |
-| **M3** | Medición de potencia → pre-registro → gate del ranking. "No hay potencia" es un desenlace legítimo declarado de antemano | pendiente |
+| **M3** | Medición de potencia → pre-registro → gate del ranking. "No hay potencia" es un desenlace legítimo declarado de antemano. **Paso 1 ✅ (05-10)**: criterio commiteado antes de correr (`marea/power.py`, `d48db5c`); 23 ETFs, semanal, H=4: N efectivo ≈ 5–7, sd del IC por fecha 0,36 (nulo 0,21), **MDE 0,065 → potencia solo para un efecto grande**; decide Nichelson. Artefacto `artifacts/marea-power-*`; 7 s, 567 MB | 🟡 en curso |
 | **M4** | `/noticia` con registro persistente + memo semanal `/informe` | pendiente |
 
 Al final de cada una, resumir y esperar confirmación (igual que las fases de

@@ -1,0 +1,282 @@
+{
+  "run_id": "marea-power-20261005T214336Z",
+  "criterion_commit": "d48db5c",
+  "primary": {
+    "variant": "primaria: 23 ETFs",
+    "horizon_weeks": 4,
+    "signals": {
+      "momentum_12_1": {
+        "n_dates": 583,
+        "ic_sd": 0.3596919028261482,
+        "ic_lag1_autocorr": 0.6415773682483608,
+        "se_block": 0.02332547656842893
+      },
+      "reversion_4s": {
+        "n_dates": 631,
+        "ic_sd": 0.3470869482530228,
+        "ic_lag1_autocorr": 0.4624271705790883,
+        "se_block": 0.019025191324602266
+      }
+    },
+    "se_used": 0.02332547656842893,
+    "mde": 0.0653483103595509,
+    "independent_blocks": 145.75,
+    "verdict": "potencia solo para un efecto grande"
+  },
+  "variants": {
+    "primaria: 23 ETFs": {
+      "n_assets": 23,
+      "first_week": "2014-07-18",
+      "last_week": "2026-10-02",
+      "n_weeks": 638,
+      "days_dropped": 0,
+      "effective_n_raw": {
+        "n_assets": 23,
+        "participation_ratio": 5.198326464287979,
+        "n80": 7,
+        "n90": 11,
+        "pc1_share": 0.3788298031055652
+      },
+      "effective_n_demeaned": {
+        "n_assets": 23,
+        "participation_ratio": 6.697703766518611,
+        "n80": 8,
+        "n90": 11,
+        "pc1_share": 0.30976507400990444
+      },
+      "null_ic_sd": 0.21320071635561041,
+      "horizons": {
+        "1": {
+          "signals": {
+            "momentum_12_1": {
+              "n_dates": 586,
+              "ic_sd": 0.36492914217758876,
+              "ic_lag1_autocorr": -0.020906887232335147,
+              "se_block": 0.015041642416233373
+            },
+            "reversion_4s": {
+              "n_dates": 634,
+              "ic_sd": 0.351159820990523,
+              "ic_lag1_autocorr": -0.03844450139534069,
+              "se_block": 0.013896996437145422
+            }
+          },
+          "se_used": 0.015041642416233373,
+          "mde": 0.04214044304946045,
+          "independent_blocks": 586.0,
+          "verdict": "potencia holgada"
+        },
+        "4": {
+          "signals": {
+            "momentum_12_1": {
+              "n_dates": 583,
+              "ic_sd": 0.3596919028261482,
+              "ic_lag1_autocorr": 0.6415773682483608,
+              "se_block": 0.02332547656842893
+            },
+            "reversion_4s": {
+              "n_dates": 631,
+              "ic_sd": 0.3470869482530228,
+              "ic_lag1_autocorr": 0.4624271705790883,
+              "se_block": 0.019025191324602266
+            }
+          },
+          "se_used": 0.02332547656842893,
+          "mde": 0.0653483103595509,
+          "independent_blocks": 145.75,
+          "verdict": "potencia solo para un efecto grande"
+        },
+        "13": {
+          "signals": {
+            "momentum_12_1": {
+              "n_dates": 574,
+              "ic_sd": 0.37979609831565625,
+              "ic_lag1_autocorr": 0.8561925697549143,
+              "se_block": 0.043297024599242735
+            },
+            "reversion_4s": {
+              "n_dates": 622,
+              "ic_sd": 0.3586483265921421,
+              "ic_lag1_autocorr": 0.6100614554257733,
+              "se_block": 0.02397667086527797
+            }
+          },
+          "se_used": 0.043297024599242735,
+          "mde": 0.12130030410551201,
+          "independent_blocks": 44.15384615384615,
+          "verdict": "sin potencia"
+        }
+      }
+    },
+    "22 ETFs sin REET": {
+      "n_assets": 22,
+      "first_week": "2011-11-25",
+      "last_week": "2026-10-02",
+      "n_weeks": 776,
+      "days_dropped": 0,
+      "effective_n_raw": {
+        "n_assets": 22,
+        "participation_ratio": 5.484007554156152,
+        "n80": 7,
+        "n90": 11,
+        "pc1_share": 0.3598702070942031
+      },
+      "effective_n_demeaned": {
+        "n_assets": 22,
+        "participation_ratio": 6.499332122520569,
+        "n80": 8,
+        "n90": 11,
+        "pc1_share": 0.32106637358348167
+      },
+      "null_ic_sd": 0.2182178902359924,
+      "horizons": {
+        "1": {
+          "signals": {
+            "momentum_12_1": {
+              "n_dates": 724,
+              "ic_sd": 0.3642439455167073,
+              "ic_lag1_autocorr": -0.023911084540008835,
+              "se_block": 0.013572271409761255
+            },
+            "reversion_4s": {
+              "n_dates": 772,
+              "ic_sd": 0.3473804161587735,
+              "ic_lag1_autocorr": -0.04047018760457679,
+              "se_block": 0.012448784132931271
+            }
+          },
+          "se_used": 0.013572271409761255,
+          "mde": 0.03802387495780439,
+          "independent_blocks": 724.0,
+          "verdict": "potencia holgada"
+        },
+        "4": {
+          "signals": {
+            "momentum_12_1": {
+              "n_dates": 721,
+              "ic_sd": 0.3594318004032366,
+              "ic_lag1_autocorr": 0.6491764981714143,
+              "se_block": 0.020883999739084055
+            },
+            "reversion_4s": {
+              "n_dates": 769,
+              "ic_sd": 0.34326140787655895,
+              "ic_lag1_autocorr": 0.46294868561356095,
+              "se_block": 0.017134049057632526
+            }
+          },
+          "se_used": 0.020883999739084055,
+          "mde": 0.058508304964092976,
+          "independent_blocks": 180.25,
+          "verdict": "potencia solo para un efecto grande"
+        },
+        "13": {
+          "signals": {
+            "momentum_12_1": {
+              "n_dates": 712,
+              "ic_sd": 0.36882642732692167,
+              "ic_lag1_autocorr": 0.8573516148520457,
+              "se_block": 0.037950206987368874
+            },
+            "reversion_4s": {
+              "n_dates": 760,
+              "ic_sd": 0.3552432305060425,
+              "ic_lag1_autocorr": 0.6098212958715651,
+              "se_block": 0.0221985420959558
+            }
+          },
+          "se_used": 0.037950206987368874,
+          "mde": 0.10632073892014013,
+          "independent_blocks": 54.76923076923077,
+          "verdict": "sin potencia"
+        }
+      }
+    },
+    "21 ETFs sin REET ni CPER": {
+      "n_assets": 21,
+      "first_week": "2007-11-30",
+      "last_week": "2026-10-02",
+      "n_weeks": 984,
+      "days_dropped": 0,
+      "effective_n_raw": {
+        "n_assets": 21,
+        "participation_ratio": 5.07578598435886,
+        "n80": 7,
+        "n90": 11,
+        "pc1_share": 0.38009224634212996
+      },
+      "effective_n_demeaned": {
+        "n_assets": 21,
+        "participation_ratio": 5.390425871283015,
+        "n80": 7,
+        "n90": 10,
+        "pc1_share": 0.375045386510191
+      },
+      "null_ic_sd": 0.22360679774997896,
+      "horizons": {
+        "1": {
+          "signals": {
+            "momentum_12_1": {
+              "n_dates": 932,
+              "ic_sd": 0.3810787217895496,
+              "ic_lag1_autocorr": -0.018144553031254246,
+              "se_block": 0.012575905876610689
+            },
+            "reversion_4s": {
+              "n_dates": 980,
+              "ic_sd": 0.3736209731530057,
+              "ic_lag1_autocorr": -0.0871306285265204,
+              "se_block": 0.011932228110534737
+            }
+          },
+          "se_used": 0.012575905876610689,
+          "mde": 0.03523247200829251,
+          "independent_blocks": 932.0,
+          "verdict": "potencia holgada"
+        },
+        "4": {
+          "signals": {
+            "momentum_12_1": {
+              "n_dates": 929,
+              "ic_sd": 0.37388402359724393,
+              "ic_lag1_autocorr": 0.6552569577716398,
+              "se_block": 0.019457252175794623
+            },
+            "reversion_4s": {
+              "n_dates": 977,
+              "ic_sd": 0.3675820720612274,
+              "ic_lag1_autocorr": 0.4657367453979622,
+              "se_block": 0.01618340473291053
+            }
+          },
+          "se_used": 0.019457252175794623,
+          "mde": 0.05451115008080261,
+          "independent_blocks": 232.25,
+          "verdict": "potencia solo para un efecto grande"
+        },
+        "13": {
+          "signals": {
+            "momentum_12_1": {
+              "n_dates": 920,
+              "ic_sd": 0.376864881452365,
+              "ic_lag1_autocorr": 0.8572365737908796,
+              "se_block": 0.03421016387805274
+            },
+            "reversion_4s": {
+              "n_dates": 968,
+              "ic_sd": 0.36498566672472443,
+              "ic_lag1_autocorr": 0.6104292647461597,
+              "se_block": 0.021053862151855538
+            }
+          },
+          "se_used": 0.03421016387805274,
+          "mde": 0.09584268942997479,
+          "independent_blocks": 70.76923076923077,
+          "verdict": "potencia solo para un efecto grande"
+        }
+      }
+    }
+  },
+  "runtime_s": 6.816790100070648,
+  "peak_memory_mb": 567.44140625
+}

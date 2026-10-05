@@ -1,0 +1,34 @@
+MEDICIÓN DE POTENCIA — RANKING MACRO (M3, paso 1)
+run marea-power-20261005T214336Z · criterio: marea/power.py (commit d48db5c, previo a esta corrida)
+MDE = 2.80 · SE (α=0,05 dos colas, potencia 80%) · holgada ≤ 0.05 · sin potencia > 0.1
+Ciego: no se reporta la media del IC de las señales triviales.
+
+== primaria: 23 ETFs  (2014-07-18 .. 2026-10-02, 638 semanas, 0 días descartados)
+   N efectivo crudo:     PR 5.20 · PC1 37.9% · 80% con 7 · 90% con 11
+   N efectivo demediado: PR 6.70 · PC1 31.0% · 80% con 8 · 90% con 11
+   sd del IC bajo el nulo de permutación: 0.213
+     H  fechas  bloques  sd mom  sd rev  ρ1 mom      SE     MDE  veredicto
+     1     586      586   0.365   0.351   -0.02  0.0150   0.042  potencia holgada
+     4     583      146   0.360   0.347    0.64  0.0233   0.065  potencia solo para un efecto grande  <- decide
+    13     574       44   0.380   0.359    0.86  0.0433   0.121  sin potencia
+
+== 22 ETFs sin REET  (2011-11-25 .. 2026-10-02, 776 semanas, 0 días descartados)
+   N efectivo crudo:     PR 5.48 · PC1 36.0% · 80% con 7 · 90% con 11
+   N efectivo demediado: PR 6.50 · PC1 32.1% · 80% con 8 · 90% con 11
+   sd del IC bajo el nulo de permutación: 0.218
+     H  fechas  bloques  sd mom  sd rev  ρ1 mom      SE     MDE  veredicto
+     1     724      724   0.364   0.347   -0.02  0.0136   0.038  potencia holgada
+     4     721      180   0.359   0.343    0.65  0.0209   0.059  potencia solo para un efecto grande
+    13     712       55   0.369   0.355    0.86  0.0380   0.106  sin potencia
+
+== 21 ETFs sin REET ni CPER  (2007-11-30 .. 2026-10-02, 984 semanas, 0 días descartados)
+   N efectivo crudo:     PR 5.08 · PC1 38.0% · 80% con 7 · 90% con 11
+   N efectivo demediado: PR 5.39 · PC1 37.5% · 80% con 7 · 90% con 10
+   sd del IC bajo el nulo de permutación: 0.224
+     H  fechas  bloques  sd mom  sd rev  ρ1 mom      SE     MDE  veredicto
+     1     932      932   0.381   0.374   -0.02  0.0126   0.035  potencia holgada
+     4     929      232   0.374   0.368    0.66  0.0195   0.055  potencia solo para un efecto grande
+    13     920       71   0.377   0.365    0.86  0.0342   0.096  potencia solo para un efecto grande
+
+VEREDICTO (primaria, H=4): MDE 0.065 -> POTENCIA SOLO PARA UN EFECTO GRANDE
+recursos: 6.8 s · RAM pico 567 MB
