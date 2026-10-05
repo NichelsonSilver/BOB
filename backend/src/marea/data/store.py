@@ -73,6 +73,11 @@ CREATE TABLE IF NOT EXISTS bcch_obs (
     value          REAL NOT NULL,
     PRIMARY KEY (series_id, day)
 );
+CREATE TABLE IF NOT EXISTS liquidity_report (
+    as_of          TEXT PRIMARY KEY,  -- fecha "conocido al"
+    computed_at    TEXT NOT NULL,
+    payload        TEXT NOT NULL      -- JSON de marea.monitor.report
+);
 """
 
 
@@ -236,3 +241,19 @@ def upsert_bcch(
     with conn:
         conn.executemany("INSERT OR REPLACE INTO bcch_obs VALUES (?, ?, ?, ?)", data)
     return len(data)
+
+
+def save_liquidity_report(conn: sqlite3.Connection, as_of: str, payload: str) -> None:
+    """Un reporte por fecha "conocido al"; recalcular el mismo día lo reemplaza."""
+    with conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO liquidity_report VALUES (?, ?, ?)",
+            (as_of, datetime.now(UTC).isoformat(timespec="seconds"), payload),
+        )
+
+
+def latest_liquidity_report(conn: sqlite3.Connection) -> str | None:
+    row = conn.execute(
+        "SELECT payload FROM liquidity_report ORDER BY as_of DESC LIMIT 1"
+    ).fetchone()
+    return str(row[0]) if row else None
