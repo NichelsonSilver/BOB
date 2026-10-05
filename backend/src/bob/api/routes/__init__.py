@@ -5,6 +5,7 @@
     /api/history/*    pronósticos emitidos, cobertura forward, export CSV
     /api/backtest/*   artefactos del gate y del corte forward congelado
     /api/settings     espejo de la config efectiva
+    /api/analysis/technical  mapa técnico con la evidencia del backtest
     /api/risk/*       calculadora de tamaño de posición (aritmética pura)
 
 `/api/health` sigue viviendo en `main.py`: es lo primero que se consulta cuando
@@ -15,7 +16,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from bob.api.routes import analysis, backtest, history, market, risk, settings
+from bob.api.routes import analysis, backtest, history, market, risk, settings, technical
 
 router = APIRouter(prefix="/api")
 router.include_router(market.router)
@@ -24,5 +25,6 @@ router.include_router(history.router)
 router.include_router(backtest.router)
 router.include_router(settings.router)
 router.include_router(risk.router)
+router.include_router(technical.router)
 
 __all__ = ["router"]

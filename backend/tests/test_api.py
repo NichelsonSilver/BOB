@@ -606,3 +606,45 @@ def test_risk_sizing_rechaza_entradas_sin_sentido(client: TestClient) -> None:
     base = "/api/risk/sizing?capital=500&risk_pct=1"
     assert client.get(f"{base}&entry=2500&stop=2500").status_code == 422
     assert client.get(f"{base}&entry=1&stop=0.9&venue=x").status_code == 422
+
+
+def test_mapa_tecnico_trae_zonas_y_la_evidencia_del_backtest(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import math
+
+    from bob.api.routes import technical as technical_routes
+
+    rows = []
+    for i in range(1200):
+        c = 2000.0 + 30.0 * math.sin(i / 17.0) + 10.0 * math.sin(i / 5.0)
+        rows.append(_candle(BASE_MS + i * TF_MS, c))
+    _seed(rows)
+    art = {
+        "preregistration": "docs/PREREGISTRO_TECNICO.md", "cost_pct": 0.0014,
+        "rule_config": {"r_multiple": 2.0, "horizon": 48},
+        "confirmatory": [{
+            "rule": "sweep", "timeframe": "15m", "verdict": "NO PASA",
+            "stats": {"n": 10, "mean_r": -0.3, "ci_low": -0.4, "ci_high": -0.2,
+                      "level": 0.9875, "win_rate": 0.3, "breakeven_win_rate": 1 / 3,
+                      "worst_streak": 5},
+            "placebo": {"mean_r": -0.3},
+        }],
+        "exploratory": [],
+    }
+    (tmp_path / "technical-ETHUSDT-20261005T000000Z.json").write_text(
+        json.dumps(art), encoding="utf-8"
+    )
+    monkeypatch.setattr(technical_routes, "ARTIFACTS_DIR", tmp_path)
+
+    res = client.get(f"/api/analysis/technical?symbol={SYMBOL}&tf=15m")
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["evidence"]["rules"][0]["verdict"] == "NO PASA"
+    assert len(body["series"]["time"]) == 240
+    assert set(body["emas"]) == {"20", "50", "200"}
+    assert body["sr"] and body["pools"]
+
+    assert client.get(f"/api/analysis/technical?symbol={SYMBOL}&tf=1h").status_code == 200
+    assert client.get(f"/api/analysis/technical?symbol={SYMBOL}&tf=5m").status_code == 422
+    assert client.get("/api/analysis/technical?symbol=NADAUSDT").status_code == 404

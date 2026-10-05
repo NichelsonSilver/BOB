@@ -331,3 +331,25 @@ def test_resample_a_1h_descarta_horas_incompletas() -> None:
     assert out["high"].tolist() == [14.0, 21.0]
     assert out["low"].tolist() == [9.0, 16.0]
     assert out["close"].tolist() == [13.5, 20.5]
+
+
+def test_technical_map_usa_el_mismo_scan_y_funde_maximos_iguales() -> None:
+    from bob.signals.technical import technical_map
+
+    o, h, lo, c = _random_walk(1200, seed=7)
+    t = np.arange(c.size, dtype=np.int64) * 900_000
+    m = technical_map(t, o, h, lo, c, n_show=200)
+    full = scan(o, h, lo, c)
+    # Los barridos del mapa son los del backtest, recortados a la ventana.
+    assert [s["time"] for s in m["sweeps"]] == [  # type: ignore[index, union-attr]
+        int(t[e.idx]) for e in full.sweeps if e.idx >= c.size - 200
+    ]
+    pools = m["pools"]
+    assert isinstance(pools, list)
+    # Ninguna zona del mismo lado queda a menos de la tolerancia de otra.
+    tol = TechnicalParams().level_tol_atr * float(m["atr"])  # type: ignore[arg-type]
+    for side in ("high", "low"):
+        prices = sorted(p["price"] for p in pools if p["side"] == side)
+        assert all(b - a > tol for a, b in zip(prices, prices[1:], strict=False))
+    assert sum(p["equal"] for p in pools) == len(full.levels)
+    assert len(m["series"]["time"]) == 200  # type: ignore[index]

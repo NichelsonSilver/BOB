@@ -1975,10 +1975,23 @@ no se mezcla con la fase M en curso.
    cuando el riesgo pasa de 2%. Funciona aunque el analista no esté
    emitiendo. Si el último precio de la DB tiene más de una hora, lo
    marca como viejo y no lo usa de entrada.
-3. Pendiente, a decisión de Nichelson: el **mapa técnico** en el panel
-   (zonas, order blocks, S/R, RSI y medias). Si se hace, va con la
-   expectancy medida al lado y no con flechas de entrada (§7 del
-   pre-registro).
+3. ✅ **Mapa técnico** (`signals/technical.technical_map`,
+   `/api/analysis/technical`, página **Mapa**) en 15m, 1h y 4h. El 1h y
+   el 4h se arman agregando 15m con la misma función del runner. Dibuja:
+   - zonas de liquidez, fundiendo máximos o mínimos iguales;
+   - order blocks vivos;
+   - soportes y resistencias por pivotes agrupados;
+   - barridos de la ventana;
+   - EMA 20/50/200, y el RSI en un gráfico aparte.
+
+   Usa el **mismo `scan`** que el backtest (hay un test que lo fija), así
+   que lo dibujado es lo que se midió. Encima del gráfico va la evidencia
+   del artefacto, leída del `.json` y no escrita en el TSX: veredicto,
+   expectancy con IC, aciertos contra empate y placebo. Las zonas van en
+   gris y los barridos como puntos, no como flechas (§7 del
+   pre-registro). El único uso que se ofrece es ubicar el stop: cada
+   nivel lleva "stop aquí", que abre la calculadora con el stop a 0,1·ATR
+   detrás del nivel.
 
 ### Fase 7 — Alertas Telegram + sentimiento (F&G, CoinGecko)
 ### Fase 8 — Outliers Club + multi-símbolo watchlist

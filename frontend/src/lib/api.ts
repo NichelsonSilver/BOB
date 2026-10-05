@@ -25,6 +25,8 @@ import type {
   RunsResponse,
   SettingsResponse,
   SizingResponse,
+  TechnicalResponse,
+  TechnicalTf,
 } from "../types";
 
 /** Error de la API con su status, para poder distinguir 404 de "se cayó". */
@@ -104,6 +106,9 @@ export const api = {
   riskFilter: () => request<RiskFilterEvidence>("/api/backtest/riskfilter"),
 
   settings: () => request<SettingsResponse>("/api/settings"),
+
+  technical: (p: { symbol?: string; tf: TechnicalTf }) =>
+    request<TechnicalResponse>(`/api/analysis/technical${query(p)}`),
 
   /** Aritmética pura sobre lo que tipea el usuario: no lee la DB. */
   sizing: (p: {

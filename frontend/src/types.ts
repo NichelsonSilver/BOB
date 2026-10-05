@@ -633,3 +633,92 @@ export type SizingResponse = {
   losing_streaks: Record<string, number>;
   warnings: SizingWarning[];
 };
+
+// --------------------------------------------------------------------- //
+// Mapa técnico (/api/analysis/technical)
+// --------------------------------------------------------------------- //
+
+export type TechnicalTf = "15m" | "1h" | "4h";
+
+export type LiquidityPool = {
+  price: number;
+  side: "high" | "low";
+  pivot_time: number;
+  equal: number;
+  distance_pct: number;
+};
+
+export type OrderBlockZone = {
+  direction: "long" | "short";
+  top: number;
+  bottom: number;
+  candle_time: number;
+  created_time: number;
+  age_bars: number;
+  expires_in_bars: number;
+};
+
+export type SRZone = {
+  price: number;
+  touches: number;
+  kind: "support" | "resistance";
+  last_time: number;
+};
+
+export type SweepMark = {
+  time: number;
+  direction: "long" | "short";
+  level: number;
+  extreme: number;
+  n_levels: number;
+};
+
+export type RuleEvidence = {
+  rule: "sweep" | "order_block";
+  kind: "confirmatoria" | "exploratoria";
+  verdict: string;
+  n: number;
+  mean_r: number;
+  ci: [number, number];
+  ci_level: number;
+  win_rate: number;
+  breakeven_win_rate: number;
+  placebo_mean_r: number | null;
+  worst_streak: number;
+};
+
+export type TechnicalResponse = {
+  symbol: string;
+  tf: TechnicalTf;
+  gaps_15m: number;
+  last_time: number;
+  last_close: number;
+  atr: number;
+  atr_pct: number;
+  rsi: number;
+  emas: Record<string, number>;
+  series: {
+    time: number[];
+    open: number[];
+    high: number[];
+    low: number[];
+    close: number[];
+    rsi: (number | null)[];
+    ema20: number[];
+    ema50: number[];
+    ema200: number[];
+  };
+  pools: LiquidityPool[];
+  order_blocks: OrderBlockZone[];
+  sr: SRZone[];
+  sweeps: SweepMark[];
+  ob_touches: { time: number; direction: string; top: number; bottom: number }[];
+  evidence: {
+    artifact_id: string;
+    preregistration: string;
+    cost_pct: number;
+    r_multiple: number;
+    horizon: number;
+    rules: RuleEvidence[];
+  } | null;
+};

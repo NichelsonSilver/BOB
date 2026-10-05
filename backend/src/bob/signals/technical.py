@@ -349,3 +349,142 @@ def cluster_levels(
             )
         )
     return out
+
+
+# --------------------------------------------------------------------------- #
+# El mapa del dashboard
+# --------------------------------------------------------------------------- #
+#: Medias del mapa. Son contexto: las features de EMA ya pasaron por el gate
+#: de la Fase 4 y no anticipan dirección (AUC 0,519).
+MAP_EMAS: tuple[int, ...] = (20, 50, 200)
+
+
+def technical_map(
+    open_time: np.ndarray,
+    open_: np.ndarray,
+    high: np.ndarray,
+    low: np.ndarray,
+    close: np.ndarray,
+    params: TechnicalParams | None = None,
+    *,
+    n_show: int = 240,
+    sr_per_side: int = 3,
+) -> dict[str, object]:
+    """Estado técnico en la última barra, listo para dibujar.
+
+    Usa el MISMO `scan` que el backtest pre-registrado: las zonas que se
+    dibujan son exactamente las que se midieron. Las series (medias, RSI) se
+    calculan sobre todo lo que llega, para que la EMA200 tenga su warm-up, y
+    se devuelven solo las últimas `n_show` barras.
+    """
+    p = params or TechnicalParams()
+    t = np.asarray(open_time, dtype=np.int64)
+    c = np.asarray(close, dtype=np.float64)
+    n = c.size
+    if n == 0:
+        raise ValueError("no hay velas")
+    sc = scan(open_, high, low, close, p)
+    first = max(0, n - n_show)
+    last_close = float(c[-1])
+    atr_now = float(sc.atr[-1])
+    tol = p.level_tol_atr * atr_now
+
+    def ts(i: int) -> int:
+        return int(t[i])
+
+    # Zonas de liquidez: pivotes vivos del mismo lado a menos de `tol` se
+    # funden en una sola ("máximos/mínimos iguales"). El precio de la zona es
+    # el extremo del grupo: los stops descansan más allá del pivote más lejano.
+    pools = []
+    for side in ("high", "low"):
+        lvls = sorted((lv for lv in sc.levels if lv.side == side), key=lambda lv: lv.price)
+        groups: list[list[Level]] = []
+        for lv in lvls:
+            if groups and lv.price - groups[-1][-1].price <= tol:
+                groups[-1].append(lv)
+            else:
+                groups.append([lv])
+        for g in groups:
+            price = max(lv.price for lv in g) if side == "high" else min(lv.price for lv in g)
+            pools.append(
+                {
+                    "price": price,
+                    "side": side,
+                    "pivot_time": ts(max(lv.pivot_idx for lv in g)),
+                    "equal": len(g),  # >= 2: máximos/mínimos iguales
+                    "distance_pct": (price - last_close) / last_close,
+                }
+            )
+    pools.sort(key=lambda d: abs(float(d["distance_pct"])))
+
+    obs = [
+        {
+            "direction": ob.direction,
+            "top": ob.top,
+            "bottom": ob.bottom,
+            "candle_time": ts(ob.candle_idx),
+            "created_time": ts(ob.created_idx),
+            "age_bars": n - 1 - ob.created_idx,
+            "expires_in_bars": p.ob_max_age - (n - 1 - ob.created_idx),
+        }
+        for ob in sc.order_blocks
+    ]
+
+    # Soportes y resistencias: pivotes de la ventana visible, agrupados.
+    sr = cluster_levels(sc.pivots, tol=tol, price_now=last_close, since_idx=first)
+    sup = sorted((x for x in sr if x.kind == "support"), key=lambda x: -x.price)[:sr_per_side]
+    res = sorted((x for x in sr if x.kind == "resistance"), key=lambda x: x.price)[:sr_per_side]
+    sr_out = [
+        {"price": x.price, "touches": x.touches, "kind": x.kind, "last_time": ts(x.last_idx)}
+        for x in sup + res
+    ]
+
+    sweeps = [
+        {
+            "time": ts(e.idx),
+            "direction": e.direction,
+            "level": e.level,
+            "extreme": e.extreme,
+            "n_levels": e.n_levels,
+        }
+        for e in sc.sweeps
+        if e.idx >= first
+    ]
+    touches = [
+        {"time": ts(e.idx), "direction": e.direction, "top": e.top, "bottom": e.bottom}
+        for e in sc.ob_touches
+        if e.idx >= first
+    ]
+
+    rsi = nm.rsi(c, 14)
+    window = slice(first, n)
+    return {
+        "last_time": ts(n - 1),
+        "last_close": last_close,
+        "atr": atr_now,
+        "atr_pct": atr_now / last_close,
+        "rsi": float(rsi[-1]),
+        "emas": {str(k): float(nm.ewma(c, k)[-1]) for k in MAP_EMAS},
+        "series": {
+            "time": t[window].tolist(),
+            # OHLC de la ventana: en 1h y 4h son las velas agregadas que el
+            # detector vio, que no existen como tales en la tabla de velas.
+            "open": np.asarray(open_, dtype=np.float64)[window].tolist(),
+            "high": np.asarray(high, dtype=np.float64)[window].tolist(),
+            "low": np.asarray(low, dtype=np.float64)[window].tolist(),
+            "close": c[window].tolist(),
+            "rsi": [None if not np.isfinite(x) else float(x) for x in rsi[window]],
+            **{f"ema{k}": nm.ewma(c, k)[window].tolist() for k in MAP_EMAS},
+        },
+        "pools": pools,
+        "order_blocks": obs,
+        "sr": sr_out,
+        "sweeps": sweeps,
+        "ob_touches": touches,
+        "params": {
+            "pivot_k": p.pivot_k,
+            "pool_lookback": p.pool_lookback,
+            "ob_max_age": p.ob_max_age,
+            "impulse_atr": p.impulse_atr,
+        },
+    }
