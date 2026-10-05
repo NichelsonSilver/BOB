@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { Badge, Card, ErrorBox, Row, Stat } from "../components/common/Card";
+import { RegimeFilter } from "../components/signal/RegimeFilter";
 import { useTarget } from "../hooks/useTarget";
 import { api } from "../lib/api";
 import { isNum, multiplier, num, pct, price, stamp } from "../lib/format";
@@ -100,6 +101,25 @@ export function RiskPage() {
     if (entry === "" && refPrice !== null && !stale) setEntry(refPrice.toFixed(2));
   }, [entry, refPrice, stale]);
 
+  // Contexto del analista: sigma del horizonte y estado del filtro. Solo se
+  // usa si el pronóstico está fresco; uno viejo describe un mercado que ya
+  // pasó, y meterlo en la cuenta sería peor que no tenerlo.
+  const latest = useQuery({
+    queryKey: ["latest", symbol, timeframe],
+    queryFn: () => api.latest({ symbol, timeframe }),
+    enabled: Boolean(symbol && timeframe),
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const riskFilter = useQuery({
+    queryKey: ["riskfilter"],
+    queryFn: () => api.riskFilter(),
+    retry: false,
+    staleTime: 300_000,
+  });
+  const forecast = latest.data?.forecast ?? null;
+  const fresh = forecast !== null && !forecast.is_stale;
+
   const params = useDebounced({
     capital: parse(capital),
     risk_pct: parse(riskPct),
@@ -108,6 +128,8 @@ export function RiskPage() {
     leverage: parse(leverage),
     target: parse(target),
     maker_entry: maker,
+    sigma_horizon: fresh ? forecast.sigma_forecast : undefined,
+    regime_elevated: fresh ? forecast.regime?.elevated : undefined,
   });
   const ready =
     params.capital !== undefined &&
@@ -128,6 +150,8 @@ export function RiskPage() {
         leverage: params.leverage!,
         target: params.target,
         maker_entry: params.maker_entry,
+        sigma_horizon: params.sigma_horizon,
+        regime_elevated: params.regime_elevated,
       }),
     enabled: ready,
     retry: false,
@@ -208,6 +232,19 @@ export function RiskPage() {
 
         {/* --- Resultado --------------------------------------------------- */}
         <div className="space-y-4 xl:col-span-2">
+          {fresh ? (
+            <RegimeFilter regime={forecast.regime} evidence={riskFilter.data ?? null} />
+          ) : (
+            <Card title="Filtro de régimen" right={<Badge tone="muted">sin estado</Badge>}>
+              <p className="text-sm text-neutral-500">
+                El analista no está emitiendo
+                {forecast ? ` (último pronóstico del ${stamp(forecast.open_time)})` : ""}, así que
+                no hay estado del filtro ni sigma para comparar el stop. Levantá el backend con el
+                feed en vivo: tarda ~80 s en ajustar y emite en cada vela cerrada de{" "}
+                {timeframe ?? "15m"}.
+              </p>
+            </Card>
+          )}
           {!ready && (
             <Card>
               <p className="text-sm text-neutral-400">
@@ -217,14 +254,23 @@ export function RiskPage() {
             </Card>
           )}
           {ready && sizing.error && <ErrorBox>{String(sizing.error)}</ErrorBox>}
-          {s && <SizingResult s={s} />}
+          {s && (
+            <SizingResult
+              s={s}
+              horizonHours={
+                fresh && lastCandle.data
+                  ? (forecast.horizon_bars * lastCandle.data.interval_ms) / 3_600_000
+                  : null
+              }
+            />
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function SizingResult({ s }: { s: SizingResponse }) {
+function SizingResult({ s, horizonHours }: { s: SizingResponse; horizonHours: number | null }) {
   const dirTone = s.direction === "long" ? "text-accent" : "text-danger";
   const danger = s.warnings.some((w) => w.level === "danger");
   return (
@@ -305,6 +351,24 @@ function SizingResult({ s }: { s: SizingResponse }) {
             tone={s.cost_share_of_risk > 0.3 ? "text-warn" : ""}
             hint="Parte de lo que arriesgás que se lleva el exchange aunque el trade salga bien"
           />
+          {s.stop_sigmas !== null && horizonHours !== null && (
+            <>
+              <Row
+                label={`stop en σ (${horizonHours.toFixed(0)} h)`}
+                value={`${num(s.stop_sigmas, 2)}σ`}
+                tone={s.stop_sigmas < 0.5 ? "text-warn" : ""}
+                hint="Distancia al stop en unidades de la sigma pronosticada para el horizonte"
+              />
+              <Row
+                label="P(el ruido toca el stop)"
+                value={`≈ ${pct(s.p_touch_stop, 0)}`}
+                hint="Camino sin deriva y colas normales: subestima en cripto, más en régimen elevado. Dimensiona, no predice."
+              />
+              {s.p_touch_target !== null && (
+                <Row label="P(el ruido toca el objetivo)" value={`≈ ${pct(s.p_touch_target, 0)}`} />
+              )}
+            </>
+          )}
           {s.target !== null ? (
             <>
               <Row label="ganancia al objetivo (neta)" value={usd(s.gain_at_target)} tone="text-accent" />

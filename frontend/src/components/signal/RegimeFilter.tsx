@@ -145,6 +145,13 @@ export function RegimeFilter({
             {pct(evidence.false_reject_rate, 1)} de las barras que no
             liquidaban.
           </p>
+          <p className="mt-1">
+            Alcance: se midió a {num(evidence.leverage, 0)}x sin stop. A 5x no
+            hubo una sola liquidación en dos años y a 10x salió sin potencia.
+            Operando con stop y leverage bajo, lo que el estado te dice no es
+            "te van a liquidar", sino que viene movimiento grande: el mismo
+            stop salta más seguido y la sigma subestima la cola.
+          </p>
           <p className="mt-2 text-neutral-600">
             El filtro <strong>no dice hacia dónde entrar</strong> — no tiene
             opinión direccional, y el KPI 1 sigue sin pasar el gate. Tampoco

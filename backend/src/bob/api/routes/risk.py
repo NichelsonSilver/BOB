@@ -30,6 +30,8 @@ async def sizing(
     venue: str | None = Query(None),
     qty_step: float = Query(DEFAULT_QTY_STEP, gt=0.0),
     min_notional: float = Query(DEFAULT_MIN_NOTIONAL, ge=0.0),
+    sigma_horizon: float | None = Query(None, gt=0.0, lt=1.0),
+    regime_elevated: bool | None = Query(None),
 ) -> dict[str, Any]:
     try:
         profile = get_venue(venue)
@@ -44,6 +46,8 @@ async def sizing(
             maker_entry=maker_entry,
             qty_step=qty_step,
             min_notional=min_notional,
+            sigma_horizon=sigma_horizon,
+            regime_elevated=regime_elevated,
         )
     except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

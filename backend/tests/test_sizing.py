@@ -102,3 +102,27 @@ def test_entradas_invalidas(args: tuple[float, ...]) -> None:
 def test_objetivo_del_lado_equivocado() -> None:
     with pytest.raises(ValueError):
         size_position(500.0, 0.01, 2500.0, 2475.0, 5.0, target=2400.0)
+
+
+def test_stop_en_sigmas_y_toque_por_ruido() -> None:
+    from bob.models.projection import prob_touch
+
+    s = size_position(500.0, 0.01, 2500.0, 2490.0, 5.0, target=2520.0, sigma_horizon=0.01)
+    assert s.stop_sigmas == pytest.approx(0.4)
+    assert s.p_touch_stop == pytest.approx(prob_touch(0.004, 0.01))
+    assert s.p_touch_target == pytest.approx(prob_touch(0.008, 0.01))
+    assert "stop_in_noise" in _codes(s)
+    wide = size_position(500.0, 0.01, 2500.0, 2450.0, 5.0, sigma_horizon=0.01)
+    assert "stop_in_noise" not in _codes(wide)
+    bare = size_position(500.0, 0.01, 2500.0, 2450.0, 5.0)
+    assert bare.stop_sigmas is None and bare.p_touch_stop is None
+
+
+def test_regimen_elevado_avisa_y_es_rojo_a_leverage_alto() -> None:
+    low = size_position(500.0, 0.01, 2500.0, 2450.0, 5.0, regime_elevated=True)
+    high = size_position(500.0, 0.01, 2500.0, 2475.0, 20.0, regime_elevated=True)
+    lvl = {w.code: w.level for w in low.warnings}
+    assert lvl["regime_elevated"] == "warn"
+    assert {w.code: w.level for w in high.warnings}["regime_elevated"] == "danger"
+    calm = size_position(500.0, 0.01, 2500.0, 2450.0, 5.0, regime_elevated=False)
+    assert "regime_elevated" not in _codes(calm)

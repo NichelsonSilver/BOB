@@ -1993,6 +1993,32 @@ no se mezcla con la fase M en curso.
    nivel lleva "stop aquí", que abre la calculadora con el stop a 0,1·ATR
    detrás del nivel.
 
+4. ✅ **El filtro de régimen entra a la calculadora** (05-10). Dos hechos
+   que el registro no decía:
+   - **El filtro nunca había corrido en vivo.** Se construyó el 14-09 con
+     la corrida forward ya cerrada: 0 de 1.174 `ForecastRecord` tenían
+     `regime_json`. La **primera emisión en vivo** es del 05-10 12:15 hora
+     local (ETH 2.703, sigma 4 h 0,89%, percentil 33, normal), tras
+     reingestar tres semanas de velas con `download --repair` y de
+     `metrics` y funding con `download_vision --days 30`. Los derivados del
+     apagón no se perdieron: los cubre el archivo diario.
+   - **Su alcance validado es estrecho**: liquidación a 20x sin stop. A 5x
+     no hubo un solo evento en dos años, y a 10x salió sin potencia.
+     Operando con stop y leverage bajo, lo que transmite es el **orden** de
+     la volatilidad: viene movimiento grande, el mismo stop salta más
+     seguido y la sigma subestima la cola. `RegimeFilter.tsx` lo dice ahora
+     en las dos páginas.
+
+   La página Riesgo muestra el estado del filtro solo si el pronóstico está
+   fresco, y le pasa al cálculo la sigma del horizonte. Con eso agrega el
+   stop en σ y la P de que el ruido toque el stop y el objetivo
+   (`prob_touch`, aproximación declarada). Avisa si el stop queda dentro
+   del ruido (P > 60%). Con régimen elevado avisa en ámbar, y en rojo
+   desde 20x, que es donde se validó. **Pendiente:** validación forward
+   del filtro. Con ~89 eventos independientes en dos años, medir la
+   liquidación a 20x en forward no tiene potencia en plazos razonables; si
+   se hace, la pregunta tiene que ser otra y pre-registrada.
+
 ### Fase 7 — Alertas Telegram + sentimiento (F&G, CoinGecko)
 ### Fase 8 — Outliers Club + multi-símbolo watchlist
 ### Fase 9 — Validación end-to-end

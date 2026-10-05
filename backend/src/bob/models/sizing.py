@@ -31,7 +31,7 @@ import math
 from dataclasses import asdict, dataclass, field
 from typing import Any, Final
 
-from bob.models.projection import liquidation_price, max_safe_leverage
+from bob.models.projection import liquidation_price, max_safe_leverage, prob_touch
 from bob.venues import BINANCE_USDM, VenueProfile
 
 #: Paso de cantidad y notional mínimo de ETHUSDT en Binance USDⓈ-M. Son de
@@ -50,6 +50,14 @@ COST_HEAVY_SHARE: Final = 0.30
 #: Rachas que se muestran. 15 y 20 son las peores rachas medidas en el
 #: backtest de reglas técnicas (artifacts/technical-ETHUSDT-*).
 STREAKS: Final = (5, 10, 15, 20)
+
+#: Probabilidad de toque por ruido por encima de la cual se avisa. 0,6
+#: equivale a un stop a menos de ~0,5σ del horizonte.
+STOP_IN_NOISE: Final = 0.60
+
+#: Leverage desde el que el aviso de régimen elevado pasa a rojo. El filtro
+#: se validó a 20x; a 10x salió sin potencia y a 5x no hubo un solo evento.
+ELEVATED_LEVERAGE: Final = 20.0
 
 #: Distancia mínima liquidación/stop para no avisar. La misma que usa
 #: `max_safe_leverage`: el precio puede pasarse un 50% del stop (por mecha,
@@ -92,6 +100,14 @@ class Sizing:
     gain_at_target: float | None = None
     reward_risk_net: float | None = None
     breakeven_win_rate: float | None = None
+    #: Contexto de volatilidad del analista, si lo hay. `sigma_horizon` es la
+    #: sigma pronosticada del horizonte completo (H barras), la misma que usa
+    #: `projection.py`.
+    sigma_horizon: float | None = None
+    stop_sigmas: float | None = None
+    p_touch_stop: float | None = None
+    p_touch_target: float | None = None
+    regime_elevated: bool | None = None
     losing_streaks: dict[int, float] = field(default_factory=dict)
     warnings: list[SizingWarning] = field(default_factory=list)
 
@@ -124,6 +140,8 @@ def size_position(
     maker_entry: bool = False,
     qty_step: float = DEFAULT_QTY_STEP,
     min_notional: float = DEFAULT_MIN_NOTIONAL,
+    sigma_horizon: float | None = None,
+    regime_elevated: bool | None = None,
 ) -> Sizing:
     """Tamaño tal que, si salta el stop, se pierde `capital · risk_fraction`.
 
@@ -199,6 +217,18 @@ def size_position(
         gain_at_target=gain,
         reward_risk_net=rr,
         breakeven_win_rate=be,
+        sigma_horizon=sigma_horizon,
+        # Aproximación declarada de `prob_touch`: camino sin deriva y colas
+        # normales. Subestima en cripto, y más en régimen elevado (techo de
+        # la sigma, Fase 5).
+        stop_sigmas=(stop_pct / sigma_horizon) if sigma_horizon else None,
+        p_touch_stop=prob_touch(stop_pct, sigma_horizon) if sigma_horizon else None,
+        p_touch_target=(
+            prob_touch(target_pct, sigma_horizon)
+            if sigma_horizon and target_pct is not None
+            else None
+        ),
+        regime_elevated=regime_elevated,
         # Riesgo fijo sobre el saldo que queda: (1 − r)^n.
         losing_streaks={n: 1.0 - (1.0 - risk_fraction) ** n for n in STREAKS},
     )
@@ -269,6 +299,27 @@ def _warnings(s: Sizing, min_notional: float) -> list[SizingWarning]:
                 "warn",
                 f"Los costos son el {s.cost_share_of_risk:.0%} de lo que se "
                 "arriesga: el stop está muy cerca para lo que cobra el exchange.",
+            )
+        )
+    if s.p_touch_stop is not None and s.p_touch_stop > STOP_IN_NOISE:
+        out.append(
+            SizingWarning(
+                "stop_in_noise",
+                "warn",
+                f"El stop está a {s.stop_sigmas:.2f}σ del movimiento esperado en el "
+                f"horizonte: el ruido normal lo toca ~{s.p_touch_stop:.0%} de las veces "
+                "aunque tengas razón en la dirección.",
+            )
+        )
+    if s.regime_elevated:
+        out.append(
+            SizingWarning(
+                "regime_elevated",
+                "danger" if s.leverage >= ELEVATED_LEVERAGE else "warn",
+                "Filtro de régimen ELEVADO: la volatilidad pronosticada está en el "
+                "20% más alto de su historia. Es donde se concentran las liquidaciones "
+                "(evitarlo evitó el 52% a 20x) y donde la sigma subestima el "
+                "movimiento. Mejor no entrar, o hacerlo con menos riesgo y stop más ancho.",
             )
         )
     return out

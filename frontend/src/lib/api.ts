@@ -119,5 +119,7 @@ export const api = {
     leverage: number;
     target?: number;
     maker_entry?: boolean;
+    sigma_horizon?: number;
+    regime_elevated?: boolean;
   }) => request<SizingResponse>(`/api/risk/sizing${query(p)}`),
 };

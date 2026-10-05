@@ -630,6 +630,11 @@ export type SizingResponse = {
   gain_at_target: number | null;
   reward_risk_net: number | null;
   breakeven_win_rate: number | null;
+  sigma_horizon: number | null;
+  stop_sigmas: number | null;
+  p_touch_stop: number | null;
+  p_touch_target: number | null;
+  regime_elevated: boolean | null;
   losing_streaks: Record<string, number>;
   warnings: SizingWarning[];
 };
