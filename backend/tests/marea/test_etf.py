@@ -206,6 +206,34 @@ class TestRun:
         assert "no cuadra con adjClose" in reports["MAL"].status
         assert reports["NADA"].status.startswith("error: TiingoError")
 
+    def test_dividendo_nuevo_rebasa_adjclose_y_no_es_error(self, conn: sqlite3.Connection) -> None:
+        # Regresión del 2026-10-05: Tiingo recalcula TODO adjClose al pagar un
+        # dividendo. Las barras guardadas FUERA del solape quedan en la base
+        # vieja y las del solape en la nueva; no se pueden comparar entre sí.
+        base = [("2026-08-01", 99.0, 0.0, 1.0), ("2026-09-02", 101.0, 0.0, 1.0)]
+        fake = FakeTiingo({"TLT": adj_series(base)})
+        ingest_etf.run(client(fake), conn, ["TLT"])
+        rebased = adj_series([*base, ("2026-09-03", 100.8, 0.4, 1.0)])
+        last_adj = rebased[-1]["adjClose"]
+        for r in rebased:  # nueva base: la última barra vale su cierre
+            r["adjClose"] = r["adjClose"] / last_adj * 100.8
+        fake.data["TLT"] = rebased
+        rep = ingest_etf.run(client(fake), conn, ["TLT"])[0]
+        assert rep.status == "actualizado"
+        assert rep.adj_gap_pct is not None and abs(rep.adj_gap_pct) < ingest_etf.ADJ_TOLERANCE_PCT
+
+    def test_dividendo_mal_leido_en_el_solape_sigue_siendo_error(
+        self, conn: sqlite3.Connection
+    ) -> None:
+        base = [("2026-08-01", 99.0, 0.0, 1.0), ("2026-09-02", 101.0, 0.0, 1.0)]
+        fake = FakeTiingo({"TLT": adj_series(base)})
+        ingest_etf.run(client(fake), conn, ["TLT"])
+        rows = adj_series([*base, ("2026-09-03", 100.8, 0.4, 1.0)])
+        rows[-1]["divCash"] = 0.0  # Tiingo omitió el dividendo en el crudo
+        fake.data["TLT"] = rows
+        rep = ingest_etf.run(client(fake), conn, ["TLT"])[0]
+        assert "no cuadra con adjClose" in rep.status
+
     def test_cli_etf(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:

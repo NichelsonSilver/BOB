@@ -16,6 +16,15 @@
    sea Tiingo usa la misma convención aditiva. El control es entonces una
    **identidad a precisión de máquina**: por encima de `ADJ_TOLERANCE_PCT` hay
    un dividendo o un split mal leído, y el ETF sale con error.
+
+   **El control corre sobre lo bajado en ESTA corrida, no sobre la DB.**
+   Tiingo recalcula todo `adjClose` en cada dividendo, así que la columna
+   guardada mezcla bases entre corridas. Medido el 2026-10-05: el pago mensual
+   del 01-10 hizo fallar a SHY, IEF, TLT, LQD y HYG con brechas de 0,30–0,44 %,
+   que son exactamente sus dividendos — el crudo estaba bien y el control
+   comparaba dos bases. Lo bajado en una request comparte base; en una ingesta
+   incremental eso es el solape de `OVERLAP_DAYS`, que es justo donde cae un
+   dividendo nuevo.
 """
 
 from __future__ import annotations
@@ -53,6 +62,13 @@ def sync_ticker(
     client: TiingoClient, conn: sqlite3.Connection, ticker: str
 ) -> tuple[str, int, int]:
     """Baja lo nuevo con solape. Devuelve (estado, barras nuevas, cierres revisados)."""
+    status, new, revised, _ = _sync(client, conn, ticker)
+    return status, new, revised
+
+
+def _sync(
+    client: TiingoClient, conn: sqlite3.Connection, ticker: str
+) -> tuple[str, int, int, list[DailyBar]]:
     last = store.last_bar_day(conn, ticker)
     start = last - timedelta(days=OVERLAP_DAYS) if last else HISTORY_START
     fetched = client.daily(ticker, start)
@@ -60,7 +76,7 @@ def sync_ticker(
     revised = sum(1 for b in fetched if b.day in old and old[b.day] != b.close)
     new = sum(1 for b in fetched if b.day not in old)
     store.upsert_bars(conn, ticker, fetched)
-    return ("nuevo" if last is None else "actualizado"), new, revised
+    return ("nuevo" if last is None else "actualizado"), new, revised, fetched
 
 
 def adj_close_gap_pct(bars: list[DailyBar]) -> float | None:
@@ -114,13 +130,15 @@ def print_reports(reports: list[EtfReport], requests_made: int) -> None:
 
 def run(client: TiingoClient, conn: sqlite3.Connection, tickers: list[str]) -> list[EtfReport]:
     partial: dict[str, tuple[str, int, int]] = {}
+    fetched: dict[str, list[DailyBar]] = {}
     quota_hit = False
     for t in tickers:
         if quota_hit:
             partial[t] = ("error: omitido, cuota de Tiingo agotada", 0, 0)
             continue
         try:
-            partial[t] = sync_ticker(client, conn, t)
+            status, new, revised, fetched[t] = _sync(client, conn, t)
+            partial[t] = (status, new, revised)
         except TiingoQuotaError as exc:
             quota_hit = True
             partial[t] = (f"error: {exc}", 0, 0)
@@ -128,8 +146,9 @@ def run(client: TiingoClient, conn: sqlite3.Connection, tickers: list[str]) -> l
             partial[t] = (f"error: {type(exc).__name__}: {exc}", 0, 0)
 
     bars = {t: store.load_bars(conn, t) for t in tickers}
-    for t, bs in bars.items():
-        gap = adj_close_gap_pct(bs)
+    checked = {t: adj_close_gap_pct(fetched.get(t, [])) for t in tickers}
+    for t in tickers:
+        gap = checked[t]
         if (
             gap is not None
             and abs(gap) > ADJ_TOLERANCE_PCT
@@ -150,7 +169,7 @@ def run(client: TiingoClient, conn: sqlite3.Connection, tickers: list[str]) -> l
             new=partial[t][1],
             revised=partial[t][2],
             gaps=gaps.get(t, 0),
-            adj_gap_pct=adj_close_gap_pct(bars[t]),
+            adj_gap_pct=checked[t],
         )
         for t in tickers
     ]
