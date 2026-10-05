@@ -584,7 +584,25 @@ def test_ninguna_ruta_de_lectura_toca_la_muestra(client: TestClient) -> None:
         f"/api/history/coverage?symbol={SYMBOL}&baselines=false",
         f"/api/history/forecasts.csv?symbol={SYMBOL}",
         "/api/settings",
+        "/api/risk/sizing?capital=500&risk_pct=1&entry=2500&stop=2475",
     ):
         assert client.get(url).status_code == 200, url
 
     assert snapshot() == antes
+
+
+def test_risk_sizing_responde_sin_analista(client: TestClient) -> None:
+    res = client.get(
+        "/api/risk/sizing?capital=500&risk_pct=1&entry=2500&stop=2475&leverage=5&target=2550"
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["direction"] == "long" and body["quantity"] == pytest.approx(0.175)
+    assert body["venue"] == "binance_usdm"
+    assert set(body["losing_streaks"]) == {"5", "10", "15", "20"}
+
+
+def test_risk_sizing_rechaza_entradas_sin_sentido(client: TestClient) -> None:
+    base = "/api/risk/sizing?capital=500&risk_pct=1"
+    assert client.get(f"{base}&entry=2500&stop=2500").status_code == 422
+    assert client.get(f"{base}&entry=1&stop=0.9&venue=x").status_code == 422

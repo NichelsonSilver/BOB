@@ -24,6 +24,7 @@ import type {
   RunDetail,
   RunsResponse,
   SettingsResponse,
+  SizingResponse,
 } from "../types";
 
 /** Error de la API con su status, para poder distinguir 404 de "se cayó". */
@@ -103,4 +104,15 @@ export const api = {
   riskFilter: () => request<RiskFilterEvidence>("/api/backtest/riskfilter"),
 
   settings: () => request<SettingsResponse>("/api/settings"),
+
+  /** Aritmética pura sobre lo que tipea el usuario: no lee la DB. */
+  sizing: (p: {
+    capital: number;
+    risk_pct: number;
+    entry: number;
+    stop: number;
+    leverage: number;
+    target?: number;
+    maker_entry?: boolean;
+  }) => request<SizingResponse>(`/api/risk/sizing${query(p)}`),
 };

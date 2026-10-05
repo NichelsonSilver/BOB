@@ -1947,6 +1947,39 @@ una cola izquierda que perdió **−68,8%** en su peor período—. No mide la
 economía, por falta de potencia. Y no toca el vivo de 15m: no cambia
 `model_version` del analista.
 
+### Frente intradía — reglas técnicas y calculadora de riesgo (2026-10-05)
+
+Nichelson pidió un asistente para operar ETH **ya**, con ~500 USD, usando
+análisis técnico. Es un frente del módulo cripto, a horizonte intradía, y
+no se mezcla con la fase M en curso.
+
+1. ✅ **Reglas técnicas medidas, y no pasan.** Pre-registro
+   `docs/PREREGISTRO_TECNICO.md` (commit `07a71ff`, antes de correr).
+   Barrido de liquidez y order block, en {15m, 1h}, objetivo 2R, costo
+   0,14%: las **cuatro** confirmatorias tienen expectancy neta negativa
+   (−0,15 a −0,35 R por trade) e **indistinguible del placebo** que entra
+   al azar con la misma geometría. Ninguna de las 26 exploratorias sale
+   positiva. Lo que mata a 15m es el costo: con el stop típico a 0,48%,
+   la fricción solo ya son ~0,3 R por trade. Artefacto:
+   `backend/artifacts/technical-ETHUSDT-20261005T131229Z.*`. El detector
+   causal vive en `signals/technical.py` y es el mismo que usaría el
+   mapa del panel.
+2. ✅ **Calculadora de riesgo** (`models/sizing.py`, `/api/risk/sizing`,
+   página **Riesgo**). Va de la cuenta y el % arriesgado, al stop, y de
+   ahí al tamaño. La pérdida al stop incluye los costos, y la cantidad se
+   redondea hacia abajo. Calcula margen, liquidación aislada con la misma
+   fórmula de `projection.py`, la razón liquidación/stop, el leverage
+   mínimo y el prudente, el R neto, el % de aciertos para empatar y las
+   rachas de pérdidas. Avisa cuando la liquidación llega antes que el
+   stop, cuando el margen no cabe, cuando el costo pesa demasiado o
+   cuando el riesgo pasa de 2%. Funciona aunque el analista no esté
+   emitiendo. Si el último precio de la DB tiene más de una hora, lo
+   marca como viejo y no lo usa de entrada.
+3. Pendiente, a decisión de Nichelson: el **mapa técnico** en el panel
+   (zonas, order blocks, S/R, RSI y medias). Si se hace, va con la
+   expectancy medida al lado y no con flechas de entrada (§7 del
+   pre-registro).
+
 ### Fase 7 — Alertas Telegram + sentimiento (F&G, CoinGecko)
 ### Fase 8 — Outliers Club + multi-símbolo watchlist
 ### Fase 9 — Validación end-to-end

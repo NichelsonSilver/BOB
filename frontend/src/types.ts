@@ -590,3 +590,46 @@ export type ForecastFrame = {
 };
 
 export type AnalysisErrorFrame = { symbol: string; detail: string };
+
+// --------------------------------------------------------------------- //
+// Riesgo — calculadora de tamaño (/api/risk/sizing)
+// --------------------------------------------------------------------- //
+
+export type SizingWarning = {
+  code: string;
+  level: "danger" | "warn";
+  message: string;
+};
+
+export type SizingResponse = {
+  venue: string;
+  venue_name: string;
+  direction: "long" | "short";
+  capital: number;
+  risk_fraction: number;
+  risk_budget: number;
+  entry: number;
+  stop: number;
+  leverage: number;
+  stop_pct: number;
+  cost_pct: number;
+  quantity: number;
+  notional: number;
+  margin: number;
+  loss_at_stop: number;
+  loss_at_stop_fraction: number;
+  cost_usd: number;
+  cost_share_of_risk: number;
+  required_leverage: number;
+  max_safe_leverage: number;
+  liquidation_price: number;
+  liquidation_pct: number;
+  liquidation_to_stop: number;
+  target: number | null;
+  target_pct: number | null;
+  gain_at_target: number | null;
+  reward_risk_net: number | null;
+  breakeven_win_rate: number | null;
+  losing_streaks: Record<string, number>;
+  warnings: SizingWarning[];
+};
