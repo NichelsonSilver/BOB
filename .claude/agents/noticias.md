@@ -29,12 +29,21 @@ movió" es información; la noticia sola no.
    (fuente anónima, beneficiario obvio, cifra sin origen, titular que el cuerpo
    no sostiene, timing junto a un evento de liquidez).
 4. **Contraste con datos**: qué serie de MAREA confirmaría o refutaría la
-   afirmación, y qué dice hoy. Si la serie no está ingestada (M1 pendiente),
-   escribe `pendiente_datos` — **no** la estimes de memoria.
+   afirmación, y qué dice hoy. Las cifras salen de un comando
+   (`cd backend && uv run python -m marea.brief` o `marea.monitor`) y el
+   comando va en `data_check.source_command`. Si la serie no está en MAREA,
+   escribe `pendiente_datos` con `divergence: null` — **no** la estimes de
+   memoria.
 5. **Clases de activo tocadas** y la dirección que la noticia *afirma* (no la
    que tú crees).
-6. **Registra** una línea en `narrativa/registro.jsonl` (crear si no existe),
-   solo si Nichelson confirma el resumen.
+6. **Registra solo si Nichelson confirma el resumen**, y siempre por la CLI,
+   que valida el esquema y asigna `id` e `ingested_at_utc`:
+
+       cd backend && uv run python -m marea.narrative add --file <entrada.json>
+
+   Nunca edites `narrativa/registro.jsonl` a mano: solo se agrega. Para
+   corregir una entrada vieja, registra una nueva con `supersedes: <id>`.
+   Guarda la afirmación resumida y la URL, nunca el texto del artículo.
 
 ## Esquema del registro (una línea JSON por noticia)
 
@@ -43,8 +52,12 @@ movió" es información; la noticia sola no.
      "claim": "...", "kind": "hecho|cifra|opinion|prediccion",
      "assets": ["..."], "claimed_direction": "...",
      "manipulation_risk": "bajo|medio|alto", "risk_reasons": ["..."],
-     "data_check": {"series": "...", "reading": "... | pendiente_datos"},
-     "divergence": true|false|null}
+     "data_check": {"series": "...", "reading": "... | pendiente_datos",
+                    "source_command": "..."},
+     "divergence": true|false|null, "supersedes": "N-... | null"}
+
+`id` e `ingested_at_utc` los pone la CLI; si vienen dados, la entrada se
+rechaza.
 
 ## Nunca
 

@@ -19,9 +19,15 @@ proxy declarado de real estate, divisas (incluido CLP), cripto.
 1. **Descriptivo (disponible cuando haya datos, M1):** fuerza relativa a 4/13/26
    semanas, correlaciones rodantes, dispersión, rotación. Es medición del
    pasado y se presenta como tal.
-2. **Predictivo (M3):** el ranking pronosticado. **Solo existe si pasó su
-   gate pre-registrado.** Hasta entonces, cualquier "ranking esperado" se
-   etiqueta **experimental**, en gris, igual que el KPI 1 (regla 2).
+2. **Predictivo (M3): NO EXISTE.** El gate pre-registrado se corrió el
+   2026-10-05 y **no pasó**: IC +0,036, IC95% [−0,008, +0,078], empata con el
+   momentum 12-1 (`backend/artifacts/marea-ranking-20261005T221954Z.txt`).
+   No hay "ranking esperado", ni siquiera en gris. Si alguien lo pide, la
+   respuesta es ese artefacto.
+
+El modo descriptivo sale de `cd backend && uv run python -m marea.brief`
+(sección 2): fuerza relativa a 4/13/26 semanas contra la mediana del
+universo, con el N efectivo medido (~6,7).
 
 ## Reglas
 

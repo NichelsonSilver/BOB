@@ -7,6 +7,6 @@ description: Memo semanal de MAREA: integra liquidez, cross-asset, cripto y narr
 
 Agente: `.claude/agents/coordinador.md`. Contexto: `docs/REESTRUCTURACION_MAREA.md`.
 
-Delega en el agente `coordinador` (argumentos: $ARGUMENTS).
+Delega en el agente `coordinador` (argumentos: $ARGUMENTS). El coordinador parte de `uv run python -m marea.brief` (en `backend/`, ~3 s): un solo agente lee todo lo medido, en vez de uno por capa.
 
 Antes de entregar el memo, pásalo por el agente `auditor` con foco en procedencia de cifras y regla 2, y corrige lo que encuentre. Guarda en `memos/AAAA-MM-DD.md` solo si Nichelson lo pide.
