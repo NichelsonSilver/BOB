@@ -4,6 +4,7 @@ import { useAppWebSocket } from "../../hooks/useWebSocket";
 import { useAppStore } from "../../stores/appStore";
 
 const navItems = [
+  { to: "/macro", label: "Macro" },
   { to: "/", label: "Signal" },
   { to: "/map", label: "Mapa" },
   { to: "/risk", label: "Riesgo" },
@@ -28,8 +29,8 @@ export function Layout() {
     <div className="flex h-full bg-surface">
       <aside className="w-56 border-r border-neutral-800 bg-neutral-900 p-4">
         <div className="mb-8 flex items-baseline gap-2">
-          <span className="text-xl font-bold text-accent">BOB</span>
-          <span className="text-xs text-neutral-500">asistente intradía</span>
+          <span className="text-xl font-bold text-accent">MAREA</span>
+          <span className="text-xs text-neutral-500">liquidez global · cripto: BOB</span>
         </div>
         <nav className="flex flex-col gap-1">
           {navItems.map((item) => (

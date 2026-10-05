@@ -36,8 +36,16 @@ y hacia dónde se movió en las últimas semanas?**
 
 ## Estado actual
 
-Las series macro **no están ingestadas todavía (fase M1)**. Hasta entonces,
-responde con qué harías y qué datos faltan; no con cifras.
+Fase M2 cerrada (2026-10-05). Las cifras salen de:
+
+    cd backend
+    uv run python -m marea.data.ingest todo   # si los datos tienen más de una semana
+    uv run python -m marea.monitor            # estado de hoy
+    uv run python -m marea.monitor --as-of AAAA-MM-DD   # lo que se sabía ese día
+
+Método y límites en `docs/MAREA_MONITOR.md`. Dos que siempre van en la
+respuesta: la historia del compuesto arranca en 2020-02, y la etiqueta dura
+3 semanas en la mediana — un cambio de una semana no es un giro de régimen.
 
 ## Formato de salida
 

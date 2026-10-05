@@ -19,6 +19,7 @@ import type {
   HealthResponse,
   HistoryResponse,
   LatestResponse,
+  LiquidityReport,
   NarrativeResponse,
   ProjectionResponse,
   RiskFilterEvidence,
@@ -110,6 +111,9 @@ export const api = {
   stopFilter: () => request<StopFilterEvidence>("/api/backtest/stopfilter"),
 
   settings: () => request<SettingsResponse>("/api/settings"),
+
+  /** MAREA: el último reporte guardado por `python -m marea.monitor`. */
+  liquidity: () => request<LiquidityReport>("/api/macro/liquidity"),
 
   narrative: (t: { symbol?: string }) =>
     request<NarrativeResponse>(`/api/analysis/narrative${query(t)}`),

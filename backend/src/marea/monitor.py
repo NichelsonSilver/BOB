@@ -353,6 +353,27 @@ def _label_since(pcts: NDArray[np.float64], dates: Sequence[date]) -> str | None
     return dates[i].isoformat()
 
 
+def persistence(pcts: NDArray[np.float64]) -> dict[str, Any]:
+    """Cuánto dura una etiqueta. Un régimen que cambia cada pocas semanas no
+    sirve para un horizonte de semanas a meses, y eso se dice en vez de
+    suavizarlo después de verlo (cambiar el método mirando el resultado sería
+    ajustarlo a la muestra)."""
+    labels = [label(float(p)) for p in pcts]
+    seq = [x for x in labels if x is not None]
+    runs: list[int] = []
+    for i, x in enumerate(seq):
+        if i > 0 and x == seq[i - 1]:
+            runs[-1] += 1
+        else:
+            runs.append(1)
+    return {
+        "weeks": len(seq),
+        "changes": max(0, len(runs) - 1),
+        "median_run_weeks": float(np.median(runs)) if runs else None,
+        "max_run_weeks": max(runs) if runs else None,
+    }
+
+
 def _first_valid(x: NDArray[np.float64], dates: Sequence[date]) -> str | None:
     idx = np.flatnonzero(np.isfinite(x))
     return dates[int(idx[0])].isoformat() if idx.size else None
@@ -428,6 +449,7 @@ def report(mon: Monitor) -> dict[str, Any]:
             "label_13w_ago": label(float(cp[back(13)])),
             "since": _label_since(cp, dates),
             "available_from": _first_valid(cp, dates),
+            "persistence": persistence(cp),
         },
         "indicators": indicators,
         "cot": mon.cot,

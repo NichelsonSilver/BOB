@@ -769,3 +769,83 @@ export type StopFilterEvidence = {
   calculator_needs_correction: string[];
   expectancy_r: Record<string, number>;
 };
+
+/** MAREA — monitor de liquidez (fase M2). Monitoreo, sin pronóstico. */
+export type LiquidityLabel = "expansivo" | "neutro" | "contractivo";
+
+export type LiquidityIndicator = {
+  key: string;
+  name: string;
+  group: "nucleo" | "contexto" | "chile";
+  in_composite: boolean;
+  /** +1 subir es expansivo, −1 contractivo, 0 ambiguo (no se clasifica). */
+  sign: number;
+  kind: "log" | "diff";
+  unit: string;
+  /** "medido" = vintages de ALFRED; "declarado" = rezago fijado a mano (BCCh). */
+  pit: "medido" | "declarado";
+  caveat: string;
+  obs_date: string | null;
+  exact: boolean;
+  level: number | null;
+  chg_4w: number | null;
+  chg_13w: number | null;
+  pct: number | null;
+  label: LiquidityLabel | null;
+  label_13w_ago: LiquidityLabel | null;
+  pct_from: string | null;
+};
+
+export type CotRow = {
+  code: string;
+  name: string;
+  etf: string | null;
+  report_date: string;
+  available_date: string;
+  net_pct_oi: number | null;
+  net_pct_oi_4w: number | null;
+  pct_3y: number | null;
+};
+
+export type LiquidityHistoryPoint = {
+  date: string;
+  composite_pct: number | null;
+  label: LiquidityLabel | null;
+  fed_net: number | null;
+  global_cb: number | null;
+  components: Record<string, number | null>;
+};
+
+export type LiquidityReport = {
+  as_of: string;
+  computed_at_utc: string;
+  age_days: number;
+  stale: boolean;
+  method: {
+    signal: string;
+    short_change_weeks: number;
+    percentile: string;
+    min_history_weeks: number;
+    composite: string;
+    weights: string;
+    forecast: false;
+  };
+  regime: {
+    label: LiquidityLabel | null;
+    composite_pct: number | null;
+    composite_raw: number | null;
+    label_4w_ago: LiquidityLabel | null;
+    label_13w_ago: LiquidityLabel | null;
+    since: string | null;
+    available_from: string | null;
+    persistence: {
+      weeks: number;
+      changes: number;
+      median_run_weeks: number | null;
+      max_run_weeks: number | null;
+    };
+  };
+  indicators: LiquidityIndicator[];
+  cot: CotRow[];
+  history: LiquidityHistoryPoint[];
+};

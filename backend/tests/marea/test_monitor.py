@@ -157,3 +157,14 @@ def test_cli_guarda_solo_el_vigente(
     c.close()
     assert saved is not None and json.loads(saved)["as_of"] == "2012-12-21"
     assert "guardado" in capsys.readouterr().out
+
+
+def test_persistencia_de_la_etiqueta() -> None:
+    p = np.array([np.nan, 0.9, 0.8, 0.5, 0.1, 0.2, 0.9])
+    assert monitor.persistence(p) == {
+        "weeks": 6,
+        "changes": 3,
+        "median_run_weeks": 1.5,
+        "max_run_weeks": 2,
+    }
+    assert monitor.persistence(np.array([np.nan]))["median_run_weeks"] is None
