@@ -1997,8 +1997,8 @@ no se mezcla con la fase M en curso.
    que el registro no decía:
    - **El filtro nunca había corrido en vivo.** Se construyó el 14-09 con
      la corrida forward ya cerrada: 0 de 1.174 `ForecastRecord` tenían
-     `regime_json`. La **primera emisión en vivo** es del 05-10 12:15 hora
-     local (ETH 2.703, sigma 4 h 0,89%, percentil 33, normal), tras
+     `regime_json`. La **primera emisión en vivo** es la de la barra 05-10 14:45 UTC
+     (ETH 2.703, sigma 4 h 0,89%, percentil 33, normal), tras
      reingestar tres semanas de velas con `download --repair` y de
      `metrics` y funding con `download_vision --days 30`. Los derivados del
      apagón no se perdieron: los cubre el archivo diario.
