@@ -171,3 +171,10 @@ Cada una para las dos reglas y para 15m y 1h, donde aplique.
 - Con 500 USD, el riesgo por trade se fija en un porcentaje chico de la cuenta
   (1–2%). El tamaño sale del stop, no del leverage.
 - Nada de esto toca el árbol de la regla 12 ni la corrida forward del panel.
+
+---
+
+**Resultado (enlace agregado después de correr, sin tocar lo de arriba):**
+`backend/artifacts/technical-ETHUSDT-20261005T131229Z.txt|.json` — las
+cuatro confirmatorias **NO PASAN**; ningún placebo pasa, así que la medición
+es válida.
