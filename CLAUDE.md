@@ -1821,6 +1821,17 @@ exista**.
 **Criterio pre-registrado antes de emitir nada**
 (`docs/PREREGISTRO_PANEL_FORWARD.md`, commit `99532e8`).
 
+> **Enmienda 1 (2026-10-05): diseño secuencial**
+> (`docs/ENMIENDA_PANEL_FORWARD_SECUENCIAL.md`), commiteada sin que nadie
+> hubiera mirado el IC forward. Análisis interino a las **90 fechas válidas**:
+> confirma si z ≥ 2,967, cierra por futilidad si IC ≤ 0. Final a las 180 con
+> z ≥ 1,968. Mismo α (0,025 a una cola), −0,4 pp de potencia; fechas
+> esperadas 135 bajo el nulo y 98 con el efecto entero. **Nadie mira el IC
+> antes de las 90 fechas**: el interino se implementa en `marea/`, solo
+> lectura, sin tocar `panel_forward.py` (regla 12). El ritmo de fechas
+> válidas era de 33% al enmendar: el portátil duerme a las 21:05 y los
+> temporizadores de reactivación están desactivados.
+
 **La medición de potencia se hizo ANTES de fijar el criterio, y decide la
 forma entera de la fase.** Sobre las 1.667 fechas del artefacto primario,
 por fecha:
