@@ -28,6 +28,7 @@ from typing import Any
 import httpx
 
 BASE_URL = "https://stablecoins.llama.fi"
+API_URL = "https://api.llama.fi"
 MIN_INTERVAL_S = 1.0
 
 
@@ -112,4 +113,33 @@ class DefiLlamaClient:
                 out.append((d, float(values["peggedUSD"])))
         if not out:
             raise DefiLlamaError(f"stablecoin {stablecoin_id} vino sin datos en USD")
+        return out
+
+    # --- api.llama.fi: TVL y volumen de DEX (M5.7) ------------------------------
+    # Otro host del mismo proveedor, con las mismas propiedades: grilla diaria a
+    # las 00:00 UTC, fila del día en curso parcial, y sin vintages. Medido el
+    # 2026-10-07: TVL desde 2017-09 (3.298 días); DEX desde 2014-02.
+
+    def chain_tvl(self, today: date) -> list[tuple[date, float]]:
+        """TVL total de DeFi en USD, cerrado al día anterior a `today`."""
+        rows = self._get(f"{API_URL}/v2/historicalChainTvl")
+        out = [(_day(r["date"]), float(r["tvl"])) for r in rows if _day(r["date"]) < today]
+        if not out:
+            raise DefiLlamaError("historicalChainTvl vino vacío")
+        return out
+
+    def dex_volume(self, today: date) -> list[tuple[date, float]]:
+        """Volumen diario de todos los DEX en USD, cerrado al día anterior a `today`."""
+        body = self._get(
+            f"{API_URL}/overview/dexs",
+            {
+                "excludeTotalDataChart": "false",
+                "excludeTotalDataChartBreakdown": "true",
+                "dataType": "dailyVolume",
+            },
+        )
+        chart = body.get("totalDataChart") or []
+        out = [(_day(ts), float(v)) for ts, v in chart if _day(ts) < today]
+        if not out:
+            raise DefiLlamaError("overview/dexs vino sin totalDataChart")
         return out

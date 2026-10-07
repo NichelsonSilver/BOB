@@ -76,8 +76,9 @@ CREATE TABLE IF NOT EXISTS bcch_obs (
     value          REAL NOT NULL,
     PRIMARY KEY (series_id, day)
 );
--- Stablecoins (DefiLlama). La fuente no tiene vintages: cada corrida es una,
--- construida con marea.pit.apply_snapshot. Mismo esquema que fred_period.
+-- Series de DefiLlama con vintages construidas: stablecoins (M5.2) y, desde
+-- la M5.7, DEFI_TVL y DEX_VOLUME. La fuente no tiene vintages: cada corrida
+-- es una (marea.pit.apply_snapshot). Mismo esquema que fred_period.
 CREATE TABLE IF NOT EXISTS stable_period (
     series_id      TEXT NOT NULL,
     obs_date       TEXT NOT NULL,
@@ -124,6 +125,13 @@ CREATE TABLE IF NOT EXISTS options_raw (
     captured_at TEXT NOT NULL,
     body_zlib   BLOB NOT NULL,
     PRIMARY KEY (currency, captured_at)
+);
+-- Paginas vistas de Wikipedia: no se revisan; el dia D se conoce en D+1.
+CREATE TABLE IF NOT EXISTS wiki_views (
+    article TEXT NOT NULL,  -- "en.wikipedia:Bitcoin"
+    day     TEXT NOT NULL,
+    views   INTEGER NOT NULL,
+    PRIMARY KEY (article, day)
 );
 CREATE TABLE IF NOT EXISTS liquidity_report (
     as_of          TEXT PRIMARY KEY,  -- fecha "conocido al"
@@ -442,3 +450,27 @@ def load_options_raw(conn: sqlite3.Connection, currency: str, captured_at: str) 
         (currency, captured_at),
     ).fetchone()
     return zlib.decompress(row[0]) if row else None
+
+
+def last_wiki_day(conn: sqlite3.Connection, article: str) -> date | None:
+    row = conn.execute("SELECT MAX(day) FROM wiki_views WHERE article = ?", (article,)).fetchone()
+    return date.fromisoformat(row[0]) if row and row[0] else None
+
+
+def count_wiki(conn: sqlite3.Connection, article: str) -> int:
+    row = conn.execute("SELECT COUNT(*) FROM wiki_views WHERE article = ?", (article,)).fetchone()
+    return int(row[0])
+
+
+def upsert_wiki(conn: sqlite3.Connection, article: str, rows: Iterable[tuple[date, int]]) -> int:
+    data = [(article, d.isoformat(), v) for d, v in rows]
+    with conn:
+        conn.executemany("INSERT OR REPLACE INTO wiki_views VALUES (?, ?, ?)", data)
+    return len(data)
+
+
+def load_wiki(conn: sqlite3.Connection, article: str) -> list[tuple[date, int]]:
+    rows = conn.execute(
+        "SELECT day, views FROM wiki_views WHERE article = ? ORDER BY day", (article,)
+    )
+    return [(date.fromisoformat(d), int(v)) for d, v in rows]

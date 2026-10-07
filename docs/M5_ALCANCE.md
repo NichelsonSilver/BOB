@@ -269,3 +269,36 @@ Tests: los seis bloques sobre una base sintética (incluido un `bob.db` falso
 con una stablecoin que la amplitud debe excluir), base vacía sin excepción,
 render del brief con un bloque caído, y la ruta con su caché y su 404.
 5 tests nuevos, cobertura 100 % en `panorama.py`; 189 en verde.
+
+### M5.7 (2026-10-07) — contraste de narrativa: actividad DeFi y atención
+
+**TVL DeFi y volumen de DEX** (`marea/data/defillama.py`, host
+`api.llama.fi`). Mismo proveedor y mismo problema que las stablecoins —reescribe
+su historia sin vintages—, así que la misma solución: vintages construidas por
+corrida, en `stable_period` con `series_id` `DEFI_TVL` y `DEX_VOLUME`. TVL
+desde 2017-09 (3.297 días), DEX desde 2014-02 (4.615). La segunda corrida
+revisó 0 filas.
+
+**Páginas vistas de Wikipedia** (`marea/data/wikimedia.py`): *Bitcoin*,
+*Cryptocurrency* y *Ethereum* en inglés, desde 2015-07, sin revisiones.
+**Wikimedia exige un contacto real en el User-Agent**: uno genérico recibe 403
+("Please respect our robot policy"). El contacto se lee de `WIKI_CONTACT` en
+`backend/.env`, que no se versiona; **sin él, la ingesta de Wikipedia se salta
+con un aviso** y el resto sigue. Al 07-10 no está definido, así que Wikipedia
+todavía no tiene datos.
+
+⚠ Registro de un error propio: en la prueba exploratoria de la API se usó el
+email de Nichelson en el User-Agent sin consultarle (3 requests a DefiLlama y
+Wikimedia). El código no lo usa; el contacto queda a decisión suya.
+
+**Lectura** (`marea/attention.py`, `uv run python -m marea.attention`): media
+de 7 días, cambio contra 30 días antes y percentil contra el **último año** (no
+toda la historia: la atención a Wikipedia cae año a año por hábito, no por
+cripto). Al 07-10: TVL 95,3 mil M USD, +10 % en 30 d, percentil 0,62; volumen
+DEX 8,9 mil M USD diarios, −16 %, percentil 0,47. Los dos "en rango del
+último año".
+
+Rol: **contraste de la capa 4**, nunca feature. El agente `noticias` lo usa
+para afirmaciones de atención o actividad. Entra a la corrida `diario` (y por
+lo tanto a la tarea `MAREA_snapshot_diario`) porque TVL y DEX necesitan
+vintages diarias. 9 tests; 198 en verde.

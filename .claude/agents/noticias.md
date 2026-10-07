@@ -31,7 +31,12 @@ movió" es información; la noticia sola no.
 4. **Contraste con datos**: qué serie de MAREA confirmaría o refutaría la
    afirmación, y qué dice hoy. Las cifras salen de un comando
    (`cd backend && uv run python -m marea.brief` o `marea.monitor`) y el
-   comando va en `data_check.source_command`. Si la serie no está en MAREA,
+   comando va en `data_check.source_command`. Para afirmaciones de
+   **atención o actividad** ("furor por cripto", "DeFi explota", "nadie habla
+   de ETH") el contraste es `uv run python -m marea.attention`: TVL DeFi,
+   volumen de DEX y vistas de Wikipedia, cada uno contra su último año. Es un
+   dato de contraste, no de mercado: que la atención suba no dice que el
+   precio vaya a subir. Si la serie no está en MAREA,
    escribe `pendiente_datos` con `divergence: null` — **no** la estimes de
    memoria.
 5. **Clases de activo tocadas** y la dirección que la noticia *afirma* (no la

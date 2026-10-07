@@ -17,6 +17,8 @@ Credenciales: todas en `backend/.env` (ignorado por git), con los nombres de
 | **CFTC** (Socrata) | posicionamiento COT de 13 mercados | sin key | ✅ ingestado |
 | **Deribit** (`get_book_summary_by_currency`) | foto diaria del libro de opciones BTC y ETH + crudo comprimido | sin key | ✅ desde 2026-10-07 (M5.5). **Sin historia**: tarea `MAREA_snapshot_diario` a las 12:00 |
 | **Binance Futures** (`/fapi/v1/fundingRate`) | funding de BTC y ETH, historia completa | sin key | ✅ ingestado (M5.4) |
+| **Wikimedia** (pageviews) | vistas diarias de Wikipedia: Bitcoin, Cryptocurrency, Ethereum | sin key; **exige contacto** en el User-Agent (`WIKI_CONTACT`) | ⏸ M5.7 construido; sin datos hasta definir el contacto |
+| **DefiLlama** (`api.llama.fi`) | TVL DeFi y volumen de DEX, diarios | sin key | ✅ ingestado (M5.7), vintages por corrida |
 | **DefiLlama** (`stablecoins.llama.fi`) | oferta de stablecoins: 2 totales y 7 tokens, diaria desde 2017-11 | sin key | ✅ ingestado (M5.2). **Sin vintages de origen**: se construyen por corrida |
 | **Treasury** (fiscaldata) | TGA diario | sin key | ✅ verificado, **no se usa por ahora**: `WTREGEN` semanal alcanza para liquidez neta semanal |
 | ~~Stooq~~ | — | — | ❌ **descartado**: responde con un desafío anti-bot de prueba de trabajo en JavaScript. Resolverlo por código sería saltarse su protección |
@@ -256,8 +258,9 @@ Control del 07-10: supply 20,09 M BTC, SSR 5,49 (2,10 en el fondo de 2022-11;
     uv run python -m marea.data.ingest stable                # 9 series DefiLlama, 8 requests
     uv run python -m marea.data.ingest funding               # funding BTC y ETH, incremental
     uv run python -m marea.data.ingest options               # foto de opciones Deribit
-    uv run python -m marea.data.ingest diario                # options + stable + funding (la tarea)
-    uv run python -m marea.data.ingest todo                  # las siete en orden
+    uv run python -m marea.data.ingest atencion              # TVL, DEX y Wikipedia
+    uv run python -m marea.data.ingest diario                # options + stable + funding + atencion (la tarea)
+    uv run python -m marea.data.ingest todo                  # las ocho en orden
 
 Si FRED no actualizó una serie desde la última corrida, se consulta solo su
 metadata: una corrida sin cambios cuesta 1 request por serie. La base es

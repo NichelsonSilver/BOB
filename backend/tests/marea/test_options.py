@@ -112,12 +112,13 @@ def test_corrida_diaria_sigue_aunque_una_fuente_falle(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setattr(ingest, "_main_options", lambda: 0)
+    monkeypatch.setattr(ingest, "_main_attention", lambda: 0)
     monkeypatch.setattr(ingest, "_main_stable", lambda *_a: 1)
     monkeypatch.setattr(
         ingest, "_main_funding", lambda: (_ for _ in ()).throw(RuntimeError("sin red"))
     )
     assert ingest.main(["diario"]) == 1
-    assert "1/3 fuentes sin error; fallaron: DefiLlama, Binance funding" in capsys.readouterr().out
+    assert "2/4 fuentes sin error; fallaron: DefiLlama, Binance funding" in capsys.readouterr().out
     monkeypatch.setattr(ingest, "_main_stable", lambda *_a: 0)
     monkeypatch.setattr(ingest, "_main_funding", lambda: 0)
     assert ingest.main(["diario"]) == 0

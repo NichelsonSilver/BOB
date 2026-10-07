@@ -9,8 +9,9 @@
     uv run python -m marea.data.ingest stable            # stablecoins (DefiLlama)
     uv run python -m marea.data.ingest funding           # funding BTC y ETH (Binance)
     uv run python -m marea.data.ingest options           # foto de opciones (Deribit)
-    uv run python -m marea.data.ingest diario            # options + stable + funding
-    uv run python -m marea.data.ingest todo              # las siete, en orden
+    uv run python -m marea.data.ingest atencion          # TVL, DEX y Wikipedia (narrativa)
+    uv run python -m marea.data.ingest diario            # options + stable + funding + atencion
+    uv run python -m marea.data.ingest todo              # las ocho, en orden
 
 Incremental: si FRED no actualizó la serie desde la última corrida
 (`last_updated` igual) no se pide nada. Si sí, se piden solo las vintages desde
@@ -33,6 +34,7 @@ from loguru import logger
 from bob.utils.console import enable_utf8_stdout
 from marea.config import DB_PATH, MareaSettings
 from marea.data import (
+    ingest_attention,
     ingest_bcch,
     ingest_cot,
     ingest_etf,
@@ -60,6 +62,7 @@ from marea.data.defillama import DefiLlamaClient
 from marea.data.deribit import DeribitClient
 from marea.data.fred import FredClient, FredError
 from marea.data.tiingo import TiingoClient
+from marea.data.wikimedia import WikimediaClient, WikimediaError
 from marea.pit import Period, first_release_lag_days, stitch
 
 
@@ -171,8 +174,9 @@ def main(argv: list[str] | None = None) -> int:
     p_stable.add_argument("--series", nargs="+", dest="stable_series", help="ids del catálogo")
     sub.add_parser("funding", help="funding de perpetuos BTC y ETH (Binance)")
     sub.add_parser("options", help="foto del libro de opciones (Deribit)")
+    sub.add_parser("atencion", help="TVL DeFi, volumen DEX y vistas de Wikipedia")
     sub.add_parser("diario", help="lo que no se recupera después: options, stable, funding")
-    sub.add_parser("todo", help="las siete fuentes, con sus catálogos completos")
+    sub.add_parser("todo", help="las ocho fuentes, con sus catálogos completos")
     args = parser.parse_args(argv)
 
     if args.source == "todo":
@@ -185,6 +189,8 @@ def main(argv: list[str] | None = None) -> int:
         return _main_funding()
     if args.source == "options":
         return _main_options()
+    if args.source == "atencion":
+        return _main_attention()
     if args.source == "diario":
         return _main_daily(parser)
     if args.source == "etf":
@@ -222,9 +228,37 @@ def _main_daily(parser: argparse.ArgumentParser) -> int:
             ("Deribit", _main_options),
             ("DefiLlama", lambda: _main_stable(parser, None)),
             ("Binance funding", _main_funding),
+            ("Atención", _main_attention),
         ],
         "resumen diario",
     )
+
+
+def _main_attention() -> int:
+    llama = DefiLlamaClient()
+    contact = MareaSettings().wiki_contact or ""
+    conn = store.connect(DB_PATH)
+    requests = 0
+    try:
+        today = datetime.now(UTC).date()
+        defi = ingest_attention.run_defi(llama, conn, today)
+        try:
+            wiki = WikimediaClient(contact)
+        except WikimediaError as exc:
+            # Sin contacto declarado no se le pide nada a Wikimedia: se avisa y
+            # no se cuenta como falla de la corrida.
+            print(f"Wikipedia omitida: {exc}")
+            views = []
+        else:
+            views = ingest_attention.run_wiki(wiki, conn, today)
+            requests += wiki.requests_made
+            wiki.close()
+    finally:
+        llama.close()
+        conn.close()
+    ingest_attention.print_reports(defi, views, llama.requests_made + requests)
+    statuses = [r.status for r in defi] + [w.status for w in views]
+    return 1 if any(st.startswith("error") for st in statuses) else 0
 
 
 def _main_options() -> int:
@@ -240,7 +274,7 @@ def _main_options() -> int:
 
 
 def _main_all(parser: argparse.ArgumentParser) -> int:
-    """Corre las siete fuentes. Una que falle (sin key, sin red) no frena a las otras."""
+    """Corre las ocho fuentes. Una que falle (sin key, sin red) no frena a las otras."""
     steps: list[tuple[str, Callable[[], int]]] = [
         ("FRED", lambda: _main_fred(parser, None, full=False)),
         ("Tiingo", lambda: _main_etf(parser, None)),
@@ -249,6 +283,7 @@ def _main_all(parser: argparse.ArgumentParser) -> int:
         ("DefiLlama", lambda: _main_stable(parser, None)),
         ("Binance funding", _main_funding),
         ("Deribit", _main_options),
+        ("Atención", _main_attention),
     ]
     failed: list[str] = []
     for name, step in steps:

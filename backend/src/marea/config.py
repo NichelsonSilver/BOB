@@ -33,3 +33,6 @@ class MareaSettings(BaseSettings):
     api_tiingo: SecretStr | None = Field(default=None, alias="API_TIINGO")
     bcch_user: str | None = Field(default=None, alias="BCCH_USER")
     bcch_pass: SecretStr | None = Field(default=None, alias="BCCH_PASS")
+    #: Contacto (email o URL) para el User-Agent que exige Wikimedia. Sin
+    #: él, la API responde 403 y la ingesta de Wikipedia se salta.
+    wiki_contact: str | None = Field(default=None, alias="WIKI_CONTACT")
