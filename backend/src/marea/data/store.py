@@ -14,6 +14,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
+from marea.data.binance_funding import FundingPoint
 from marea.data.cftc import CotRow
 from marea.data.tiingo import DailyBar
 from marea.pit import Period
@@ -92,6 +93,12 @@ CREATE TABLE IF NOT EXISTS stable_run (
     removed     INTEGER NOT NULL,
     max_revision REAL NOT NULL,
     PRIMARY KEY (series_id, run_at_utc)
+);
+CREATE TABLE IF NOT EXISTS funding (
+    symbol       TEXT NOT NULL,
+    funding_time INTEGER NOT NULL,  -- epoch ms UTC: se conoce en ese instante
+    rate         REAL NOT NULL,
+    PRIMARY KEY (symbol, funding_time)
 );
 CREATE TABLE IF NOT EXISTS liquidity_report (
     as_of          TEXT PRIMARY KEY,  -- fecha "conocido al"
@@ -339,3 +346,25 @@ def stable_runs(conn: sqlite3.Connection, series_id: str) -> list[dict[str, Any]
     )
     cols = [c[0] for c in cur.description]
     return [dict(zip(cols, r, strict=True)) for r in cur]
+
+
+def last_funding_time(conn: sqlite3.Connection, symbol: str) -> int | None:
+    row = conn.execute(
+        "SELECT MAX(funding_time) FROM funding WHERE symbol = ?", (symbol,)
+    ).fetchone()
+    return int(row[0]) if row and row[0] is not None else None
+
+
+def upsert_funding(conn: sqlite3.Connection, points: Iterable[FundingPoint]) -> int:
+    data = [(p.symbol, p.funding_time, p.rate) for p in points]
+    with conn:
+        conn.executemany("INSERT OR REPLACE INTO funding VALUES (?, ?, ?)", data)
+    return len(data)
+
+
+def load_funding(conn: sqlite3.Connection, symbol: str) -> list[FundingPoint]:
+    rows = conn.execute(
+        "SELECT symbol, funding_time, rate FROM funding WHERE symbol = ? ORDER BY funding_time",
+        (symbol,),
+    )
+    return [FundingPoint(s, int(t), float(r)) for s, t, r in rows]

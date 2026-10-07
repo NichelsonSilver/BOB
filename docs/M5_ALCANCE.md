@@ -44,7 +44,7 @@ De 182 entraron 19. Lo descartado y su motivo está en §7.
 | B1 | **Risk de ciclo BTC point-in-time**: 60% Mayer Multiple (cierre / SMA200) + 40% desviación de una regresión log, más el drawdown desde el máximo | `CBBTCUSD` (desde 2014-12) | La versión de Outliers fija los anchors con **toda** la historia: tiene lookahead. La nuestra ajusta la regresión y normaliza solo con el pasado estricto. Se publican las dos curvas lado a lado para que se vea cuánto pierde sin mirar el futuro |
 | B2 | Amplitud cripto: % de la sección sobre la SMA200 y sobre la SMA de 20 semanas | Panel de 659 perpetuos (`bob.db`) | Hay que usar el universo **con deslistados**, como la Fase 10. Solo lectura de la DB: no se importa nada de la lista de la regla 12 |
 | B3 | Altcoin Season Index: % de alts que le ganan a BTC a 90 días | Mismo panel | Misma advertencia de supervivencia |
-| B4 | Spread de funding BTC − ETH | Funding de Binance que ya está en la DB | — |
+| B4 | Spread de funding BTC − ETH | Historial de funding de Binance (`/fapi/v1/fundingRate`) | ⚠ Corregido en la M5.4: este documento decía "ya está en la DB", y en `bob.db` solo estaba el de ETH del vivo de 15m. Se baja completo para los dos |
 | B5 | Put/call y open interest de opciones BTC y ETH | API pública de Deribit | **No hay historia.** Hay que snapshotearla desde ya con una tarea programada propia, a una hora que no choque con `BOB_panel_forward_diario` (21:05). Igual que con el OI de la Fase 1, la historia empieza el día en que arranca |
 | B6 | Encuesta SLOOS: % neto de bancos que endurecen el crédito C&I | FRED `DRTSCILM` | Es trimestral: se usa como contexto, no como señal |
 | B7 | Solicitudes iniciales de desempleo | FRED `ICSA` | Se revisa: se ingiere con vintages |
@@ -161,3 +161,38 @@ Tests: cambiar el futuro deja idéntico el pasado PIT y **sí** mueve el de la
 versión completa; el probit reproduce la probabilidad publicada de 2027-08;
 la conversión reproduce la primera fila del archivo (1959-01). 12 tests,
 cobertura 100 % en los dos módulos.
+
+### M5.4 (2026-10-07) — amplitud, Altcoin Season y funding
+
+**Amplitud y Altcoin Season** (`marea/breadth.py`,
+`uv run python -m marea.breadth`, 3,6 s). Lee el panel diario de `bob.db` en
+solo lectura, con el universo congelado y sus deslistados, y aplica la regla de
+elegibilidad pre-registrada de la Fase 10 (`bob.signals.universe`, importada
+sin cambios). Se excluyen 7 símbolos que no son monedas: índices de Binance
+(BTCDOM, DEFI, BLUEBIRD, FOOTBALL), USDC y oro tokenizado (PAXG, XAUT). Solo
+se leen velas cerradas.
+
+| fecha | % sobre SMA200 | % sobre SMA 20 sem | Altcoin Season |
+|---|---|---|---|
+| hoy (2026-10-06) | 83,1 % (n=166) | 86,7 % | 0,70, neutral |
+| 2021-05-01 | 100 % (n=63) | 100 % | 0,92, alts |
+| techo 2021-11-10 | 77,4 % | 92,5 % | 0,54 |
+| piso 2022-11-21 | **7,6 %** | 6,1 % | 0,38 |
+| 2024-12-05 | 97,2 % | 98,4 % | 0,84, alts |
+
+Altcoin Season: el top 50 es por **volumen mediano de 30 días** y no por
+capitalización (no hay historia gratis): proxy declarado.
+
+**Funding** (`marea/data/binance_funding.py`, `marea/funding.py`,
+`uv run python -m marea.data.ingest funding` y `uv run python -m
+marea.funding`). Historial completo: 7.754 liquidaciones de BTC desde
+2019-09-10 y 7.520 de ETH desde 2019-11-27, 16 requests. Dos trampas:
+`startTime=0` devuelve lo más reciente y no lo más viejo, y el intervalo de
+liquidación no es fijo, así que lo diario es la **suma** de las tasas del día.
+Solo días cerrados. Lectura del 07-10 (media de 7 días, anualizado): BTC
+3,71 %, ETH 4,64 %, spread ETH−BTC 0,93 %, por encima del 56 % de los días
+desde 2019-12.
+
+Tests: cambiar el futuro no mueve la amplitud ni la Altcoin Season pasadas;
+paginación del funding desde una fecha real; ingesta incremental. 11 tests;
+cobertura 100 % en los módulos puros y en la ingesta.
