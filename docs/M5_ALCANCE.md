@@ -103,3 +103,61 @@ De 182 entraron 19. Lo descartado y su motivo está en §7.
 | Redundante con lo que ya está | M2, activos de la Fed, fondos federales, NFCI, WTI y gas, VIX, OI y funding de Binance, volatilidad realizada |
 | Decisión explícita de Nichelson | **Minería** (hash rate, hash ribbons, Puell, ingreso minero, dificultad): pocas capitulaciones, sin potencia. **Gem Hunters** y **Value**: análisis fundamental discrecional, fuera del alcance |
 | Poca historia gratuita | OI y funding de Bybit y OKX: ya está el de Binance, que es el de mayor volumen |
+
+## 8. Registro de etapas
+
+### M5.1 y M5.2 (2026-10-07)
+
+Ver `docs/MAREA_FUENTES.md`: 9 series FRED nuevas y stablecoins de DefiLlama
+con vintages construidas por corrida.
+
+### M5.3 (2026-10-07) — recesión y Risk de ciclo
+
+**Probabilidad de recesión** (`marea/recession.py`,
+`uv run python -m marea.recession`). Es el probit de la NY Fed:
+P(recesión en m+12) = Φ(α + β·spread_m).
+
+- α = −0,5333 y β = −0,6330 se **recuperan exactos** de las 795 filas del
+  archivo publicado (`allmonth.xls`, guardado el 2026-09-06): residuo 2e-15.
+- El spread se reproduce con FRED (`DGS10` − `DTB3` llevada a base de bono,
+  promedios mensuales redondeados a 2 decimales): **760 meses comparados,
+  diferencia máxima 0,23 pp** en la probabilidad. `T10Y3M` no sirve (difiere
+  hasta 0,13 puntos de spread). Por eso se sumó `DTB3` al catálogo.
+- Como es un modelo de parámetros fijos estimado hasta 2006, la probabilidad
+  es point-in-time desde ahí y dentro de muestra antes; se marca `exact`.
+- Lectura del 07-10: **12,8 %** para 2027-09 (spread de septiembre, un mes más
+  que el archivo). Máximo desde 2022: **70,9 %** con el spread de 2023-05, y la
+  recesión no llegó. Se muestra con esa historia al lado.
+- **El gauge de Outliers ("NY Fed RECPRO", 0,6 %) no es este modelo.** Casi
+  seguro es `RECPROUSM156N` (Chauvet-Piger), que estima la probabilidad de
+  estar en recesión **hoy**. Son preguntas distintas.
+
+**Risk de ciclo BTC** (`marea/cycle.py`, `uv run python -m marea.cycle`).
+Misma receta que Outliers (60 % Mayer Multiple + 40 % desviación log-log
+contra los días desde el génesis), en dos versiones:
+
+| | point-in-time | con lookahead |
+|---|---|---|
+| hoy (2026-10-06) | **0,476** | 0,431 |
+| techo 2021-11-10 | 0,756 | **0,867** |
+| piso 2022-11-21 | 0,060 | 0,044 |
+| ETF 2024-03-13 | 0,781 | 0,838 |
+
+Sobre 2.867 días con las dos: correlación 0,94, diferencia media 0,10, y en
+el **14,3 %** de los días se separan más de 0,20. **La versión con lookahead
+marca el techo de 2021 0,11 más arriba**: eso es lo que hace verse tan nítido
+el gráfico de Outliers. Su 0,404 no se reproduce exacto porque su
+normalización no está publicada.
+
+Decisiones: normalización por percentil contra el pasado estricto (un
+min-max point-in-time salta con cada máximo nuevo); la regresión expansiva se
+calcula con sumas acumuladas; warm-up de 4 años, así que la versión PIT existe
+desde 2018-11. El precio de cada día es el **corregido al día siguiente**:
+`CBBTCUSD` publica primero un intradía y lo revisa al cierre (451
+revisiones, mediana 1 %, máximo 10 %). La versión completa usa datos desde
+2014-12 y no desde 2010 como la de Outliers.
+
+Tests: cambiar el futuro deja idéntico el pasado PIT y **sí** mueve el de la
+versión completa; el probit reproduce la probabilidad publicada de 2027-08;
+la conversión reproduce la primera fila del archivo (1959-01). 12 tests,
+cobertura 100 % en los dos módulos.

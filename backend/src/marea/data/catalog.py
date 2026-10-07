@@ -49,9 +49,15 @@ FRED_SERIES: tuple[FredSeries, ...] = (
     FredSeries("DFII10", "tasas", "Tasa real 10 años (TIPS)"),
     FredSeries("T10Y2Y", "tasas", "Pendiente 10a-2a"),
     FredSeries(
+        "DTB3",
+        "tasas",
+        "Letra del Tesoro a 3 meses, mercado secundario (tasa de descuento)",
+        caveat="insumo del probit de la NY Fed; se lleva a base de bono en marea.recession",
+    ),
+    FredSeries(
         "T10Y3M",
         "tasas",
-        "Pendiente 10a-3m: insumo del probit de recesión de la NY Fed",
+        "Pendiente 10a-3m a plazo constante (NO es la del probit: ver marea.recession)",
     ),
     FredSeries("T5YIE", "tasas", "Inflación esperada a 5 años (breakeven)"),
     FredSeries("T10YIE", "tasas", "Inflación esperada a 10 años (breakeven)"),

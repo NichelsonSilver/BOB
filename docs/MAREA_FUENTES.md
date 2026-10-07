@@ -11,7 +11,7 @@ Credenciales: todas en `backend/.env` (ignorado por git), con los nombres de
 
 | fuente | qué da | acceso | estado |
 |---|---|---|---|
-| **FRED / ALFRED** | liquidez, tasas, crédito, actividad, FX, commodities, cripto (34 series; 9 sumadas en la M5.1) | API key gratis (`API_FRED`) | ✅ ingestado |
+| **FRED / ALFRED** | liquidez, tasas, crédito, actividad, FX, commodities, cripto (35 series; 9 sumadas en la M5.1 y `DTB3` en la M5.3) | API key gratis (`API_FRED`) | ✅ ingestado |
 | **Tiingo** | precios diarios de 23 ETFs (acciones por región, Tesoro, crédito, oro, plata, commodities, cobre, REITs, dólar, ECH) | registro gratis (`API_TIINGO`); 50 req/hora, 1.000/día, 500 símbolos/mes; **licencia de uso interno**. Un 429 = cuota de la hora agotada: la corrida no espera, omite el resto y la siguiente lo completa | ✅ ingestado |
 | **BCCh** (SieteRestWS) | dólar observado, TPM, cobre diario, BCP 10a, tasas de política BCE y BoJ | registro gratis + activación (`BCCH_USER`, `BCCH_PASS`) | ✅ ingestado |
 | **CFTC** (Socrata) | posicionamiento COT de 13 mercados | sin key | ✅ ingestado |
@@ -88,7 +88,8 @@ Verificadas contra la API el mismo día; 9/9 sin error, 36 requests.
 |---|---|---|---|---|---|
 | BAA10Y | crédito | 10.190 | 2014-01-27 | **166 d** | desde 1986: cubre lo que ICE recorta a 3 años. El rezago es un **apagón real** de FRED: los datos de 2016-10-07 en adelante se publicaron recién el 2017-03-22. Mediana: 1 d |
 | T5YIE, T10YIE | tasas | 5.945 | 2014-01-27 | 6 d | breakevens desde 2003 |
-| T10Y3M | tasas | 11.193 | 2014-01-27 | 6 d | insumo del probit de recesión (M5.3) |
+| T10Y3M | tasas | 11.193 | 2014-01-27 | 6 d | plazo constante: **no** es la pendiente del probit de la NY Fed (difiere hasta 0,13 pts) |
+| DTB3 | tasas | 18.181 | 2005-06-28 | 11 d | sumada en la M5.3: con `DGS10` reproduce el spread de la NY Fed (ver `marea.recession`) |
 | SAHMREALTIME | actividad | 801 | 2019-09-06 | 80 d | point-in-time **de origen**: cada valor usa el desempleo publicado en su momento. Rezago por el cierre del gobierno de EE.UU. (oct–nov 2025) |
 | DRTSCILM | crédito | 146 | 2010-04-20 | 46 d | SLOOS, trimestral |
 | ICSA | actividad | 3.117 | 2009-05-28 | 54 d | mediana 5 d; el máximo es el mismo cierre de 2025 (datos de oct publicados el 2025-11-20) |
