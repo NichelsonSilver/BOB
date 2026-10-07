@@ -22,6 +22,12 @@ como contexto, cada uno con su motivo:
   por recortes y uno por venta de largos se leen opuesto).
 - **VIX**: es riesgo, no liquidez.
 - **Chile** y **COT**: lente local y posicionamiento, no liquidez global.
+- **Lo sumado en la M5** (crédito Baa, SLOOS, crédito y depósitos bancarios,
+  breakevens, Sahm, solicitudes de desempleo, stablecoins): contexto. Entrar
+  al compuesto cambiaría una serie ya publicada; si algún día se quiere un
+  compuesto ampliado, va como serie nueva con nombre propio
+  (`docs/M5_ALCANCE.md` §5). Las de ciclo e inflación van con signo 0: no
+  tienen una lectura de liquidez sin ambigüedad.
 """
 
 from __future__ import annotations
@@ -30,12 +36,14 @@ import argparse
 import json
 import math
 import sqlite3
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
+from functools import partial
 from typing import Any, Literal
 
 import numpy as np
+from loguru import logger
 from numpy.typing import NDArray
 
 from marea.config import DB_PATH
@@ -56,6 +64,7 @@ from marea.liquidity import (
     weekly_dates,
 )
 from marea.pit import OPEN_END, Period
+from marea.stablecoins import FALLBACK_LAG_DAYS as STABLE_LAG_DAYS
 
 #: Primera fecha de evaluación. WALCL arranca en 2002-12.
 GRID_START = date(2003, 1, 3)
@@ -74,7 +83,7 @@ COT_MIN_HISTORY = 52
 
 Group = Literal["nucleo", "contexto", "chile"]
 
-_FREQ_DAYS = {"D": 7, "W": 7, "M": 31}
+_FREQ_DAYS = {"D": 7, "W": 7, "M": 31, "Q": 92}
 
 
 @dataclass(frozen=True)
@@ -176,6 +185,72 @@ INDICATORS: tuple[Indicator, ...] = (
         caveat="signo ambiguo para liquidez: no se clasifica",
     ),
     Indicator("vix", "VIX", "contexto", -1, "diff", "puntos", caveat="riesgo, no liquidez"),
+    Indicator(
+        "baa",
+        "Spread Baa − Tesoro 10 años",
+        "contexto",
+        -1,
+        "diff",
+        "pp",
+        caveat="desde 1986: el crédito con historia que el HY de ICE no tiene",
+    ),
+    Indicator(
+        "sloos",
+        "Bancos que endurecen el crédito C&I (SLOOS)",
+        "contexto",
+        -1,
+        "diff",
+        "% neto",
+        caveat="trimestral: cambia 4 veces al año",
+    ),
+    Indicator(
+        "credito_bancario",
+        "Préstamos bancarios (H.8)",
+        "contexto",
+        +1,
+        "log",
+        "miles de millones USD",
+    ),
+    Indicator(
+        "depositos",
+        "Depósitos bancarios (H.8)",
+        "contexto",
+        +1,
+        "log",
+        "miles de millones USD",
+        caveat="quiebres por reclasificación",
+    ),
+    Indicator(
+        "stablecoins",
+        "Oferta de stablecoins en USD",
+        "contexto",
+        +1,
+        "log",
+        "miles de millones USD",
+        display_scale=1e-9,
+        pit="declarado",
+        caveat="liquidez que entra a cripto; point-in-time solo desde 2026-10-07",
+    ),
+    Indicator("breakeven5", "Inflación esperada 5 años", "contexto", 0, "diff", "%"),
+    Indicator("breakeven10", "Inflación esperada 10 años", "contexto", 0, "diff", "%"),
+    Indicator(
+        "sahm",
+        "Regla de Sahm (tiempo real)",
+        "contexto",
+        0,
+        "diff",
+        "pp",
+        caveat="ciclo, no liquidez; 0,5 o más ha marcado recesión",
+    ),
+    Indicator(
+        "claims",
+        "Solicitudes iniciales de desempleo",
+        "contexto",
+        0,
+        "log",
+        "solicitudes",
+        caveat="ciclo, no liquidez",
+    ),
     Indicator("tpm", "TPM Chile", "chile", -1, "diff", "%", pit="declarado"),
     Indicator(
         "usdclp",
@@ -202,6 +277,18 @@ _SIMPLE_FRED = {
     "hy": "BAMLH0A0HYM2",
     "pendiente": "T10Y2Y",
     "vix": "VIXCLS",
+}
+#: Contexto sumado en la M5. Opcional: si una falta, su indicador sale sin dato
+#: y el régimen se calcula igual, porque ninguna entra al compuesto.
+_OPTIONAL_FRED = {
+    "baa": "BAA10Y",
+    "sloos": "DRTSCILM",
+    "credito_bancario": "TOTLL",
+    "depositos": "DPSACBW027SBOG",
+    "breakeven5": "T5YIE",
+    "breakeven10": "T10YIE",
+    "sahm": "SAHMREALTIME",
+    "claims": "ICSA",
 }
 _BCCH = {
     "tpm": "F022.TPM.TIN.D001.NO.Z.D",
@@ -239,6 +326,29 @@ def _bcch(conn: sqlite3.Connection, sid: str, dates: Sequence[date]) -> Realtime
     return realtime(_known_from(rows), dates, BCCH_BY_ID[sid].lag_days + 14)
 
 
+def _stable(conn: sqlite3.Connection, sid: str, dates: Sequence[date]) -> Realtime:
+    """Stablecoins: vintages construidas por corrida (`marea.data.ingest_stable`)."""
+    periods = store.load_stable_periods(conn, sid)
+    if not periods:
+        raise LookupError(f"{sid} no está ingestada: correr `python -m marea.data.ingest stable`")
+    first = min(p.realtime_start for p in periods)
+    return realtime(periods, dates, STABLE_LAG_DAYS + 14, first, STABLE_LAG_DAYS)
+
+
+def _missing(dates: Sequence[date]) -> Realtime:
+    n = len(dates)
+    nan = np.full(n, np.nan)
+    return Realtime([None] * n, nan, nan.copy(), nan.copy(), np.zeros(n, dtype=bool))
+
+
+def _optional(load: Callable[[], Realtime], dates: Sequence[date], what: str) -> Realtime:
+    try:
+        return load()
+    except LookupError:
+        logger.warning("{} sin ingestar: el indicador sale sin dato", what)
+        return _missing(dates)
+
+
 def _mask_before(rt: Realtime, dates: Sequence[date], start: date) -> Realtime:
     keep = np.array([d >= start for d in dates])
     return Realtime(
@@ -267,6 +377,9 @@ def load_realtime(conn: sqlite3.Connection, dates: Sequence[date]) -> dict[str, 
         out[key] = _fred(conn, sid, dates)
     for key, sid in _BCCH.items():
         out[key] = _bcch(conn, sid, dates)
+    for key, sid in _OPTIONAL_FRED.items():
+        out[key] = _optional(partial(_fred, conn, sid, dates), dates, sid)
+    out["stablecoins"] = _optional(lambda: _stable(conn, "STABLE_USD", dates), dates, "STABLE_USD")
     return out
 
 

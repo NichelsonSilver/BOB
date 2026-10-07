@@ -232,3 +232,40 @@ el programador**: 3/3 fuentes sin error en 12 s, foto número 2 escrita.
 Tests: parser de instrumentos (incluido el strike con `d` de ETH), agregación
 que ignora vencidos, reintentos del cliente, cada corrida agrega una foto con
 su crudo, y la corrida `diario` sigue si una fuente falla. 6 tests.
+
+### M5.6 (2026-10-07) — integración al monitor, al brief y a la API
+
+**Monitor de liquidez** (`marea/monitor.py`). Las 9 series nuevas entran
+como **contexto**, ninguna al compuesto: Baa−10a, SLOOS, préstamos y
+depósitos bancarios (con signo), stablecoins (signo +, marcada `declarado`
+porque su historia anterior al 07-10 no es point-in-time), y breakevens a 5 y
+10 años, Sahm y solicitudes de desempleo con signo 0 (son ciclo e inflación,
+no tienen lectura de liquidez sin ambigüedad). Son **opcionales**: si una
+falta en la base, su indicador sale sin dato y el régimen se calcula igual.
+
+**Control bit a bit**, el mismo criterio que la regla 12 pide para el panel:
+`marea.monitor.build` a 2022-06-17 y a 2026-10-05, antes y después del
+cambio. Régimen, historia completa y los 14 indicadores previos
+**idénticos**; solo se agregan los 9 nuevos.
+
+**Panorama** (`marea/panorama.py`): una función por bloque —recesión, Risk de
+ciclo BTC, amplitud y Altcoin Season, funding, opciones, stablecoins— cada
+uno con su evidencia y su fecha de dato. Un bloque que falla devuelve
+`error` y no apaga el resto. Lo usan:
+
+- **el brief** (`marea.brief`), en la sección nueva **4b. Ciclo y cripto**,
+  más cuatro filas de frescura (DefiLlama, funding, Deribit). ~6 s;
+- **la API**, `GET /api/macro/panorama`, con caché de 15 minutos por proceso
+  y cálculo fuera del event loop: 3,7 s la primera vez, 3 ms después.
+
+La cifra que va a ver el usuario en la M6 y la que cita el memo salen de la
+misma función.
+
+Agentes: `coordinador` y `cripto` conocen la sección 4b, con dos reglas de
+lectura: la recesión se cita con su falla de 2023, y las opciones no se
+califican hasta tener historia.
+
+Tests: los seis bloques sobre una base sintética (incluido un `bob.db` falso
+con una stablecoin que la amplitud debe excluir), base vacía sin excepción,
+render del brief con un bloque caído, y la ruta con su caché y su 404.
+5 tests nuevos, cobertura 100 % en `panorama.py`; 189 en verde.

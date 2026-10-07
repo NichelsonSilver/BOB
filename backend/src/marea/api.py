@@ -11,13 +11,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
-from marea import strength
+from marea import panorama, strength
 from marea.config import DB_PATH
 from marea.data import store
 from marea.power_run import ARTIFACTS
@@ -41,6 +42,14 @@ def _read(path: Path) -> str | None:
 
 def _db_path() -> Path:
     return DB_PATH
+
+
+def _bob_db() -> Path:
+    return DB_PATH.parent / "bob.db"
+
+
+def _universe_json() -> Path:
+    return DB_PATH.parent / "artifacts" / "universe-1d.json"
 
 
 @router.get("/macro/liquidity")
@@ -128,3 +137,38 @@ async def ranking_verdict() -> dict[str, Any]:
     if art is None:
         raise HTTPException(status_code=404, detail="no hay artefacto marea-ranking")
     return ranking_verdict_from(art)
+
+
+#: El panorama cuesta ~5 s (la amplitud recorre el panel de 652 perpetuos) y sus
+#: datos cambian una vez al día. Se cachea por proceso.
+PANORAMA_TTL_S = 900.0
+_panorama_cache: dict[str, Any] = {}
+_panorama_lock = asyncio.Lock()
+
+
+def _panorama(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    conn = store.connect(path)
+    try:
+        return panorama.build(conn, _bob_db(), _universe_json())
+    finally:
+        conn.close()
+
+
+@router.get("/macro/panorama")
+async def macro_panorama() -> dict[str, Any]:
+    """Ciclo y cripto de la M5: recesión, Risk BTC, amplitud, funding, opciones,
+    stablecoins. Cada bloque con su evidencia y su fecha; uno caído trae `error`."""
+    async with _panorama_lock:
+        hit = _panorama_cache.get("data")
+        if hit is not None and time.monotonic() - _panorama_cache["at"] < PANORAMA_TTL_S:
+            return dict(hit)
+        data = await asyncio.to_thread(_panorama, _db_path())
+        if data is None:
+            raise HTTPException(
+                status_code=404,
+                detail="no hay base de MAREA: correr `uv run python -m marea.data.ingest todo`",
+            )
+        _panorama_cache.update(data=data, at=time.monotonic())
+        return dict(data)

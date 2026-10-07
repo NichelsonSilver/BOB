@@ -64,3 +64,11 @@ declarado) y COT (concentración contra 3 años, no liquidez).
   declarada, y se reporta su persistencia contra esta.
 - BoJ es mensual con hasta 65 días de rezago: el agregado global llega con
   fecha del dato de hace dos meses.
+
+## Contexto sumado en la M5 (2026-10-07)
+
+Nueve indicadores de contexto, ninguno en el compuesto: Baa−10a, SLOOS,
+préstamos y depósitos H.8, stablecoins, breakevens 5 y 10 años, Sahm y
+solicitudes de desempleo. Son opcionales (sin la serie, sale sin dato). El
+régimen y su historia se reprodujeron bit a bit antes y después del cambio.
+Detalle en `docs/M5_ALCANCE.md` §8.

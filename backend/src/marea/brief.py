@@ -29,7 +29,7 @@ from typing import Any
 
 import numpy as np
 
-from marea import narrative
+from marea import narrative, panorama
 from marea.config import DB_PATH
 from marea.data import store
 from marea.data.catalog import ETFS
@@ -37,6 +37,7 @@ from marea.power_run import ARTIFACTS
 from marea.returns import total_returns
 
 BOB_DB = DB_PATH.parent / "bob.db"
+UNIVERSE_JSON = DB_PATH.parent / "artifacts" / "universe-1d.json"
 PANEL_CUTOFF_VALID_DAYS = 180  # bob.paper.panel_forward.PRIMARY_CUTOFF_DAYS
 DAY_MS = 86_400_000
 
@@ -61,7 +62,23 @@ def freshness(conn: sqlite3.Connection, today: date) -> list[dict[str, Any]]:
         row("CFTC COT (reporte)", q("SELECT MAX(report_date) FROM cot").fetchone()[0]),
         row("BCCh", q("SELECT MAX(day) FROM bcch_obs").fetchone()[0]),
         row("reporte de liquidez", q("SELECT MAX(as_of) FROM liquidity_report").fetchone()[0]),
+        row(
+            "DefiLlama stablecoins",
+            q(
+                "SELECT MAX(obs_date) FROM stable_period WHERE realtime_end = '9999-12-31'"
+            ).fetchone()[0],
+        ),
+        row("Binance funding (día cerrado)", _funding_last(conn)),
+        row(
+            "Deribit (última foto)",
+            q("SELECT SUBSTR(MAX(captured_at), 1, 10) FROM options_snapshot").fetchone()[0],
+        ),
     ]
+
+
+def _funding_last(conn: sqlite3.Connection) -> str | None:
+    ms = conn.execute("SELECT MAX(funding_time) FROM funding").fetchone()[0]
+    return datetime.fromtimestamp(ms / 1000, UTC).date().isoformat() if ms else None
 
 
 def liquidity(conn: sqlite3.Connection) -> dict[str, Any] | None:
@@ -201,6 +218,7 @@ def build(today: date | None = None, bob_db: Path = BOB_DB) -> dict[str, Any]:
             "liquidity": liquidity(conn),
             "relative_strength": relative_strength(conn),
         }
+        out["cycle_crypto"] = panorama.build(conn, bob_db, UNIVERSE_JSON, day)
     finally:
         conn.close()
     out["ranking_m3"] = ranking_verdict()
@@ -264,6 +282,7 @@ def render(b: dict[str, Any]) -> str:
             f"{pf['eta_if_every_day_valid']} si todas valieran. IC: {pf['ic']}"
         )
         L.append("  15m: congelado como módulo (no corre en vivo).")
+    L += _render_cycle_crypto(b.get("cycle_crypto"))
     L += [
         "",
         f"5. NARRATIVA — últimos 7 días ({len(b['narrative_7d'])} entradas; peso bajo, solo divergencias)",
@@ -271,6 +290,78 @@ def render(b: dict[str, Any]) -> str:
     entries = [narrative.Entry.model_validate(e) for e in b["narrative_7d"]]
     L.append("  " + narrative.render(entries).replace("\n", "\n  "))
     return "\n".join(L)
+
+
+def _render_cycle_crypto(p: dict[str, Any] | None) -> list[str]:
+    """Bloque 4b: ciclo y cripto de la M5. Monitoreo; cada línea dice su fecha."""
+    if not p:
+        return []
+    L = ["", "4b. CICLO Y CRIPTO (M5) — medido, monitoreo sin pronóstico"]
+
+    def err(block: dict[str, Any]) -> bool:
+        if "error" in block:
+            L.append(f"    sin dato: {block['error']}")
+            return True
+        return False
+
+    r = p["recession"]
+    L.append("  Recesión EE.UU. a 12 meses (probit NY Fed):")
+    if not err(r):
+        sahm = r["sahm"]
+        L.append(
+            f"    {r['probability']:.1%} para {r['target'][:7]} (spread de {r['as_of'][:7]}: {r['spread']:+.2f}); "
+            f"{r['caveat']}. Sahm {sahm['value']:.2f} ({sahm['as_of'][:7]})"
+        )
+    c = p["btc_cycle"]
+    L.append("  Ciclo BTC (Risk 0-1):")
+    if not err(c):
+        pit = "—" if c["risk_pit"] is None else f"{c['risk_pit']:.3f}"
+        L.append(
+            f"    point-in-time {pit} ({c['zone']}), con lookahead {c['risk_full']:.3f}; "
+            f"Mayer {c['mayer']:.2f}; al {c['as_of']}"
+        )
+    br_ = p["breadth"]
+    L.append("  Amplitud cripto:")
+    if not err(br_):
+        alt = "—" if br_["altseason"] is None else f"{br_['altseason']:.2f}"
+        L.append(
+            f"    {br_['above_sma200']:.0%} sobre su SMA200 y {br_['above_sma20w']:.0%} sobre 20 semanas "
+            f"(n={br_['n_symbols']}); Altcoin Season {alt}, {br_['altseason_label']}; al {br_['as_of']}"
+        )
+    f = p["funding"]
+    L.append("  Funding (media 7 d, anualizado):")
+    if not err(f):
+        L.append(
+            f"    BTC {f['btc_annual_pct']:.2f}% · ETH {f['eth_annual_pct']:.2f}% · ETH−BTC "
+            f"{f['spread_eth_btc_pct']:+.2f}% (sobre el {f['spread_rank']:.0%} de los días desde "
+            f"{f['rank_since'][:7]}); al {f['as_of']}"
+        )
+    o = p["options"]
+    L.append("  Opciones Deribit (put/call por OI):")
+    if not err(o):
+        for cur in ("btc", "eth"):
+            x = o[cur]
+            L.append(
+                f"    {cur.upper()} {x['pc_oi']:.2f} (≤30 d {x['pc_oi_near']:.2f}), OI {x['oi_usd'] / 1e9:.1f} mil M USD; "
+                f"{x['snapshots']} fotos desde {x['first_snapshot'][:10]}"
+            )
+        L.append(f"    {o['evidence']}")
+    st = p["stablecoins"]
+    L.append("  Stablecoins:")
+    if not err(st):
+        chg = st["change_30d_usd"]
+        rank = st["ssr_rank_since_2020"]
+        L.append(
+            f"    oferta {st['supply_usd'] / 1e9:.1f} mil M USD"
+            + (f", {chg / 1e9:+.2f} mil M en 30 d" if chg is not None else "")
+            + (
+                f"; SSR {st['ssr']:.2f} (sobre el {rank:.0%} de los días desde 2020)"
+                if rank is not None
+                else ""
+            )
+            + f"; al {st['as_of']}"
+        )
+    return L
 
 
 def main(argv: list[str] | None = None) -> int:

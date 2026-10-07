@@ -30,6 +30,19 @@ principal dentro del estudio macro** y tiene su propio panel.
 3. **Cita artefactos, no memoria**: `backend/artifacts/panel-*.json`,
    `forward-*.json`, `riskfilter-*.json`.
 
+## Lecturas de ciclo y posicionamiento (M5, monitoreo)
+
+Salen de la sección 4b de `uv run python -m marea.brief`, o por separado:
+
+    uv run python -m marea.cycle       # Risk de ciclo BTC: point-in-time vs con lookahead
+    uv run python -m marea.breadth     # % sobre SMA200 / 20 semanas y Altcoin Season
+    uv run python -m marea.funding     # funding BTC/ETH y su spread
+
+Ninguna pronostica. Del Risk de ciclo se cita la versión **point-in-time**; la
+otra existe para mostrar cuánto infla el lookahead (0,867 contra 0,756 en el
+techo de 2021). Las fotos de opciones de Deribit las guarda la tarea
+`MAREA_snapshot_diario` (12:00 locales, log `backend/logs/marea_diario.log`).
+
 ## Comandos (desde `backend/`)
 
     uv run python -m bob.paper.panel_forward --report
