@@ -20,6 +20,8 @@ import type {
   HistoryResponse,
   LatestResponse,
   LiquidityReport,
+  RankingVerdict,
+  StrengthReport,
   NarrativeResponse,
   ProjectionResponse,
   RiskFilterEvidence,
@@ -114,6 +116,12 @@ export const api = {
 
   /** MAREA: el último reporte guardado por `python -m marea.monitor`. */
   liquidity: () => request<LiquidityReport>("/api/macro/liquidity"),
+
+  /** MAREA: fuerza relativa por clase. Descriptiva: no es flujo ni pronóstico. */
+  strength: (weeks: number) => request<StrengthReport>(`/api/macro/strength${query({ weeks })}`),
+
+  /** MAREA: veredicto del gate M3, leído del artefacto versionado. */
+  rankingVerdict: () => request<RankingVerdict>("/api/macro/ranking-verdict"),
 
   narrative: (t: { symbol?: string }) =>
     request<NarrativeResponse>(`/api/analysis/narrative${query(t)}`),

@@ -5,6 +5,7 @@ import { useAppStore } from "../../stores/appStore";
 
 const navItems = [
   { to: "/macro", label: "Macro" },
+  { to: "/flows", label: "Flujos" },
   { to: "/", label: "Signal" },
   { to: "/map", label: "Mapa" },
   { to: "/risk", label: "Riesgo" },

@@ -4,6 +4,7 @@ import { Layout } from "./components/layout/Layout";
 import { AnalysisPage } from "./pages/AnalysisPage";
 import { BacktestPage } from "./pages/BacktestPage";
 import { HistoryPage } from "./pages/HistoryPage";
+import { FlowsPage } from "./pages/FlowsPage";
 import { MacroPage } from "./pages/MacroPage";
 import { MapPage } from "./pages/MapPage";
 import { RiskPage } from "./pages/RiskPage";
@@ -16,6 +17,7 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<SignalPage />} />
         <Route path="/macro" element={<MacroPage />} />
+        <Route path="/flows" element={<FlowsPage />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="/risk" element={<RiskPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />

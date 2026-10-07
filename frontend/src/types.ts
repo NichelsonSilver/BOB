@@ -849,3 +849,69 @@ export type LiquidityReport = {
   cot: CotRow[];
   history: LiquidityHistoryPoint[];
 };
+
+/** MAREA — fuerza relativa por clase (`marea.strength`). Descriptivo, no es flujo. */
+export type StrengthClass = {
+  block: string;
+  label: string;
+  members: string[];
+  rel_window: number | null;
+  rel_4s: number | null;
+  rel_13s: number | null;
+  rel_26s: number | null;
+};
+
+export type StrengthEtf = {
+  ticker: string;
+  block: string;
+  name: string;
+  caveat: string;
+  rel_4s: number | null;
+  rel_13s: number | null;
+  rel_26s: number | null;
+  ret_4s: number | null;
+  ret_13s: number | null;
+  ret_26s: number | null;
+};
+
+export type StrengthPoint = { day: string; median: number | null } & Record<string, number | null | string>;
+
+export type StrengthReport = {
+  evidence: string;
+  as_of: string;
+  age_days: number;
+  stale: boolean;
+  window_weeks: number;
+  window_from: string;
+  table_weeks: number[];
+  median_window: number | null;
+  median_by_weeks: Record<string, number | null>;
+  excluded: string[];
+  classes: StrengthClass[];
+  etfs: StrengthEtf[];
+  series: StrengthPoint[];
+  method: { measure: string; class: string; reference: string; missing: string };
+};
+
+/** Veredicto de la M3, leído del artefacto: lo que va donde iría un pronóstico. */
+export type RankingVerdict = {
+  artifact: string;
+  prereg_commit: string;
+  viable: boolean;
+  reading: string;
+  test_from: string;
+  test_to: string;
+  n_test_dates: number;
+  horizon_weeks: number;
+  n_etfs: number;
+  ic_mean: number;
+  ic_ci95: [number, number];
+  baseline: string;
+  baseline_ic_mean: number;
+  paired_diff: number;
+  paired_ci95: [number, number];
+  auc: number;
+  placebo_ic_mean: number | null;
+  liquidity_contribution: { diff_mean: number; ci95: [number, number]; excludes_zero: boolean } | null;
+  ic_by_spy_sign: Record<string, { n: number; ic_mean: number }> | null;
+};
