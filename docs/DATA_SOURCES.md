@@ -263,3 +263,16 @@ sesión del usuario en el browser, DevTools → Network) si el dashboard consume
 una API JSON interna estable. Si sí → cliente httpx con login + cookie de
 sesión. Si es HTML server-rendered o cambia seguido, o los ToS lo prohíben →
 queda como fuente de consulta manual y BOB no lo automatiza.
+
+**Resuelto (2026-10-07): no se automatiza.** Los Términos de Outliners
+(`/es/terminos`) prohíben *"utilizar bots para extraer información"*,
+*"realizar scraping de la Plataforma"* y *"automatizar descargas masivas"*
+(§27), y *"realizar ingeniería inversa sobre el software"* (§23), lo que
+incluye buscar su API interna con DevTools. §15 prohíbe redistribuir sus
+contenidos. Además del riesgo legal, lo que se arriesga es la cuenta pagada.
+
+Uso permitido: Nichelson consulta la página con su sesión y, si quiere, pasa
+capturas a una sesión de Claude Code. Las capturas viven en `screnshots/`,
+que está en `.gitignore`. Su catálogo de 182 gráficos se revisó y las 19
+métricas que aportan se traen de la fuente primaria gratuita en la fase M5
+(`docs/M5_ALCANCE.md`, con el motivo de cada descarte).

@@ -65,3 +65,6 @@ service-account*.json
 # que el bloqueo de arriba no toca; la negación está para que un reporte futuro
 # en .csv no desaparezca en silencio.
 !backend/artifacts/**
+
+# Capturas de Outliners (contenido de pago, §15 de sus Términos): nunca versionar
+screnshots/
