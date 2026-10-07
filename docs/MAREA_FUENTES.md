@@ -11,7 +11,7 @@ Credenciales: todas en `backend/.env` (ignorado por git), con los nombres de
 
 | fuente | qué da | acceso | estado |
 |---|---|---|---|
-| **FRED / ALFRED** | liquidez, tasas, crédito, FX, commodities, cripto (25 series) | API key gratis (`API_FRED`) | ✅ ingestado |
+| **FRED / ALFRED** | liquidez, tasas, crédito, actividad, FX, commodities, cripto (34 series; 9 sumadas en la M5.1) | API key gratis (`API_FRED`) | ✅ ingestado |
 | **Tiingo** | precios diarios de 23 ETFs (acciones por región, Tesoro, crédito, oro, plata, commodities, cobre, REITs, dólar, ECH) | registro gratis (`API_TIINGO`); 50 req/hora, 1.000/día, 500 símbolos/mes; **licencia de uso interno**. Un 429 = cuota de la hora agotada: la corrida no espera, omite el resto y la siguiente lo completa | ✅ ingestado |
 | **BCCh** (SieteRestWS) | dólar observado, TPM, cobre diario, BCP 10a, tasas de política BCE y BoJ | registro gratis + activación (`BCCH_USER`, `BCCH_PASS`) | ✅ ingestado |
 | **CFTC** (Socrata) | posicionamiento COT de 13 mercados | sin key | ✅ ingestado |
@@ -77,6 +77,27 @@ agrega historia vieja en vintages posteriores, y eso no es una publicación.
 | DCOILWTICO, DHHNGSP | commodities | — | 2011–2014 | 33 / 16 d | |
 | PCOPPUSDM | commodities | 415 | 2015-11-06 | **717 d** | una publicación salió con casi 2 años de atraso: el cobre pre-2015 queda casi inutilizable; el diario sale de Tiingo/BCCh |
 | CBBTCUSD, CBETHUSD | cripto | ~4.000 | 2018-06-17 | 2 d | |
+
+### Sumadas en la M5.1 (2026-10-07)
+
+Elegidas del catálogo de Outliers y traídas de FRED (`docs/M5_ALCANCE.md`).
+Verificadas contra la API el mismo día; 9/9 sin error, 36 requests.
+
+| serie | bloque | obs | 1ª vintage | rezago máx | nota |
+|---|---|---|---|---|---|
+| BAA10Y | crédito | 10.190 | 2014-01-27 | **166 d** | desde 1986: cubre lo que ICE recorta a 3 años. El rezago es un **apagón real** de FRED: los datos de 2016-10-07 en adelante se publicaron recién el 2017-03-22. Mediana: 1 d |
+| T5YIE, T10YIE | tasas | 5.945 | 2014-01-27 | 6 d | breakevens desde 2003 |
+| T10Y3M | tasas | 11.193 | 2014-01-27 | 6 d | insumo del probit de recesión (M5.3) |
+| SAHMREALTIME | actividad | 801 | 2019-09-06 | 80 d | point-in-time **de origen**: cada valor usa el desempleo publicado en su momento. Rezago por el cierre del gobierno de EE.UU. (oct–nov 2025) |
+| DRTSCILM | crédito | 146 | 2010-04-20 | 46 d | SLOOS, trimestral |
+| ICSA | actividad | 3.117 | 2009-05-28 | 54 d | mediana 5 d; el máximo es el mismo cierre de 2025 (datos de oct publicados el 2025-11-20) |
+| TOTLL | crédito | 2.804 | 1996-12-06 | 16 d | H.8: 192.650 períodos, se revisa mucho |
+| DPSACBW027SBOG | crédito | 2.804 | 2012-08-17 | 16 d | H.8, quiebres por reclasificación |
+
+Los huecos de las diarias (254–484) son feriados del mercado de bonos,
+igual que en `DGS10`. Los dos rezagos grandes **no se corrigen**: el rezago
+máximo solo fecha los datos anteriores a la primera vintage, y ahí
+equivocarse hacia largo es conservador, no lookahead.
 
 ### Descartadas en la verificación
 

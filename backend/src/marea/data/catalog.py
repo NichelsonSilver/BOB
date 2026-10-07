@@ -1,6 +1,7 @@
 """Catálogo de series macro. Cada entrada se verificó contra la API de FRED el
 2026-09-27 (existencia, frecuencia, rango y última actualización); lo que no
-pasó esa verificación no está acá, está en `EXCLUDED` con el motivo.
+pasó esa verificación no está acá, está en `EXCLUDED` con el motivo. Las nueve
+series de la M5.1 se verificaron igual el 2026-10-07 (`docs/MAREA_FUENTES.md`).
 """
 
 from __future__ import annotations
@@ -8,7 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-Block = Literal["liquidez", "tasas", "credito", "fx", "riesgo", "commodities", "cripto"]
+Block = Literal[
+    "liquidez", "tasas", "credito", "actividad", "fx", "riesgo", "commodities", "cripto"
+]
 
 
 @dataclass(frozen=True)
@@ -45,6 +48,13 @@ FRED_SERIES: tuple[FredSeries, ...] = (
     FredSeries("DGS10", "tasas", "Tesoro 10 años"),
     FredSeries("DFII10", "tasas", "Tasa real 10 años (TIPS)"),
     FredSeries("T10Y2Y", "tasas", "Pendiente 10a-2a"),
+    FredSeries(
+        "T10Y3M",
+        "tasas",
+        "Pendiente 10a-3m: insumo del probit de recesión de la NY Fed",
+    ),
+    FredSeries("T5YIE", "tasas", "Inflación esperada a 5 años (breakeven)"),
+    FredSeries("T10YIE", "tasas", "Inflación esperada a 10 años (breakeven)"),
     # --- Crédito y condiciones financieras ---
     FredSeries(
         "BAMLH0A0HYM2",
@@ -59,12 +69,39 @@ FRED_SERIES: tuple[FredSeries, ...] = (
         caveat="licencia ICE: FRED solo sirve los últimos 3 años",
     ),
     FredSeries(
+        "BAA10Y",
+        "credito",
+        "Spread Baa (Moody's) contra Tesoro 10 años",
+        caveat="historia desde 1986: cubre lo que ICE recorta a 3 años",
+    ),
+    FredSeries(
+        "DRTSCILM",
+        "credito",
+        "SLOOS: % neto de bancos que endurecen el crédito C&I",
+        caveat="trimestral: contexto, no señal",
+    ),
+    FredSeries("TOTLL", "credito", "Préstamos y leasings, bancos comerciales (H.8)"),
+    FredSeries(
+        "DPSACBW027SBOG",
+        "credito",
+        "Depósitos, bancos comerciales (H.8)",
+        caveat="H.8 tiene quiebres por reclasificación",
+    ),
+    FredSeries(
         "NFCI",
         "credito",
         "Condiciones financieras (Fed de Chicago)",
         caveat="índice re-estimado ENTERO cada semana: sin vintages es lookahead",
     ),
     # --- Dólar y divisas ---
+    # --- Actividad: lo más oportuno del ciclo ---
+    FredSeries(
+        "SAHMREALTIME",
+        "actividad",
+        "Regla de Sahm en tiempo real",
+        caveat="cada valor se calculó con el desempleo publicado en su momento",
+    ),
+    FredSeries("ICSA", "actividad", "Solicitudes iniciales de desempleo (semanal)"),
     FredSeries("DTWEXBGS", "fx", "Dólar amplio nominal: un dólar fuerte drena liquidez global"),
     FredSeries(
         "DEXUSEU", "fx", "USD por EUR", caveat="H.10: se publica semanal, ~6 días de rezago"
