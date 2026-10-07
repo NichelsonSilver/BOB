@@ -9,6 +9,7 @@ módulo cripto intacto (regla 12).
 from __future__ import annotations
 
 import sqlite3
+import zlib
 from collections.abc import Iterable
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -17,6 +18,7 @@ from typing import Any
 from marea.data.binance_funding import FundingPoint
 from marea.data.cftc import CotRow
 from marea.data.tiingo import DailyBar
+from marea.options import OptionsSnapshot
 from marea.pit import Period
 
 _SCHEMA = """
@@ -99,6 +101,29 @@ CREATE TABLE IF NOT EXISTS funding (
     funding_time INTEGER NOT NULL,  -- epoch ms UTC: se conoce en ese instante
     rate         REAL NOT NULL,
     PRIMARY KEY (symbol, funding_time)
+);
+-- Opciones de Deribit: la fuente no tiene historia; cada foto es irrecuperable.
+CREATE TABLE IF NOT EXISTS options_snapshot (
+    currency      TEXT NOT NULL,
+    captured_at   TEXT NOT NULL,  -- UTC; la foto se conoce en ese instante
+    instruments   INTEGER NOT NULL,
+    underlying    REAL,
+    oi_calls      REAL NOT NULL,
+    oi_puts       REAL NOT NULL,
+    vol_calls     REAL NOT NULL,
+    vol_puts      REAL NOT NULL,
+    oi_usd        REAL NOT NULL,
+    near_oi_calls REAL NOT NULL,
+    near_oi_puts  REAL NOT NULL,
+    PRIMARY KEY (currency, captured_at)
+);
+-- Respuesta cruda comprimida (zlib): permite calcular a futuro metricas que
+-- hoy nadie penso, sobre toda la historia acumulada.
+CREATE TABLE IF NOT EXISTS options_raw (
+    currency    TEXT NOT NULL,
+    captured_at TEXT NOT NULL,
+    body_zlib   BLOB NOT NULL,
+    PRIMARY KEY (currency, captured_at)
 );
 CREATE TABLE IF NOT EXISTS liquidity_report (
     as_of          TEXT PRIMARY KEY,  -- fecha "conocido al"
@@ -368,3 +393,52 @@ def load_funding(conn: sqlite3.Connection, symbol: str) -> list[FundingPoint]:
         (symbol,),
     )
     return [FundingPoint(s, int(t), float(r)) for s, t, r in rows]
+
+
+def save_options(conn: sqlite3.Connection, snap: OptionsSnapshot, raw: bytes) -> None:
+    ts = snap.captured_at.isoformat(timespec="seconds")
+    with conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO options_snapshot VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                snap.currency,
+                ts,
+                snap.instruments,
+                snap.underlying,
+                snap.oi_calls,
+                snap.oi_puts,
+                snap.vol_calls,
+                snap.vol_puts,
+                snap.oi_usd,
+                snap.near_oi_calls,
+                snap.near_oi_puts,
+            ),
+        )
+        conn.execute(
+            "INSERT OR REPLACE INTO options_raw VALUES (?, ?, ?)",
+            (snap.currency, ts, zlib.compress(raw, 9)),
+        )
+
+
+def load_options(conn: sqlite3.Connection, currency: str) -> list[OptionsSnapshot]:
+    rows = conn.execute(
+        "SELECT * FROM options_snapshot WHERE currency = ? ORDER BY captured_at", (currency,)
+    )
+    return [
+        OptionsSnapshot(
+            c,
+            datetime.fromisoformat(t),
+            int(n),
+            float(u) if u is not None else float("nan"),
+            *(float(x) for x in rest),
+        )
+        for c, t, n, u, *rest in rows
+    ]
+
+
+def load_options_raw(conn: sqlite3.Connection, currency: str, captured_at: str) -> bytes | None:
+    row = conn.execute(
+        "SELECT body_zlib FROM options_raw WHERE currency = ? AND captured_at = ?",
+        (currency, captured_at),
+    ).fetchone()
+    return zlib.decompress(row[0]) if row else None

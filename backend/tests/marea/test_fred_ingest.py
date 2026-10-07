@@ -282,9 +282,10 @@ def test_todo_sigue_aunque_una_fuente_falle(
     monkeypatch.setattr(ingest, "_main_bcch", lambda *_a: 0)
     monkeypatch.setattr(ingest, "_main_stable", lambda *_a: 0)
     monkeypatch.setattr(ingest, "_main_funding", lambda: 0)
+    monkeypatch.setattr(ingest, "_main_options", lambda: 0)
     assert ingest.main(["todo"]) == 1
     out = capsys.readouterr().out
-    assert "4/6 fuentes sin error; fallaron: Tiingo, CFTC" in out
+    assert "5/7 fuentes sin error; fallaron: Tiingo, CFTC" in out
     monkeypatch.setattr(ingest, "_main_etf", lambda *_a: 0)
     monkeypatch.setattr(ingest, "_main_cot", lambda *_a: 0)
     assert ingest.main(["todo"]) == 0

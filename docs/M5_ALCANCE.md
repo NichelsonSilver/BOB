@@ -196,3 +196,39 @@ desde 2019-12.
 Tests: cambiar el futuro no mueve la amplitud ni la Altcoin Season pasadas;
 paginación del funding desde una fecha real; ingesta incremental. 11 tests;
 cobertura 100 % en los módulos puros y en la ingesta.
+
+### M5.5 (2026-10-07) — opciones de Deribit y la tarea diaria
+
+**Snapshot de opciones** (`marea/data/deribit.py`, `marea/options.py`,
+`uv run python -m marea.data.ingest options`). La API pública no tiene
+historia: cada foto es irrecuperable. Por cada moneda (BTC, ETH) se guardan
+las métricas y **la respuesta cruda comprimida** (~40 KB por moneda y día,
+~27 MB por año), para poder calcular más adelante métricas que hoy nadie
+pensó sobre toda la historia acumulada.
+
+Métricas: put/call por open interest, por volumen de 24 h y de vencimientos
+≤ 30 días; open interest nocional en USD. Los instrumentos ya vencidos (08:00
+UTC) se ignoran. Primera foto, 2026-10-07 17:47 UTC:
+
+| | instrumentos | P/C OI | P/C volumen | P/C ≤ 30 d | OI nocional |
+|---|---|---|---|---|---|
+| BTC | 950 | 0,564 | 0,957 | 0,538 | 30,9 mil M USD |
+| ETH | 814 | 0,588 | 0,852 | 0,992 | 3,6 mil M USD |
+
+Sin historia no hay percentil: estos números no se pueden calificar de altos
+o bajos hasta que se acumulen meses de fotos.
+
+**Tarea programada `MAREA_snapshot_diario`**, todos los días a las **12:00
+locales**, corre `backend/scripts/marea_diario.ps1` →
+`uv run python -m marea.data.ingest diario` (Deribit + DefiLlama + funding).
+A mediodía y no de noche porque el equipo suele estar apagado a las 21:05 (la
+del panel corre casi siempre de recuperación a la mañana siguiente). Mismos
+flags que la del panel: `AllowStartIfOnBatteries`,
+`DontStopIfGoingOnBatteries`, `StartWhenAvailable`, `WakeToRun`; límite de 30
+minutos. Log en UTC en `backend/logs/marea_diario.log`. Script en ASCII con
+BOM, verificado con el parser de PowerShell. **Verificada disparándola desde
+el programador**: 3/3 fuentes sin error en 12 s, foto número 2 escrita.
+
+Tests: parser de instrumentos (incluido el strike con `d` de ETH), agregación
+que ignora vencidos, reintentos del cliente, cada corrida agrega una foto con
+su crudo, y la corrida `diario` sigue si una fuente falla. 6 tests.

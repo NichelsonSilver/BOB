@@ -8,7 +8,9 @@
     uv run python -m marea.data.ingest bcch              # Banco Central de Chile
     uv run python -m marea.data.ingest stable            # stablecoins (DefiLlama)
     uv run python -m marea.data.ingest funding           # funding BTC y ETH (Binance)
-    uv run python -m marea.data.ingest todo              # las seis, en orden
+    uv run python -m marea.data.ingest options           # foto de opciones (Deribit)
+    uv run python -m marea.data.ingest diario            # options + stable + funding
+    uv run python -m marea.data.ingest todo              # las siete, en orden
 
 Incremental: si FRED no actualizó la serie desde la última corrida
 (`last_updated` igual) no se pide nada. Si sí, se piden solo las vintages desde
@@ -35,6 +37,7 @@ from marea.data import (
     ingest_cot,
     ingest_etf,
     ingest_funding,
+    ingest_options,
     ingest_stable,
     store,
 )
@@ -54,6 +57,7 @@ from marea.data.catalog import (
 )
 from marea.data.cftc import CftcClient
 from marea.data.defillama import DefiLlamaClient
+from marea.data.deribit import DeribitClient
 from marea.data.fred import FredClient, FredError
 from marea.data.tiingo import TiingoClient
 from marea.pit import Period, first_release_lag_days, stitch
@@ -166,7 +170,9 @@ def main(argv: list[str] | None = None) -> int:
     p_stable = sub.add_parser("stable", help="oferta de stablecoins (DefiLlama)")
     p_stable.add_argument("--series", nargs="+", dest="stable_series", help="ids del catálogo")
     sub.add_parser("funding", help="funding de perpetuos BTC y ETH (Binance)")
-    sub.add_parser("todo", help="las seis fuentes, con sus catálogos completos")
+    sub.add_parser("options", help="foto del libro de opciones (Deribit)")
+    sub.add_parser("diario", help="lo que no se recupera después: options, stable, funding")
+    sub.add_parser("todo", help="las siete fuentes, con sus catálogos completos")
     args = parser.parse_args(argv)
 
     if args.source == "todo":
@@ -177,6 +183,10 @@ def main(argv: list[str] | None = None) -> int:
         return _main_stable(parser, args.stable_series)
     if args.source == "funding":
         return _main_funding()
+    if args.source == "options":
+        return _main_options()
+    if args.source == "diario":
+        return _main_daily(parser)
     if args.source == "etf":
         return _main_etf(parser, args.tickers)
     if args.source == "cot":
@@ -184,8 +194,53 @@ def main(argv: list[str] | None = None) -> int:
     return _main_fred(parser, args.series, args.full)
 
 
+def _run_steps(steps: list[tuple[str, Callable[[], int]]], label: str) -> int:
+    failed: list[str] = []
+    for name, step in steps:
+        print(f"\n=== {name} ===")
+        try:
+            code = step()
+        except Exception as exc:  # noqa: BLE001 — una fuente caída no tira las demás
+            logger.error("{}: {}", name, exc)
+            code = 1
+        if code:
+            failed.append(name)
+    tail = f"; fallaron: {', '.join(failed)}" if failed else ""
+    print(f"\n=== {label}: {len(steps) - len(failed)}/{len(steps)} fuentes sin error{tail}")
+    return 1 if failed else 0
+
+
+def _main_daily(parser: argparse.ArgumentParser) -> int:
+    """Lo que pierde valor si no se corre todos los días (tarea programada).
+
+    Deribit no tiene historia; DefiLlama no publica vintages y su precisión
+    point-in-time depende de correr seguido; el funding se recupera, pero es
+    barato y deja el monitor al día.
+    """
+    return _run_steps(
+        [
+            ("Deribit", _main_options),
+            ("DefiLlama", lambda: _main_stable(parser, None)),
+            ("Binance funding", _main_funding),
+        ],
+        "resumen diario",
+    )
+
+
+def _main_options() -> int:
+    client = DeribitClient()
+    conn = store.connect(DB_PATH)
+    try:
+        reports = ingest_options.run(client, conn)
+    finally:
+        client.close()
+        conn.close()
+    ingest_options.print_reports(reports, client.requests_made)
+    return 1 if any(r.status.startswith("error") for r in reports) else 0
+
+
 def _main_all(parser: argparse.ArgumentParser) -> int:
-    """Corre las seis fuentes. Una que falle (sin key, sin red) no frena a las otras."""
+    """Corre las siete fuentes. Una que falle (sin key, sin red) no frena a las otras."""
     steps: list[tuple[str, Callable[[], int]]] = [
         ("FRED", lambda: _main_fred(parser, None, full=False)),
         ("Tiingo", lambda: _main_etf(parser, None)),
@@ -193,6 +248,7 @@ def _main_all(parser: argparse.ArgumentParser) -> int:
         ("BCCh", lambda: _main_bcch(parser, None)),
         ("DefiLlama", lambda: _main_stable(parser, None)),
         ("Binance funding", _main_funding),
+        ("Deribit", _main_options),
     ]
     failed: list[str] = []
     for name, step in steps:
