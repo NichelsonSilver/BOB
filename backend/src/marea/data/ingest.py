@@ -6,7 +6,8 @@
     uv run python -m marea.data.ingest etf               # ETFs (Tiingo)
     uv run python -m marea.data.ingest cot               # posicionamiento CFTC
     uv run python -m marea.data.ingest bcch              # Banco Central de Chile
-    uv run python -m marea.data.ingest todo              # las cuatro, en orden
+    uv run python -m marea.data.ingest stable            # stablecoins (DefiLlama)
+    uv run python -m marea.data.ingest todo              # las cinco, en orden
 
 Incremental: si FRED no actualizó la serie desde la última corrida
 (`last_updated` igual) no se pide nada. Si sí, se piden solo las vintages desde
@@ -28,7 +29,7 @@ from loguru import logger
 
 from bob.utils.console import enable_utf8_stdout
 from marea.config import DB_PATH, MareaSettings
-from marea.data import ingest_bcch, ingest_cot, ingest_etf, store
+from marea.data import ingest_bcch, ingest_cot, ingest_etf, ingest_stable, store
 from marea.data.bcch import BcchClient
 from marea.data.catalog import (
     BCCH_BY_ID,
@@ -39,8 +40,11 @@ from marea.data.catalog import (
     ETF_BY_TICKER,
     ETFS,
     FRED_SERIES,
+    STABLE_BY_ID,
+    STABLE_SERIES,
 )
 from marea.data.cftc import CftcClient
+from marea.data.defillama import DefiLlamaClient
 from marea.data.fred import FredClient, FredError
 from marea.data.tiingo import TiingoClient
 from marea.pit import Period, first_release_lag_days, stitch
@@ -150,13 +154,17 @@ def main(argv: list[str] | None = None) -> int:
     p_cot.add_argument("--codes", nargs="+", help="códigos de contrato (default: todos)")
     p_bcch = sub.add_parser("bcch", help="series diarias del Banco Central de Chile")
     p_bcch.add_argument("--series", nargs="+", dest="bcch_series", help="ids del catálogo")
-    sub.add_parser("todo", help="las cuatro fuentes, con sus catálogos completos")
+    p_stable = sub.add_parser("stable", help="oferta de stablecoins (DefiLlama)")
+    p_stable.add_argument("--series", nargs="+", dest="stable_series", help="ids del catálogo")
+    sub.add_parser("todo", help="las cinco fuentes, con sus catálogos completos")
     args = parser.parse_args(argv)
 
     if args.source == "todo":
         return _main_all(parser)
     if args.source == "bcch":
         return _main_bcch(parser, args.bcch_series)
+    if args.source == "stable":
+        return _main_stable(parser, args.stable_series)
     if args.source == "etf":
         return _main_etf(parser, args.tickers)
     if args.source == "cot":
@@ -165,12 +173,13 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _main_all(parser: argparse.ArgumentParser) -> int:
-    """Corre las cuatro fuentes. Una que falle (sin key, sin red) no frena a las otras."""
+    """Corre las cinco fuentes. Una que falle (sin key, sin red) no frena a las otras."""
     steps: list[tuple[str, Callable[[], int]]] = [
         ("FRED", lambda: _main_fred(parser, None, full=False)),
         ("Tiingo", lambda: _main_etf(parser, None)),
         ("CFTC", lambda: _main_cot(parser, None)),
         ("BCCh", lambda: _main_bcch(parser, None)),
+        ("DefiLlama", lambda: _main_stable(parser, None)),
     ]
     failed: list[str] = []
     for name, step in steps:
@@ -248,6 +257,23 @@ def _main_bcch(parser: argparse.ArgumentParser, requested: list[str] | None) -> 
         client.close()
         conn.close()
     ingest_bcch.print_reports(reports, client.requests_made)
+    return 1 if any(r.status.startswith("error") for r in reports) else 0
+
+
+def _main_stable(parser: argparse.ArgumentParser, requested: list[str] | None) -> int:
+    ids = requested or [s.id for s in STABLE_SERIES]
+    unknown = [i for i in ids if i not in STABLE_BY_ID]
+    if unknown:
+        parser.error(f"fuera del catálogo: {', '.join(unknown)} (ver marea.data.catalog)")
+    client = DefiLlamaClient()
+    conn = store.connect(DB_PATH)
+    try:
+        today = datetime.now(UTC).date()
+        reports = ingest_stable.run(client, conn, [STABLE_BY_ID[i] for i in ids], today)
+    finally:
+        client.close()
+        conn.close()
+    ingest_stable.print_reports(reports, client.requests_made)
     return 1 if any(r.status.startswith("error") for r in reports) else 0
 
 

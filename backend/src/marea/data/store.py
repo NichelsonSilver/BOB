@@ -73,6 +73,26 @@ CREATE TABLE IF NOT EXISTS bcch_obs (
     value          REAL NOT NULL,
     PRIMARY KEY (series_id, day)
 );
+-- Stablecoins (DefiLlama). La fuente no tiene vintages: cada corrida es una,
+-- construida con marea.pit.apply_snapshot. Mismo esquema que fred_period.
+CREATE TABLE IF NOT EXISTS stable_period (
+    series_id      TEXT NOT NULL,
+    obs_date       TEXT NOT NULL,
+    realtime_start TEXT NOT NULL,
+    realtime_end   TEXT NOT NULL,
+    value          REAL,
+    PRIMARY KEY (series_id, obs_date, realtime_start)
+);
+CREATE TABLE IF NOT EXISTS stable_run (
+    series_id   TEXT NOT NULL,
+    vintage     TEXT NOT NULL,
+    run_at_utc  TEXT NOT NULL,
+    new         INTEGER NOT NULL,
+    revised     INTEGER NOT NULL,
+    removed     INTEGER NOT NULL,
+    max_revision REAL NOT NULL,
+    PRIMARY KEY (series_id, run_at_utc)
+);
 CREATE TABLE IF NOT EXISTS liquidity_report (
     as_of          TEXT PRIMARY KEY,  -- fecha "conocido al"
     computed_at    TEXT NOT NULL,
@@ -257,3 +277,65 @@ def latest_liquidity_report(conn: sqlite3.Connection) -> str | None:
         "SELECT payload FROM liquidity_report ORDER BY as_of DESC LIMIT 1"
     ).fetchone()
     return str(row[0]) if row else None
+
+
+def load_stable_periods(conn: sqlite3.Connection, series_id: str) -> list[Period]:
+    rows = conn.execute(
+        "SELECT obs_date, realtime_start, realtime_end, value FROM stable_period "
+        "WHERE series_id = ? ORDER BY obs_date, realtime_start",
+        (series_id,),
+    )
+    return [
+        Period(date.fromisoformat(o), date.fromisoformat(s), date.fromisoformat(e), v)
+        for o, s, e, v in rows
+    ]
+
+
+def save_stable_run(
+    conn: sqlite3.Connection,
+    series_id: str,
+    periods: Iterable[Period],
+    vintage: date,
+    new: int,
+    revised: int,
+    removed: int,
+    max_revision: float,
+) -> None:
+    """Reescribe los períodos y registra la corrida, en una sola transacción.
+
+    El registro de corridas es el log de revisiones: cuántas filas cambió la
+    fuente entre una corrida y la siguiente, y cuánto.
+    """
+    rows = [
+        (
+            series_id,
+            p.obs_date.isoformat(),
+            p.realtime_start.isoformat(),
+            p.realtime_end.isoformat(),
+            p.value,
+        )
+        for p in periods
+    ]
+    with conn:
+        conn.execute("DELETE FROM stable_period WHERE series_id = ?", (series_id,))
+        conn.executemany("INSERT INTO stable_period VALUES (?, ?, ?, ?, ?)", rows)
+        conn.execute(
+            "INSERT INTO stable_run VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                series_id,
+                vintage.isoformat(),
+                datetime.now(UTC).isoformat(timespec="microseconds"),
+                new,
+                revised,
+                removed,
+                max_revision,
+            ),
+        )
+
+
+def stable_runs(conn: sqlite3.Connection, series_id: str) -> list[dict[str, Any]]:
+    cur = conn.execute(
+        "SELECT * FROM stable_run WHERE series_id = ? ORDER BY run_at_utc", (series_id,)
+    )
+    cols = [c[0] for c in cur.description]
+    return [dict(zip(cols, r, strict=True)) for r in cur]

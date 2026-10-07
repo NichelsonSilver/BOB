@@ -15,6 +15,7 @@ Credenciales: todas en `backend/.env` (ignorado por git), con los nombres de
 | **Tiingo** | precios diarios de 23 ETFs (acciones por región, Tesoro, crédito, oro, plata, commodities, cobre, REITs, dólar, ECH) | registro gratis (`API_TIINGO`); 50 req/hora, 1.000/día, 500 símbolos/mes; **licencia de uso interno**. Un 429 = cuota de la hora agotada: la corrida no espera, omite el resto y la siguiente lo completa | ✅ ingestado |
 | **BCCh** (SieteRestWS) | dólar observado, TPM, cobre diario, BCP 10a, tasas de política BCE y BoJ | registro gratis + activación (`BCCH_USER`, `BCCH_PASS`) | ✅ ingestado |
 | **CFTC** (Socrata) | posicionamiento COT de 13 mercados | sin key | ✅ ingestado |
+| **DefiLlama** (`stablecoins.llama.fi`) | oferta de stablecoins: 2 totales y 7 tokens, diaria desde 2017-11 | sin key | ✅ ingestado (M5.2). **Sin vintages de origen**: se construyen por corrida |
 | **Treasury** (fiscaldata) | TGA diario | sin key | ✅ verificado, **no se usa por ahora**: `WTREGEN` semanal alcanza para liquidez neta semanal |
 | ~~Stooq~~ | — | — | ❌ **descartado**: responde con un desafío anti-bot de prueba de trabajo en JavaScript. Resolverlo por código sería saltarse su protección |
 | ~~yfinance~~ | — | — | ❌ no es una API oficial y su ruptura es silenciosa |
@@ -202,6 +203,44 @@ la tasa de transacciones del día (1). BCE y BoJ los carga el BCCh (1, margen de
 carga). Cada corrida re-pide 14 días y **cuenta** revisiones, que es lo único
 observable sin vintages.
 
+## DefiLlama: stablecoins con vintages propias (M5.2, 2026-10-07)
+
+Cuatro hechos medidos el 07-10 que ordenan el cliente (`marea/data/defillama.py`):
+
+1. Grilla diaria a las 00:00 UTC, sin saltos, desde 2017-11-29.
+2. **La fila del día en curso es parcial**: a las 17:17 UTC ya existía la del
+   07-10 y cambiaba durante el día. Se descarta hasta que el día cierra.
+3. **No publica vintages y reescribe su historia** (al sumar una stablecoin,
+   rellena su pasado). Cada corrida es una vintage nuestra: se baja la serie
+   completa y se compara con lo guardado (`marea.pit.apply_snapshot`). Lo que
+   cambió cierra su período y abre otro, y `stable_run` registra cuántas filas
+   se revisaron y cuánto. Se lee con `marea.pit.as_of`, igual que FRED.
+4. **Los muertos siguen en el total.** UST (hoy `USTC`) no aparece en el listado
+   vigente con su símbolo viejo, pero el total la incluye: cae de 186,8 a 158,0
+   mil millones entre el 30-04 y el 15-05 de 2022. No hay sesgo de
+   supervivencia, pero esa caída fue valor destruido y no dinero que salió:
+   las emisiones netas la leen como −3,7 mil millones por día (media de 7 días).
+
+| serie | desde | nota |
+|---|---|---|
+| STABLE_USD | 2017-11-29 | atadas al dólar, en USD. Incluye algorítmicas |
+| STABLE_ALL | 2017-11-29 | todas las monedas, en USD |
+| USDT, USDC, DAI | 2017-11 / 2018-09 / 2019-11 | |
+| USDS, USDE | 2024-09 / 2023-12 | USDS sucede a DAI; USDe es sintética |
+| BUSD, UST | 2020-04 / 2020-11 | muertas, incluidas a propósito |
+
+**Límite declarado:** todo lo anterior a la primera corrida (2026-10-07) se lee
+como **no exacto**, con 1 día de rezago **declarado, no medido**. La precisión
+point-in-time empieza a acumularse desde esa fecha, y depende de que la
+ingesta corra seguido. La segunda corrida del mismo día revisó 0 filas.
+
+Derivadas en `marea/stablecoins.py` (puro): emisiones netas con media móvil
+que no cruza huecos, supply de BTC por interpolación entre halvings (error
+< 0,2 %, falla en voz alta desde 2028-01-01 hasta cargar el 5º halving) y SSR.
+Control del 07-10: supply 20,09 M BTC, SSR 5,49 (2,10 en el fondo de 2022-11;
+145 en 2018-12, cuando las stablecoins eran marginales: el SSR anterior a
+2020 no es comparable).
+
 ## Operación
 
     cd backend
@@ -211,7 +250,8 @@ observable sin vintages.
     uv run python -m marea.data.ingest etf                   # 23 ETFs, ~45 s
     uv run python -m marea.data.ingest cot                   # 13 mercados COT, ~17 s
     uv run python -m marea.data.ingest bcch                  # 6 series BCCh, ~12 s
-    uv run python -m marea.data.ingest todo                  # las cuatro en orden
+    uv run python -m marea.data.ingest stable                # 9 series DefiLlama, 8 requests
+    uv run python -m marea.data.ingest todo                  # las cinco en orden
 
 Si FRED no actualizó una serie desde la última corrida, se consulta solo su
 metadata: una corrida sin cambios cuesta 1 request por serie. La base es

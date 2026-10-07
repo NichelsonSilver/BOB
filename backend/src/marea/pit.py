@@ -165,3 +165,87 @@ def as_of(
         ):
             out.append(AsOfPoint(obs, ps[0].value, exact=False))
     return out
+
+
+#: Tolerancia relativa para decidir que un valor cambió entre dos corridas.
+#: DefiLlama recalcula sus totales sumando floats; diferencias por debajo de
+#: esto son redondeo, no revisiones.
+REVISION_RTOL = 1e-9
+
+
+@dataclass(frozen=True)
+class SnapshotDiff:
+    new: int
+    revised: int
+    removed: int
+    #: Mayor revisión relativa |nuevo/viejo − 1| entre las revisadas.
+    max_revision: float
+
+
+def _differs(old: float | None, new: float | None) -> bool:
+    if old is None or new is None:
+        return not (old is None and new is None)
+    if old == new:
+        return False
+    scale = max(abs(old), abs(new))
+    return scale == 0 or abs(new - old) / scale > REVISION_RTOL
+
+
+def apply_snapshot(
+    periods: Sequence[Period],
+    snapshot: Iterable[tuple[date, float | None]],
+    vintage: date,
+) -> tuple[list[Period], SnapshotDiff]:
+    """Construye vintages propias para una fuente que no las publica.
+
+    Cada corrida es una vintage: `snapshot` es la serie completa tal como la
+    fuente la sirve el día `vintage`. Contra los períodos vigentes:
+
+    - una observación nueva abre un período desde `vintage`;
+    - una que cambió de valor cierra el vigente en `vintage − 1` y abre otro;
+      si el vigente ya había empezado en `vintage` (segunda corrida del mismo
+      día) se reemplaza, porque la resolución de tiempo real es el día;
+    - una que desapareció de la fuente se cierra en `vintage − 1`. No se
+      borra: que la fuente la haya sacado es información.
+
+    El resultado se lee con `as_of` igual que una serie de ALFRED.
+    """
+    cut = vintage - timedelta(days=1)
+    closed: list[Period] = []
+    current: dict[date, Period] = {}
+    for p in periods:
+        if p.realtime_end == OPEN_END:
+            current[p.obs_date] = p
+        else:
+            closed.append(p)
+
+    had_history = {p.obs_date for p in closed}
+    out = closed
+    new = revised = 0
+    max_rev = 0.0
+    for obs, value in snapshot:
+        prev = current.pop(obs, None)
+        if prev is None:
+            if obs in had_history:
+                revised += 1
+            else:
+                new += 1
+            out.append(Period(obs, vintage, OPEN_END, value))
+            continue
+        if not _differs(prev.value, value):
+            out.append(prev)
+            continue
+        revised += 1
+        if prev.value and value is not None:
+            max_rev = max(max_rev, abs(value / prev.value - 1.0))
+        if prev.realtime_start < vintage:
+            out.append(replace(prev, realtime_end=cut))
+        out.append(Period(obs, vintage, OPEN_END, value))
+
+    removed = 0
+    for prev in current.values():
+        removed += 1
+        if prev.realtime_start < vintage:
+            out.append(replace(prev, realtime_end=cut))
+    out.sort(key=lambda p: (p.obs_date, p.realtime_start))
+    return out, SnapshotDiff(new, revised, removed, max_rev)

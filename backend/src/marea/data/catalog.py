@@ -278,3 +278,39 @@ BCCH_SERIES: tuple[BcchSeries, ...] = (
 )
 
 BCCH_BY_ID: dict[str, BcchSeries] = {s.id: s for s in BCCH_SERIES}
+
+
+@dataclass(frozen=True)
+class StableSeries:
+    id: str
+    #: Id de DefiLlama de la stablecoin; `None` para los totales.
+    llama_id: int | None
+    why: str
+    caveat: str = ""
+
+
+#: Oferta de stablecoins (DefiLlama), verificada el 2026-10-07. Los tokens
+#: muertos se incluyen a propósito: BUSD llegó a 23,5 mil millones (2022-11) y
+#: UST a 18,8 (2022-05); sin ellos la composición histórica miente.
+STABLE_SERIES: tuple[StableSeries, ...] = (
+    StableSeries(
+        "STABLE_USD",
+        None,
+        "Oferta total de stablecoins atadas al dólar, en USD",
+        caveat="incluye algorítmicas: el colapso de UST (2022-05) se lee como salida",
+    ),
+    StableSeries("STABLE_ALL", None, "Oferta total de stablecoins, todas las monedas, en USD"),
+    StableSeries("USDT", 1, "Tether"),
+    StableSeries("USDC", 2, "USD Coin"),
+    StableSeries("DAI", 5, "Dai (MakerDAO)", caveat="migra parcialmente a USDS desde 2024-09"),
+    StableSeries("USDS", 209, "Sky Dollar, sucesora de DAI", caveat="desde 2024-09"),
+    StableSeries(
+        "USDE", 146, "Ethena USDe", caveat="sintética: respaldada por posiciones en perpetuos"
+    ),
+    StableSeries(
+        "BUSD", 4, "Binance USD", caveat="emisión detenida en 2023-02 por orden del NYDFS"
+    ),
+    StableSeries("UST", 3, "TerraUSD (hoy USTC)", caveat="algorítmica; colapsó en 2022-05"),
+)
+
+STABLE_BY_ID: dict[str, StableSeries] = {s.id: s for s in STABLE_SERIES}
