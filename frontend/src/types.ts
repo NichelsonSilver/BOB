@@ -915,3 +915,126 @@ export type RankingVerdict = {
   liquidity_contribution: { diff_mean: number; ci95: [number, number]; excludes_zero: boolean } | null;
   ic_by_spy_sign: Record<string, { n: number; ic_mean: number }> | null;
 };
+
+/** MAREA — frescura de cada fuente (`/api/macro/freshness`). */
+export type FreshnessReport = {
+  sources: {
+    source: string;
+    last: string | null;
+    age_days: number | null;
+    /** Cada fuente tiene su ritmo: el COT semanal tolera más que el funding diario. */
+    stale_after_days: number;
+    stale: boolean;
+  }[];
+  max_age_days: number | null;
+  stale: string[];
+};
+
+/**
+ * MAREA — estado OPERATIVO del forward del panel diario (Fase 10-bis).
+ * No trae el IC a propósito: la Enmienda 1 prohíbe mirarlo antes del interino.
+ */
+export type PanelStatus = {
+  evidence: string;
+  first_decision: string;
+  last_decision: string;
+  decision_dates: number;
+  valid: number;
+  backfill: string[];
+  never_emitted: string[];
+  valid_rate: number;
+  cutoff_valid_days: number;
+  interim_valid_days: number;
+  eta_interim_at_current_rate: string | null;
+  eta_at_current_rate: string | null;
+  eta_if_every_day_valid: string;
+  ic: string;
+};
+
+type BlockError = { error: string };
+
+export type PanoramaRecession = {
+  evidence: string;
+  as_of: string;
+  probability: number;
+  target: string;
+  spread: number;
+  history_12m: { month: string; probability: number }[];
+  peak_since_2022: { month: string; probability: number };
+  caveat: string;
+  sahm: { as_of: string; value: number } | null;
+};
+
+export type PanoramaCycle = {
+  evidence: string;
+  as_of: string;
+  price: number;
+  mayer: number;
+  risk_pit: number | null;
+  risk_full: number;
+  zone: string | null;
+  pit_vs_full: { correlation: number; mean_abs_diff: number; share_far: number };
+  history: { day: string; risk_pit: number | null; risk_full: number }[];
+};
+
+export type PanoramaBreadth = {
+  evidence: string;
+  as_of: string;
+  above_sma200: number;
+  above_sma20w: number;
+  n_symbols: number;
+  altseason: number | null;
+  altseason_label: string;
+  history: { day: string; above_sma200: number | null; altseason: number | null }[];
+};
+
+export type PanoramaFunding = {
+  evidence: string;
+  as_of: string;
+  btc_annual_pct: number;
+  eth_annual_pct: number;
+  spread_eth_btc_pct: number;
+  spread_rank: number | null;
+  btc_rank: number | null;
+  rank_since: string;
+};
+
+export type OptionsSide = {
+  captured_at: string;
+  pc_oi: number;
+  pc_volume: number;
+  pc_oi_near: number;
+  oi_usd: number;
+  snapshots: number;
+  first_snapshot: string;
+};
+
+export type PanoramaOptions = { evidence: string; btc: OptionsSide; eth: OptionsSide };
+
+export type PanoramaStablecoins = {
+  evidence: string;
+  as_of: string;
+  supply_usd: number;
+  change_30d_usd: number | null;
+  change_30d_pct: number | null;
+  net_mints_7d_usd: number | null;
+  ssr: number | null;
+  ssr_rank_since_2020: number | null;
+  history: { day: string; supply_usd: number }[];
+};
+
+/** MAREA — ciclo y cripto de la M5 (`/api/macro/panorama`). Monitoreo. */
+export type Panorama = {
+  as_of: string;
+  recession: PanoramaRecession | BlockError;
+  btc_cycle: PanoramaCycle | BlockError;
+  breadth: PanoramaBreadth | BlockError;
+  funding: PanoramaFunding | BlockError;
+  options: PanoramaOptions | BlockError;
+  stablecoins: PanoramaStablecoins | BlockError;
+};
+
+/** Un bloque del panorama que falló trae `error` en vez de sus datos. */
+export function isBlockError(b: object): b is BlockError {
+  return "error" in b;
+}

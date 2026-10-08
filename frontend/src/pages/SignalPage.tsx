@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Badge, Card, ErrorBox, Loading, Row } from "../components/common/Card";
 import { TargetBar } from "../components/layout/TargetBar";
 import { AnalystStrip, coverageLabel } from "../components/signal/AnalystStrip";
+import { FeedStatus } from "../components/layout/FeedStatus";
 import { MarketNarrative } from "../components/signal/MarketNarrative";
 import { PriceChart } from "../components/signal/PriceChart";
 import { ProjectionPanel } from "../components/signal/ProjectionPanel";
@@ -104,8 +105,24 @@ export function SignalPage() {
   const cone =
     forecast?.cones.find((c) => c.alpha.toFixed(2) === coneAlpha) ?? null;
 
+  // El vivo de 15m está congelado desde el 26-09 (CLAUDE.md, decisión MAREA):
+  // esta página puede mostrar un pronóstico de hace días. Se dice arriba y con
+  // la edad exacta, porque un nivel viejo leído como actual es peor que nada.
+  const ageHours = forecast ? (Date.now() - forecast.open_time) / 3_600_000 : null;
+
   return (
     <div className="space-y-4">
+      <div className="space-y-2 rounded border border-neutral-800 bg-neutral-900/60 px-3 py-2">
+        <div className="text-xs text-neutral-400">
+          <span className="font-semibold text-warn">Módulo congelado.</span> El análisis en vivo de 15m no corre
+          desde el 26-09; lo que sigue es el último pronóstico emitido
+          {ageHours !== null && ageHours > 1
+            ? `, de hace ${ageHours < 48 ? `${Math.round(ageHours)} h` : `${Math.round(ageHours / 24)} días`}`
+            : ""}
+          . La calculadora de Riesgo no depende de él.
+        </div>
+        <FeedStatus />
+      </div>
       {/* --- Cabecera ---------------------------------------------------- */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-baseline gap-3">

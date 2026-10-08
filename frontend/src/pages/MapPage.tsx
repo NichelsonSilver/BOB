@@ -232,7 +232,7 @@ function Levels({ data }: { data: TechnicalResponse }) {
   const link = (r: LevelRow) => {
     // Stop detrás del nivel: debajo de uno inferior (long), encima de uno superior (short).
     const stop = r.price > data.last_close ? r.price + buffer : r.price - buffer;
-    return `/risk?entry=${data.last_close.toFixed(2)}&stop=${stop.toFixed(2)}`;
+    return `/cripto/riesgo?entry=${data.last_close.toFixed(2)}&stop=${stop.toFixed(2)}`;
   };
 
   const line = (r: LevelRow) => (

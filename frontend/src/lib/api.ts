@@ -14,6 +14,7 @@ import type {
   CandlesResponse,
   CoverageResponse,
   FeaturesResponse,
+  FreshnessReport,
   ForwardArtifact,
   GateResponse,
   HealthResponse,
@@ -23,6 +24,8 @@ import type {
   RankingVerdict,
   StrengthReport,
   NarrativeResponse,
+  PanelStatus,
+  Panorama,
   ProjectionResponse,
   RiskFilterEvidence,
   RunDetail,
@@ -122,6 +125,15 @@ export const api = {
 
   /** MAREA: veredicto del gate M3, leído del artefacto versionado. */
   rankingVerdict: () => request<RankingVerdict>("/api/macro/ranking-verdict"),
+
+  /** MAREA: antigüedad de cada fuente, para el encabezado. */
+  freshness: () => request<FreshnessReport>("/api/macro/freshness"),
+
+  /** MAREA: ciclo y cripto de la M5. ~4 s la primera vez; después, caché del servidor. */
+  panorama: () => request<Panorama>("/api/macro/panorama"),
+
+  /** Forward del panel diario (10-bis): estado operativo, nunca el IC. */
+  panelStatus: () => request<PanelStatus>("/api/macro/panel-status"),
 
   narrative: (t: { symbol?: string }) =>
     request<NarrativeResponse>(`/api/analysis/narrative${query(t)}`),

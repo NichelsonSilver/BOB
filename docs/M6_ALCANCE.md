@@ -101,7 +101,9 @@ verde. La Fase 6 encontró cuatro defectos que solo se veían así.
 
 | fecha | etapa | opción elegida | motivo |
 |---|---|---|---|
-| | | | |
+| 2026-10-07 | M6.1 navegación (§4.1) | **A. Secciones con desplegable**: Inicio · Liquidez · Flujos · Cripto ▾ · Laboratorio ▾ · Ajustes | pocas entradas arriba, cripto agrupado, lo técnico con lugar fijo |
+| 2026-10-07 | M6.1 lo técnico (§4.2) | **A. "Ver detalle" por tarjeta** | el respaldo queda junto al dato al que pertenece |
+| 2026-10-07 | M6.0 | todo lo referido al forward se mantiene (15m y 10-bis) | se espera el resultado del panel |
 
 ## 7. Dependencias
 
@@ -109,3 +111,57 @@ verde. La Fase 6 encontró cuatro defectos que solo se veían así.
   de **M5**. M6.0 y M6.1 pueden adelantarse; M6.2 espera a M5.6.
 - No se agrega librería de UI nueva sin evaluarla primero: el stack sigue
   siendo React, Tailwind, lightweight-charts y Recharts.
+
+## 8. Registro de etapas
+
+### M6.0 (2026-10-07)
+
+Inventario en `docs/M6_INVENTARIO.md`.
+
+### M6.1 (2026-10-07) — navegación y "Ver detalle"
+
+**Navegación A** (`components/layout/Layout.tsx`): Inicio · Liquidez · Flujos ·
+Cripto ▾ (Panorama, Panel diario, Riesgo por trade, Mapa técnico, Señal 15m
+congelada) · Laboratorio ▾ (Validación forward 15m, Backtest, Análisis) ·
+Ajustes. Las rutas viejas (`/macro`, `/risk`, `/history`…) redirigen
+conservando la query, así `/risk?entry=&stop=` sigue prellenando la
+calculadora. **Nada del forward se borró.**
+
+**"Ver detalle"** (`components/common/DetailCard.tsx`): número, frase de qué
+significa, frase de qué no significa, fecha del dato siempre visible, y el
+respaldo técnico a un clic. Las tarjetas viven en
+`components/marea/Cards.tsx` y las comparten Inicio y Panorama: una cifra no
+puede salir distinta en dos páginas.
+
+**Páginas nuevas**: Inicio (primera versión: liquidez, stablecoins, ciclo
+BTC, recesión, estudio del panel), Cripto ▸ Panorama (las 7 lecturas de la
+M5) y Cripto ▸ Panel diario (avance del forward 10-bis hacia el interino de 90
+y el corte de 180, días que no contaron y por qué; **sin IC**).
+
+**Encabezado**: la frescura de las fuentes de MAREA reemplaza al feed de
+Binance, que pasó a la Señal 15m junto con un aviso de "módulo congelado" con
+la edad del último pronóstico.
+
+**Backend**: `/api/macro/freshness` (con umbral por fuente),
+`/api/macro/panel-status` (agrega el interino de 90 de la Enmienda 1; no lee
+ni envía el IC) y `/api/macro/narrative`. 3 tests nuevos; 201 en verde.
+
+**Encontrado mirando capturas, no compilando** (`tsc` estaba en verde en los
+cuatro casos), igual que en la Fase 6:
+
+1. cifras escritas a mano con coma decimal ("0,867") al lado de cifras con
+   punto ("312.7") — corregido a punto en todo lo nuevo;
+2. abrir un detalle estiraba la tarjeta vecina con un hueco vacío;
+3. un umbral único de 8 días marcaba el COT como atrasado cuando 9–10 días es
+   su ritmo normal (reporte del martes, publicado el viernes). Ahora cada
+   fuente tiene su umbral en `brief.STALE_AFTER_DAYS`, que usan el memo y el
+   encabezado;
+4. jerga interna filtrada a la página del panel ("ver docstring").
+
+Capturas tomadas con Playwright manejando el Edge instalado, desde un entorno
+temporal (sin dependencias nuevas en el proyecto).
+
+**Pendientes registrados para etapas siguientes:** el título de la pestaña
+sigue siendo "BOB — Bursatil Operator Buddy" y los encabezados de Laboratorio
+están en inglés (M6.6); el texto de la Señal 15m usa coma decimal
+("2.686,29") contra punto en su encabezado (M6.5).

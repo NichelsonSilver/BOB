@@ -18,7 +18,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
-from marea import panorama, strength
+from marea import brief, narrative, panorama, strength
 from marea.config import DB_PATH
 from marea.data import store
 from marea.power_run import ARTIFACTS
@@ -172,3 +172,47 @@ async def macro_panorama() -> dict[str, Any]:
             )
         _panorama_cache.update(data=data, at=time.monotonic())
         return dict(data)
+
+
+def _freshness(path: Path) -> list[dict[str, Any]] | None:
+    if not path.exists():
+        return None
+    conn = store.connect(path)
+    try:
+        return brief.freshness(conn, datetime.now(UTC).date())
+    finally:
+        conn.close()
+
+
+@router.get("/macro/freshness")
+async def freshness() -> dict[str, Any]:
+    """Antigüedad de cada fuente de MAREA, para el encabezado del panel."""
+    rows = await asyncio.to_thread(_freshness, _db_path())
+    if rows is None:
+        raise HTTPException(status_code=404, detail="no hay base de MAREA")
+    ages = [r["age_days"] for r in rows if r["age_days"] is not None]
+    return {
+        "sources": rows,
+        "max_age_days": max(ages) if ages else None,
+        "stale": [r["source"] for r in rows if r["stale"]],
+    }
+
+
+@router.get("/macro/panel-status")
+async def panel_status() -> dict[str, Any]:
+    """Estado OPERATIVO del forward del panel diario (Fase 10-bis).
+
+    Fechas válidas, backfill, huecos y ritmo. **No lee ni devuelve el IC**: la
+    Enmienda 1 prohíbe mirarlo antes del análisis interino.
+    """
+    st = await asyncio.to_thread(brief.panel_forward_status, _bob_db(), datetime.now(UTC).date())
+    if st is None:
+        raise HTTPException(status_code=404, detail="no hay registros forward del panel")
+    return st
+
+
+@router.get("/macro/narrative")
+async def narrative_recent(days: int = Query(14, ge=1, le=365)) -> dict[str, Any]:
+    """Últimas entradas del registro de narrativa (capa 4: peso bajo)."""
+    entries = await asyncio.to_thread(lambda: narrative.recent(narrative.read(), days))
+    return {"days": days, "entries": [e.model_dump(mode="json") for e in entries]}

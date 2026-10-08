@@ -39,6 +39,8 @@ from marea.returns import total_returns
 BOB_DB = DB_PATH.parent / "bob.db"
 UNIVERSE_JSON = DB_PATH.parent / "artifacts" / "universe-1d.json"
 PANEL_CUTOFF_VALID_DAYS = 180  # bob.paper.panel_forward.PRIMARY_CUTOFF_DAYS
+#: Análisis interino de la Enmienda 1 (docs/ENMIENDA_PANEL_FORWARD_SECUENCIAL.md).
+PANEL_INTERIM_VALID_DAYS = 90
 DAY_MS = 86_400_000
 
 
@@ -47,10 +49,32 @@ def _latest_artifact(prefix: str) -> dict[str, Any] | None:
     return json.loads(files[-1].read_text(encoding="utf-8")) if files else None
 
 
+#: Días a partir de los cuales una fuente se considera atrasada. Uno solo (8)
+#: daba falsas alarmas: el COT del martes se publica el viernes siguiente, así
+#: que tiene 10 días de edad normal antes de cada publicación. Medido el 07-10.
+STALE_AFTER_DAYS: dict[str, int] = {
+    "FRED (última obs. más reciente)": 5,
+    "Tiingo ETFs": 5,
+    "CFTC COT (reporte)": 11,
+    "BCCh": 5,
+    "reporte de liquidez": 8,
+    "DefiLlama stablecoins": 3,
+    "Binance funding (día cerrado)": 3,
+    "Deribit (última foto)": 3,
+}
+
+
 def freshness(conn: sqlite3.Connection, today: date) -> list[dict[str, Any]]:
     def row(name: str, last: str | None) -> dict[str, Any]:
         age = (today - date.fromisoformat(last[:10])).days if last else None
-        return {"source": name, "last": last, "age_days": age}
+        limit = STALE_AFTER_DAYS[name]
+        return {
+            "source": name,
+            "last": last,
+            "age_days": age,
+            "stale_after_days": limit,
+            "stale": age is None or age > limit,
+        }
 
     q = conn.execute
     return [
@@ -192,6 +216,8 @@ def panel_forward_status(path: Path, today: date) -> dict[str, Any] | None:
     rate = len(valid) / elapsed if elapsed else 0.0
     remaining = PANEL_CUTOFF_VALID_DAYS - len(valid)
     eta = today + timedelta(days=math.ceil(remaining / rate)) if rate > 0 else None
+    to_interim = max(0, PANEL_INTERIM_VALID_DAYS - len(valid))
+    eta_interim = today + timedelta(days=math.ceil(to_interim / rate)) if rate > 0 else None
     return {
         "evidence": "validado offline; forward en curso (sin veredicto antes del corte)",
         "first_decision": dates[0].isoformat(),
@@ -202,6 +228,8 @@ def panel_forward_status(path: Path, today: date) -> dict[str, Any] | None:
         "never_emitted": [d.isoformat() for d in missing],
         "valid_rate": rate,
         "cutoff_valid_days": PANEL_CUTOFF_VALID_DAYS,
+        "interim_valid_days": PANEL_INTERIM_VALID_DAYS,
+        "eta_interim_at_current_rate": eta_interim.isoformat() if eta_interim else None,
         "eta_at_current_rate": eta.isoformat() if eta else None,
         "eta_if_every_day_valid": (today + timedelta(days=remaining)).isoformat(),
         "ic": "no se reporta (ciego, ver docstring)",
@@ -235,7 +263,7 @@ def render(b: dict[str, Any]) -> str:
     L = [f"INSUMOS DEL MEMO MAREA — {b['as_of']} (cada bloque con su nivel de evidencia)", ""]
     L.append("FRESCURA")
     for f in b["freshness"]:
-        warn = "  ⚠ más de 8 días" if f["age_days"] is not None and f["age_days"] > 8 else ""
+        warn = f"  ⚠ más de {f['stale_after_days']} días" if f["stale"] else ""
         L.append(f"  {f['source']:34} {f['last'] or '—':>12}  ({f['age_days']} d){warn}")
     liq = b["liquidity"]
     L += ["", "1. LIQUIDEZ — " + (liq["evidence"] if liq else "sin reporte: correr marea.monitor")]

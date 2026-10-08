@@ -1,106 +1,159 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useAppWebSocket } from "../../hooks/useWebSocket";
-import { useAppStore } from "../../stores/appStore";
+import { api } from "../../lib/api";
 
-const navItems = [
-  { to: "/macro", label: "Macro" },
-  { to: "/flows", label: "Flujos" },
-  { to: "/", label: "Signal" },
-  { to: "/map", label: "Mapa" },
-  { to: "/risk", label: "Riesgo" },
-  { to: "/analysis", label: "Analysis" },
-  { to: "/backtest", label: "Backtest" },
-  { to: "/history", label: "History" },
-  { to: "/settings", label: "Settings" },
+/**
+ * Navegación de MAREA (M6.1, opción A de `docs/M6_ALCANCE.md` §4.1).
+ *
+ * Arriba lo que se lee para decidir; los desplegables agrupan cripto y lo
+ * técnico. **Nada del forward se borró** (decisión del 07-10): la validación
+ * de 15m vive en Laboratorio y el forward del panel diario tiene página
+ * propia en Cripto.
+ */
+type Item = { to: string; label: string; note?: string };
+type Group = { label: string; prefix: string; items: Item[] };
+
+const TOP: Item[] = [
+  { to: "/", label: "Inicio" },
+  { to: "/liquidez", label: "Liquidez" },
+  { to: "/flujos", label: "Flujos" },
 ];
 
-export function Layout() {
-  useAppWebSocket();
-  const wsConnected = useAppStore((s) => s.wsConnected);
-  const conn = useAppStore((s) => s.connStatus);
+const GROUPS: Group[] = [
+  {
+    label: "Cripto",
+    prefix: "/cripto",
+    items: [
+      { to: "/cripto/panorama", label: "Panorama" },
+      { to: "/cripto/panel", label: "Panel diario", note: "forward" },
+      { to: "/cripto/riesgo", label: "Riesgo por trade" },
+      { to: "/cripto/mapa", label: "Mapa técnico" },
+      { to: "/cripto/senal-15m", label: "Señal 15m", note: "congelada" },
+    ],
+  },
+  {
+    label: "Laboratorio",
+    prefix: "/lab",
+    items: [
+      { to: "/lab/forward-15m", label: "Validación forward 15m" },
+      { to: "/lab/backtest", label: "Backtest" },
+      { to: "/lab/analisis", label: "Análisis" },
+    ],
+  },
+];
 
-  // Regla 8: el estado de cada conexión es parte de lo que el usuario debe
-  // ver. Se separan a propósito el socket del dashboard y el feed de Binance:
-  // el navegador puede estar perfectamente conectado a un backend que perdió
-  // el feed, y en ese caso el precio que se muestra no es el de ahora.
-  const feedDown = conn !== null && !conn.connected;
+const BOTTOM: Item[] = [{ to: "/ajustes", label: "Ajustes" }];
+
+function linkClass({ isActive }: { isActive: boolean }): string {
+  return `flex items-baseline justify-between gap-2 rounded-md px-3 py-1.5 text-sm transition ${
+    isActive ? "bg-neutral-800 text-accent" : "text-neutral-300 hover:bg-neutral-800/60"
+  }`;
+}
+
+function NavItem({ item, nested = false }: { item: Item; nested?: boolean }) {
+  return (
+    <NavLink to={item.to} end={item.to === "/"} className={linkClass}>
+      <span className={nested ? "pl-3" : ""}>{item.label}</span>
+      {item.note && <span className="text-[10px] text-neutral-600">{item.note}</span>}
+    </NavLink>
+  );
+}
+
+function NavGroup({ group }: { group: Group }) {
+  const { pathname } = useLocation();
+  const active = pathname.startsWith(group.prefix);
+  const [open, setOpen] = useState(active);
+  const shown = open || active;
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={shown}
+        className={`flex w-full items-center justify-between rounded-md px-3 py-1.5 text-sm transition hover:bg-neutral-800/60 ${
+          active ? "text-neutral-100" : "text-neutral-300"
+        }`}
+      >
+        {group.label}
+        <span className="text-xs text-neutral-500">{shown ? "▾" : "▸"}</span>
+      </button>
+      {shown && (
+        <div className="mt-0.5 flex flex-col gap-0.5">
+          {group.items.map((it) => (
+            <NavItem key={it.to} item={it} nested />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Frescura de las fuentes de MAREA. Reemplaza al estado del feed de Binance
+ * como indicador del encabezado: con el vivo congelado, la pregunta que
+ * importa es "¿los datos están al día?", no "¿el socket está vivo?".
+ */
+function Freshness() {
+  const q = useQuery({
+    queryKey: ["macro", "freshness"],
+    queryFn: () => api.freshness(),
+    retry: false,
+    staleTime: 300_000,
+  });
+  if (q.isLoading) return <span className="text-neutral-600">revisando datos…</span>;
+  if (q.error || !q.data) return <span className="text-danger">sin acceso a los datos de MAREA</span>;
+  const old = q.data.sources.filter((s) => s.stale);
+  const tip = q.data.sources
+    .map((s) => `${s.source}: ${s.last ?? "—"} (${s.age_days ?? "—"} d; atrasada desde ${s.stale_after_days})`)
+    .join("\n");
+  return (
+    <span className="flex items-center gap-2" title={tip}>
+      <span
+        className={`inline-flex h-2 w-2 rounded-full ${old.length ? "bg-warn" : "bg-success"}`}
+        aria-hidden
+      />
+      <span className="text-neutral-400">
+        {old.length
+          ? `atrasada: ${old.map((s) => `${s.source} (${s.age_days ?? "—"} d)`).join(", ")}`
+          : "datos al día"}
+      </span>
+    </span>
+  );
+}
+
+export function Layout() {
+  // El socket alimenta la Señal 15m (precio en curso); se abre una sola vez acá.
+  useAppWebSocket();
 
   return (
     <div className="flex h-full bg-surface">
-      <aside className="w-56 border-r border-neutral-800 bg-neutral-900 p-4">
-        <div className="mb-8 flex items-baseline gap-2">
+      <aside className="w-60 border-r border-neutral-800 bg-neutral-900 p-4">
+        <div className="mb-8">
           <span className="text-xl font-bold text-accent">MAREA</span>
-          <span className="text-xs text-neutral-500">liquidez global · cripto: BOB</span>
+          <div className="text-xs text-neutral-500">liquidez global y cripto</div>
         </div>
         <nav className="flex flex-col gap-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/"}
-              className={({ isActive }) =>
-                `rounded-md px-3 py-2 text-sm transition ${
-                  isActive
-                    ? "bg-neutral-800 text-accent"
-                    : "text-neutral-300 hover:bg-neutral-800/60"
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
+          {TOP.map((it) => (
+            <NavItem key={it.to} item={it} />
+          ))}
+          <div className="my-2 border-t border-neutral-800" />
+          {GROUPS.map((g) => (
+            <NavGroup key={g.prefix} group={g} />
+          ))}
+          <div className="my-2 border-t border-neutral-800" />
+          {BOTTOM.map((it) => (
+            <NavItem key={it.to} item={it} />
           ))}
         </nav>
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-neutral-800 bg-neutral-900 px-6 py-3">
-          <div className="flex items-center gap-4 text-xs">
-            <span className="flex items-center gap-2">
-              <span
-                className={`inline-flex h-2 w-2 rounded-full ${
-                  wsConnected ? "bg-success" : "bg-danger"
-                }`}
-                aria-hidden
-              />
-              <span className="text-neutral-400">
-                {wsConnected ? "dashboard: live" : "dashboard: desconectado"}
-              </span>
-            </span>
-
-            {conn && (
-              <span
-                className="flex items-center gap-2"
-                title={
-                  conn.mute_streams.length > 0
-                    ? `streams mudos: ${conn.mute_streams.join(", ")} — se rellenan por REST`
-                    : undefined
-                }
-              >
-                <span
-                  className={`inline-flex h-2 w-2 rounded-full ${
-                    feedDown ? "bg-danger" : "bg-success"
-                  }`}
-                  aria-hidden
-                />
-                <span className="font-mono text-neutral-500">{conn.source}</span>
-                {conn.reconnects > 0 && (
-                  <span className="text-neutral-600">
-                    {conn.reconnects} reconexiones
-                  </span>
-                )}
-              </span>
-            )}
-
-            {conn?.last_error && (
-              <span className="text-warn" title={conn.last_error}>
-                último error: {conn.last_error.slice(0, 60)}
-              </span>
-            )}
-          </div>
-          <span className="text-xs text-neutral-500">
-            solo análisis — BOB nunca ejecuta órdenes
-          </span>
+        <header className="flex items-center justify-between border-b border-neutral-800 bg-neutral-900 px-6 py-3 text-xs">
+          <Freshness />
+          <span className="text-neutral-500">solo análisis — MAREA nunca ejecuta órdenes</span>
         </header>
         <main className="flex-1 overflow-auto p-6">
           <Outlet />
