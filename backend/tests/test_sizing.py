@@ -126,3 +126,16 @@ def test_regimen_elevado_avisa_y_es_rojo_a_leverage_alto() -> None:
     assert {w.code: w.level for w in high.warnings}["regime_elevated"] == "danger"
     calm = size_position(500.0, 0.01, 2500.0, 2450.0, 5.0, regime_elevated=False)
     assert "regime_elevated" not in _codes(calm)
+
+
+def test_avisos_en_ingles_con_el_mismo_codigo_y_nivel() -> None:
+    """M6.8: el idioma cambia el mensaje, no el código ni el nivel del aviso."""
+    kw = dict(capital=500.0, risk_fraction=0.05, entry=2500.0, stop=2497.0, leverage=50.0,
+              sigma_horizon=0.008, regime_elevated=True)
+    es = size_position(**kw)  # type: ignore[arg-type]
+    en = size_position(**kw, lang="en")  # type: ignore[arg-type]
+    assert [(w.code, w.level) for w in es.warnings] == [(w.code, w.level) for w in en.warnings]
+    assert len(en.warnings) >= 3
+    for w_es, w_en in zip(es.warnings, en.warnings, strict=True):
+        assert w_es.message != w_en.message
+        assert not any(c in w_en.message for c in "áéíóúñ"), w_en.message

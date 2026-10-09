@@ -8,7 +8,7 @@ fórmula de liquidación, con sus tiers de MMR, vive en un solo lugar.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -32,6 +32,7 @@ async def sizing(
     min_notional: float = Query(DEFAULT_MIN_NOTIONAL, ge=0.0),
     sigma_horizon: float | None = Query(None, gt=0.0, lt=1.0),
     regime_elevated: bool | None = Query(None),
+    lang: Literal["es", "en"] = Query("es"),
 ) -> dict[str, Any]:
     try:
         profile = get_venue(venue)
@@ -48,6 +49,7 @@ async def sizing(
             min_notional=min_notional,
             sigma_horizon=sigma_horizon,
             regime_elevated=regime_elevated,
+            lang=lang,
         )
     except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

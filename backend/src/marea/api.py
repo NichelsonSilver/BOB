@@ -14,11 +14,11 @@ import json
 import time
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
-from marea import brief, narrative, panorama, strength
+from marea import brief, i18n, narrative, panorama, strength
 from marea.config import DB_PATH
 from marea.data import store
 from marea.power_run import ARTIFACTS
@@ -53,7 +53,7 @@ def _universe_json() -> Path:
 
 
 @router.get("/macro/liquidity")
-async def liquidity() -> dict[str, Any]:
+async def liquidity(lang: Literal["es", "en"] = Query("es")) -> dict[str, Any]:
     raw = await asyncio.to_thread(_read, _db_path())
     if raw is None:
         raise HTTPException(
@@ -64,7 +64,7 @@ async def liquidity() -> dict[str, Any]:
     age = (datetime.now(UTC).date() - date.fromisoformat(rep["as_of"])).days
     rep["age_days"] = age
     rep["stale"] = age > STALE_AFTER_DAYS
-    return rep
+    return i18n.liquidity(rep, lang)
 
 
 def _strength(path: Path, weeks: int) -> dict[str, Any] | None:
@@ -78,7 +78,9 @@ def _strength(path: Path, weeks: int) -> dict[str, Any] | None:
 
 
 @router.get("/macro/strength")
-async def class_strength(weeks: int = Query(26)) -> dict[str, Any]:
+async def class_strength(
+    weeks: int = Query(26), lang: Literal["es", "en"] = Query("es")
+) -> dict[str, Any]:
     """Fuerza relativa por clase. Se calcula al pedirla (~0,5 s, en un hilo)."""
     if weeks not in strength.CHART_WEEKS:
         raise HTTPException(status_code=422, detail=f"weeks debe ser uno de {strength.CHART_WEEKS}")
@@ -91,7 +93,7 @@ async def class_strength(weeks: int = Query(26)) -> dict[str, Any]:
     age = (datetime.now(UTC).date() - date.fromisoformat(rep["as_of"])).days
     rep["age_days"] = age
     rep["stale"] = age > 4  # un fin de semana largo son 3-4 días sin sesión
-    return rep
+    return i18n.strength(rep, lang)
 
 
 def _artifacts_dir() -> Path:
@@ -128,7 +130,7 @@ def ranking_verdict_from(art: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.get("/macro/ranking-verdict")
-async def ranking_verdict() -> dict[str, Any]:
+async def ranking_verdict(lang: Literal["es", "en"] = Query("es")) -> dict[str, Any]:
     def read() -> dict[str, Any] | None:
         files = sorted(_artifacts_dir().glob("marea-ranking-*.json"))
         return json.loads(files[-1].read_text(encoding="utf-8")) if files else None
@@ -136,7 +138,7 @@ async def ranking_verdict() -> dict[str, Any]:
     art = await asyncio.to_thread(read)
     if art is None:
         raise HTTPException(status_code=404, detail="no hay artefacto marea-ranking")
-    return ranking_verdict_from(art)
+    return i18n.ranking_verdict(ranking_verdict_from(art), lang)
 
 
 #: El panorama cuesta ~5 s (la amplitud recorre el panel de 652 perpetuos) y sus

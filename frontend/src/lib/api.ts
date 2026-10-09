@@ -37,6 +37,7 @@ import type {
   TechnicalResponse,
   TechnicalTf,
 } from "../types";
+import type { Lang } from "../i18n";
 
 /** Error de la API con su status, para poder distinguir 404 de "se cayó". */
 export class ApiError extends Error {
@@ -87,7 +88,7 @@ export const api = {
 
   latest: (t: Target) => request<LatestResponse>(`/api/analysis/latest${query(t)}`),
 
-  projection: (t: Target & { leverage: number }) =>
+  projection: (t: Target & { leverage: number; lang?: Lang }) =>
     request<ProjectionResponse>(`/api/analysis/projection${query(t)}`),
 
   features: (t: Target) => request<FeaturesResponse>(`/api/analysis/features${query(t)}`),
@@ -119,13 +120,15 @@ export const api = {
   settings: () => request<SettingsResponse>("/api/settings"),
 
   /** MAREA: el último reporte guardado por `python -m marea.monitor`. */
-  liquidity: () => request<LiquidityReport>("/api/macro/liquidity"),
+  liquidity: (lang?: Lang) => request<LiquidityReport>(`/api/macro/liquidity${query({ lang })}`),
 
   /** MAREA: fuerza relativa por clase. Descriptiva: no es flujo ni pronóstico. */
-  strength: (weeks: number) => request<StrengthReport>(`/api/macro/strength${query({ weeks })}`),
+  strength: (weeks: number, lang?: Lang) =>
+    request<StrengthReport>(`/api/macro/strength${query({ weeks, lang })}`),
 
   /** MAREA: veredicto del gate M3, leído del artefacto versionado. */
-  rankingVerdict: () => request<RankingVerdict>("/api/macro/ranking-verdict"),
+  rankingVerdict: (lang?: Lang) =>
+    request<RankingVerdict>(`/api/macro/ranking-verdict${query({ lang })}`),
 
   /** MAREA: antigüedad de cada fuente, para el encabezado. */
   freshness: () => request<FreshnessReport>("/api/macro/freshness"),
@@ -139,7 +142,7 @@ export const api = {
   /** Forward del panel diario (10-bis): estado operativo, nunca el IC. */
   panelStatus: () => request<PanelStatus>("/api/macro/panel-status"),
 
-  narrative: (t: { symbol?: string }) =>
+  narrative: (t: { symbol?: string; lang?: Lang }) =>
     request<NarrativeResponse>(`/api/analysis/narrative${query(t)}`),
 
   technical: (p: { symbol?: string; tf: TechnicalTf }) =>
@@ -156,5 +159,6 @@ export const api = {
     maker_entry?: boolean;
     sigma_horizon?: number;
     regime_elevated?: boolean;
+    lang?: Lang;
   }) => request<SizingResponse>(`/api/risk/sizing${query(p)}`),
 };

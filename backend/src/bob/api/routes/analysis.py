@@ -18,7 +18,7 @@ barato recalcular: `project_setup` es puro y son microsegundos.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -143,6 +143,7 @@ async def projection(
     symbol: str | None = SymbolQuery(),
     timeframe: str | None = TimeframeQuery(),
     leverage: float = Query(1.0, gt=0.0, le=125.0),
+    lang: Literal["es", "en"] = Query("es"),
 ) -> dict[str, Any]:
     """Reproyecta el último pronóstico con el leverage que pide el slider.
 
@@ -192,6 +193,7 @@ async def projection(
             timeframe_ms=tf_ms,
             direction=direction,
             profile=profile,
+            lang=lang,
         ).as_dict()
 
     return {

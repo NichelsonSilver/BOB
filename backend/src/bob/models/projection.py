@@ -297,6 +297,7 @@ def project_setup(
     direction: str = "long",
     profile: LeverageProfile | None = None,
     bars_held: int | None = None,
+    lang: str = "es",
 ) -> SetupProjection:
     """Arma la proyección completa del setup: KPI 2 + distancia a liquidación.
 
@@ -321,23 +322,39 @@ def project_setup(
     liq_distance = abs(liq - entry_price) / entry_price
     safe_lev = max_safe_leverage(sl_pct, profile.maintenance_margin_rate, profile.safety_buffer)
 
+    # Los avisos salen en el idioma pedido (M6.8); el default "es" deja intacto
+    # lo que el analista en vivo guardaba antes.
+    en = lang == "en"
     warnings: list[str] = []
     if net_ev <= 0:
-        warnings.append("EV neto no positivo: los costos se comen la ventaja")
+        warnings.append(
+            "net EV not positive: costs eat the edge"
+            if en
+            else "EV neto no positivo: los costos se comen la ventaja"
+        )
     if probability < breakeven:
         warnings.append(
-            f"probabilidad {probability:.1%} bajo el equilibrio {breakeven:.1%}: "
+            f"probability {probability:.1%} below break-even {breakeven:.1%}: "
+            "the setup loses on average"
+            if en
+            else f"probabilidad {probability:.1%} bajo el equilibrio {breakeven:.1%}: "
             "el setup pierde en promedio"
         )
     liquidation_before_stop = liq_distance <= sl_pct
     if liquidation_before_stop:
         warnings.append(
-            f"la liquidación ({liq_distance:.2%}) llega antes que el stop ({sl_pct:.2%}): "
+            f"liquidation ({liq_distance:.2%}) comes before the stop ({sl_pct:.2%}): "
+            f"at this leverage the stop does not protect — safe maximum {safe_lev:.1f}x"
+            if en
+            else f"la liquidación ({liq_distance:.2%}) llega antes que el stop ({sl_pct:.2%}): "
             f"con este leverage el stop no protege — máximo seguro {safe_lev:.1f}x"
         )
     elif liq_distance < profile.safety_buffer * sl_pct:
         warnings.append(
-            f"la liquidación está a solo {liq_distance / sl_pct:.1f}× el stop: "
+            f"liquidation is only {liq_distance / sl_pct:.1f}× the stop: "
+            f"no room for wicks — safe maximum {safe_lev:.1f}x"
+            if en
+            else f"la liquidación está a solo {liq_distance / sl_pct:.1f}× el stop: "
             f"sin margen para mechas — máximo seguro {safe_lev:.1f}x"
         )
 

@@ -21,10 +21,10 @@ import { api } from "../lib/api";
  * seis tarjetas iguales, cada una con su gráfico chico.
  */
 export function HomePage() {
-  const { tr } = useLang();
+  const { lang, tr } = useLang();
   const liq = useQuery({
-    queryKey: ["macro", "liquidity"],
-    queryFn: () => api.liquidity(),
+    queryKey: ["macro", "liquidity", lang],
+    queryFn: () => api.liquidity(lang),
     retry: false,
     staleTime: 600_000,
   });
@@ -36,8 +36,8 @@ export function HomePage() {
   });
   const strength = useQuery({
     // Misma clave que Flujos con su ventana por defecto: una sola petición.
-    queryKey: ["macro", "strength", 26],
-    queryFn: () => api.strength(26),
+    queryKey: ["macro", "strength", 26, lang],
+    queryFn: () => api.strength(26, lang),
     retry: false,
     staleTime: 600_000,
   });

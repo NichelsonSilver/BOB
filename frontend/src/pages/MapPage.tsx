@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Badge, Card, ErrorBox, Loading, Row } from "../components/common/Card";
 import { RsiChart, TechnicalChart } from "../components/map/TechnicalChart";
 import { useTarget } from "../hooks/useTarget";
+import { type Lang, useLang } from "../i18n";
 import { api } from "../lib/api";
 import { SERIES } from "../lib/chartTheme";
 import { num, pct, price, signedPct, stamp } from "../lib/format";
@@ -28,12 +29,19 @@ import type { RuleEvidence, TechnicalResponse, TechnicalTf } from "../types";
 
 const TFS: TechnicalTf[] = ["15m", "1h", "4h"];
 const TF_MS: Record<TechnicalTf, number> = { "15m": 900_000, "1h": 3_600_000, "4h": 14_400_000 };
-const RULE_NAME: Record<RuleEvidence["rule"], string> = {
-  sweep: "Barrido de liquidez",
-  order_block: "Retorno a order block",
+const RULE_NAME: Record<RuleEvidence["rule"], [en: string, es: string]> = {
+  sweep: ["Liquidity sweep", "Barrido de liquidez"],
+  order_block: ["Return to order block", "Retorno a order block"],
 };
 
+/** El veredicto llega del artefacto en español ("PASA", "NO PASA", "EXPLORATORIA"). */
+function verdictText(lang: Lang, v: string): string {
+  if (lang === "es") return v === "EXPLORATORIA" ? "exploratoria" : v.toLowerCase();
+  return { PASA: "passes", "NO PASA": "does not pass", EXPLORATORIA: "exploratory" }[v] ?? v.toLowerCase();
+}
+
 export function MapPage() {
+  const { tr } = useLang();
   const { symbol } = useTarget();
   const [tf, setTf] = useState<TechnicalTf>("15m");
 
@@ -53,11 +61,11 @@ export function MapPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-xl font-semibold text-neutral-100">Mapa técnico</h1>
+          <h1 className="text-xl font-semibold text-neutral-100">{tr("Technical map", "Mapa técnico")}</h1>
           {d && (
             <span className={`text-xs ${stale ? "text-warn" : "text-neutral-500"}`}>
-              {d.symbol} · {price(d.last_close)} · vela cerrada del {stamp(d.last_time)}
-              {stale && " — vieja: levantá el backend con el feed en vivo"}
+              {d.symbol} · {price(d.last_close)} · {tr("closed bar of", "vela cerrada del")} {stamp(d.last_time)}
+              {stale && tr(" — stale: start the backend with the live feed", " — vieja: levantá el backend con el feed en vivo")}
             </span>
           )}
         </div>
@@ -77,7 +85,7 @@ export function MapPage() {
         </div>
       </div>
 
-      {map.isLoading && <Loading what="el mapa" />}
+      {map.isLoading && <Loading what={tr("the map", "el mapa")} />}
       {map.error && <ErrorBox>{String(map.error)}</ErrorBox>}
 
       {d && (
@@ -87,20 +95,24 @@ export function MapPage() {
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             <Card
               className="xl:col-span-2"
-              title={`${d.symbol} ${tf} · últimas ${d.series.time.length} velas`}
+              title={tr(
+                `${d.symbol} ${tf} · last ${d.series.time.length} bars`,
+                `${d.symbol} ${tf} · últimas ${d.series.time.length} velas`,
+              )}
               right={<Legend />}
             >
               <TechnicalChart data={d} />
               <div className="mt-2 border-t border-neutral-800 pt-2">
-                <div className="mb-1 text-[11px] uppercase tracking-wider text-neutral-500">
-                  RSI 14 · {num(d.rsi, 1)}
-                </div>
+                <div className="mb-1 text-[11px] uppercase tracking-wider text-neutral-500">RSI 14 · {num(d.rsi, 1)}</div>
                 <RsiChart data={d} />
               </div>
               {d.gaps_15m > 0 && (
                 <p className="mt-2 text-[11px] text-warn">
-                  ⚠ {d.gaps_15m} hueco(s) en las velas de 15m usadas: las zonas cercanas a un hueco
-                  describen una ventana que no existió entera.
+                  ⚠{" "}
+                  {tr(
+                    `${d.gaps_15m} gap(s) in the 15m bars used: zones near a gap describe a window that did not fully exist.`,
+                    `${d.gaps_15m} hueco(s) en las velas de 15m usadas: las zonas cercanas a un hueco describen una ventana que no existió entera.`,
+                  )}
                 </p>
               )}
             </Card>
@@ -117,77 +129,90 @@ export function MapPage() {
 }
 
 function Evidence({ data }: { data: TechnicalResponse }) {
+  const { lang, tr } = useLang();
   const ev = data.evidence;
   if (!ev) {
     return (
       <Card>
         <p className="text-sm text-warn">
-          No hay medición de las reglas técnicas en artifacts/. Sin ella, este mapa no tiene
-          respaldo que mostrar.
+          {tr(
+            "There is no measurement of the technical rules in artifacts/. Without it, this map has no backing to show.",
+            "No hay medición de las reglas técnicas en artifacts/. Sin ella, este mapa no tiene respaldo que mostrar.",
+          )}
         </p>
       </Card>
     );
   }
   return (
     <Card
-      title="Lo que midió el backtest de estas zonas"
-      right={<Badge tone="muted">mapa, no señal</Badge>}
+      title={tr("What the backtest measured for these zones", "Lo que midió el backtest de estas zonas")}
+      right={<Badge tone="muted">{tr("map, not signal", "mapa, no señal")}</Badge>}
     >
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {ev.rules.map((r) => (
           <div key={r.rule} className="rounded border border-neutral-800 bg-neutral-950/60 p-3">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-neutral-200">{RULE_NAME[r.rule]}</span>
+              <span className="text-sm text-neutral-200">{tr(...RULE_NAME[r.rule])}</span>
               <Badge tone={r.verdict === "PASA" ? "ok" : r.kind === "exploratoria" ? "muted" : "bad"}>
-                {r.verdict === "EXPLORATORIA" ? "exploratoria" : r.verdict.toLowerCase()}
+                {verdictText(lang, r.verdict)}
               </Badge>
             </div>
             <Row
-              label="ganancia media por trade"
+              label={tr("average gain per trade", "ganancia media por trade")}
               value={`${signedR(r.mean_r)}  [${signedR(r.ci[0])}, ${signedR(r.ci[1])}]`}
               tone={r.mean_r < 0 ? "text-danger" : "text-accent"}
-              hint={`IC ${pct(r.ci_level, 2)} por bloques. En R: −1 es perder lo arriesgado`}
+              hint={tr(
+                `${pct(r.ci_level, 2)} block CI. In R: −1 is losing what was risked`,
+                `IC ${pct(r.ci_level, 2)} por bloques. En R: −1 es perder lo arriesgado`,
+              )}
             />
             <Row
-              label="aciertos"
-              value={`${pct(r.win_rate, 1)} · empate sin costos ${pct(r.breakeven_win_rate, 1)}`}
+              label={tr("win rate", "aciertos")}
+              value={tr(
+                `${pct(r.win_rate, 1)} · break-even without costs ${pct(r.breakeven_win_rate, 1)}`,
+                `${pct(r.win_rate, 1)} · empate sin costos ${pct(r.breakeven_win_rate, 1)}`,
+              )}
             />
             {r.placebo_mean_r !== null && (
               <Row
-                label="mismo trade, momento al azar"
+                label={tr("same trade, random moment", "mismo trade, momento al azar")}
                 value={signedR(r.placebo_mean_r)}
-                hint="Placebo: si la regla no supera esto, la zona no aporta información"
+                hint={tr(
+                  "Placebo: if the rule does not beat this, the zone adds no information",
+                  "Placebo: si la regla no supera esto, la zona no aporta información",
+                )}
               />
             )}
-            <Row label="trades medidos · peor racha" value={`${r.n} · ${r.worst_streak} seguidas`} />
+            <Row
+              label={tr("trades measured · worst streak", "trades medidos · peor racha")}
+              value={tr(`${r.n} · ${r.worst_streak} in a row`, `${r.n} · ${r.worst_streak} seguidas`)}
+            />
           </div>
         ))}
       </div>
       <p className="mt-3 text-[11px] text-neutral-500">
-        ETHUSDT, ~743 días, objetivo {ev.r_multiple}R, salida a {ev.horizon} barras, costo{" "}
-        {pct(ev.cost_pct, 2)} ida y vuelta. Entrar en estas zonas no mostró ventaja sobre entrar al
-        azar. Las zonas sirven para ubicar el stop detrás de un nivel, no para decidir la
-        dirección. Pre-registro: <span className="font-mono">{ev.preregistration}</span>.
+        {tr(
+          `ETHUSDT 15m, target ${ev.r_multiple}R, exit after ${ev.horizon} bars, round-trip cost ${pct(ev.cost_pct, 2)}. Entering in these zones showed no edge over entering at random. The zones help place the stop behind a level, not decide the direction. Pre-registration:`,
+          `ETHUSDT 15m, objetivo ${ev.r_multiple}R, salida a ${ev.horizon} barras, costo ${pct(ev.cost_pct, 2)} ida y vuelta. Entrar en estas zonas no mostró ventaja sobre entrar al azar. Las zonas sirven para ubicar el stop detrás de un nivel, no para decidir la dirección. Pre-registro:`,
+        )}{" "}
+        <span className="font-mono">{ev.preregistration}</span>.
       </p>
     </Card>
   );
 }
 
 function Context({ data }: { data: TechnicalResponse }) {
+  const { tr } = useLang();
   const vs = (ema: number) => (data.last_close - ema) / ema;
   return (
-    <Card title="Contexto" right={<Badge tone="muted">descriptivo</Badge>}>
-      <Row
-        label="RSI 14"
-        value={num(data.rsi, 1)}
-        tone={data.rsi >= 70 || data.rsi <= 30 ? "text-warn" : ""}
-      />
+    <Card title={tr("Context", "Contexto")} right={<Badge tone="muted">{tr("descriptive", "descriptivo")}</Badge>}>
+      <Row label="RSI 14" value={num(data.rsi, 1)} tone={data.rsi >= 70 || data.rsi <= 30 ? "text-warn" : ""} />
       {(["20", "50", "200"] as const).map((k, i) => (
         <Row
           key={k}
           label={
             <span>
-              <span style={{ color: SERIES[i] }}>━</span> precio vs EMA{k}
+              <span style={{ color: SERIES[i] }}>━</span> {tr("price vs", "precio vs")} EMA{k}
             </span>
           }
           value={`${signedPct(vs(data.emas[k]))} · ${price(data.emas[k])}`}
@@ -195,8 +220,10 @@ function Context({ data }: { data: TechnicalResponse }) {
       ))}
       <Row label="ATR 14" value={`${price(data.atr)} · ${pct(data.atr_pct)}`} />
       <p className="mt-2 text-[11px] text-neutral-600">
-        RSI y medias ya entraron como features al modelo de dirección de 15m, que no pasó la prueba (ver
-        Laboratorio). Describen dónde está el precio, no hacia dónde va.
+        {tr(
+          "RSI and moving averages already went into the 15m direction model as features, and it did not pass its test (see Lab). They describe where the price is, not where it is going.",
+          "RSI y medias ya entraron como features al modelo de dirección de 15m, que no pasó la prueba (ver Laboratorio). Describen dónde está el precio, no hacia dónde va.",
+        )}
       </p>
     </Card>
   );
@@ -205,23 +232,33 @@ function Context({ data }: { data: TechnicalResponse }) {
 type LevelRow = { price: number; label: string; detail: string };
 
 function Levels({ data }: { data: TechnicalResponse }) {
+  const { tr } = useLang();
   const buffer = 0.1 * data.atr; // el mismo margen del backtest
   const rows: LevelRow[] = [
     ...data.pools.map((p) => ({
       price: p.price,
-      label: `liquidez ${p.side === "high" ? "↑" : "↓"}`,
-      detail: p.equal >= 2 ? `${p.equal} pivotes iguales` : "pivote no tomado",
+      label: `${tr("liquidity", "liquidez")} ${p.side === "high" ? "↑" : "↓"}`,
+      detail:
+        p.equal >= 2
+          ? tr(`${p.equal} equal pivots`, `${p.equal} pivotes iguales`)
+          : tr("untaken pivot", "pivote no tomado"),
     })),
     ...data.sr.map((z) => ({
       price: z.price,
-      label: z.kind === "support" ? "soporte" : "resistencia",
-      detail: `${z.touches} toque${z.touches === 1 ? "" : "s"}`,
+      label: z.kind === "support" ? tr("support", "soporte") : tr("resistance", "resistencia"),
+      detail: tr(
+        `${z.touches} touch${z.touches === 1 ? "" : "es"}`,
+        `${z.touches} toque${z.touches === 1 ? "" : "s"}`,
+      ),
     })),
     ...data.order_blocks.flatMap((ob) => [
       {
         price: ob.direction === "long" ? ob.bottom : ob.top,
-        label: `OB ${ob.direction === "long" ? "demanda" : "oferta"}`,
-        detail: `${price(ob.bottom)}–${price(ob.top)} · vence en ${ob.expires_in_bars} velas`,
+        label: `OB ${ob.direction === "long" ? tr("demand", "demanda") : tr("supply", "oferta")}`,
+        detail: tr(
+          `${price(ob.bottom)}–${price(ob.top)} · expires in ${ob.expires_in_bars} bars`,
+          `${price(ob.bottom)}–${price(ob.top)} · vence en ${ob.expires_in_bars} velas`,
+        ),
       },
     ]),
   ].sort((a, b) => b.price - a.price);
@@ -244,21 +281,22 @@ function Levels({ data }: { data: TechnicalResponse }) {
       <span className="flex-1 truncate text-neutral-400" title={r.detail}>
         {r.label} <span className="text-neutral-600">· {r.detail}</span>
       </span>
-      <span className="font-mono text-neutral-500">
-        {signedPct((r.price - data.last_close) / data.last_close)}
-      </span>
+      <span className="font-mono text-neutral-500">{signedPct((r.price - data.last_close) / data.last_close)}</span>
       <Link
         to={link(r)}
         className="rounded border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400 hover:bg-neutral-800/60"
-        title="Abrir la calculadora de riesgo con el stop detrás de este nivel"
+        title={tr(
+          "Open the risk calculator with the stop behind this level",
+          "Abrir la calculadora de riesgo con el stop detrás de este nivel",
+        )}
       >
-        stop aquí
+        {tr("stop here", "stop aquí")}
       </Link>
     </div>
   );
 
   return (
-    <Card title="Niveles cercanos">
+    <Card title={tr("Nearby levels", "Niveles cercanos")}>
       <div>{above.map(line)}</div>
       <div className="my-1 flex items-center gap-2 text-[11px] text-accent">
         <span className="h-px flex-1 bg-accent/40" />
@@ -267,14 +305,17 @@ function Levels({ data }: { data: TechnicalResponse }) {
       </div>
       <div>{below.map(line)}</div>
       <p className="mt-2 text-[11px] text-neutral-600">
-        "Stop aquí" abre la calculadora con la entrada en el último cierre y el stop 0.1·ATR detrás
-        del nivel: debajo para un long, encima para un short.
+        {tr(
+          '"Stop here" opens the calculator with the entry at the last close and the stop 0.1·ATR behind the level: below for a long, above for a short.',
+          '"Stop aquí" abre la calculadora con la entrada en el último cierre y el stop 0.1·ATR detrás del nivel: debajo para un long, encima para un short.',
+        )}
       </p>
     </Card>
   );
 }
 
 function Legend() {
+  const { tr } = useLang();
   return (
     <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] text-neutral-500">
       {(["20", "50", "200"] as const).map((k, i) => (
@@ -282,8 +323,8 @@ function Legend() {
           <span style={{ color: SERIES[i] }}>━</span> EMA{k}
         </span>
       ))}
-      <span>┈ liquidez</span>
-      <span>● barrido</span>
+      <span>┈ {tr("liquidity", "liquidez")}</span>
+      <span>● {tr("sweep", "barrido")}</span>
       <span>─ S/R</span>
       <span>
         <span className="text-accent/70">═</span>/<span className="text-danger/70">═</span> OB

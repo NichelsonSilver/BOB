@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Badge, Card, ErrorBox, Row, Stat } from "../components/common/Card";
 import { RegimeFilter } from "../components/signal/RegimeFilter";
 import { useTarget } from "../hooks/useTarget";
+import { useLang } from "../i18n";
 import { api } from "../lib/api";
 import { isNum, multiplier, num, pct, price, stamp } from "../lib/format";
 import { tickPrice, useAppStore } from "../stores/appStore";
@@ -19,8 +20,9 @@ import type { SizingResponse, StopFilterEvidence } from "../types";
  * mala racha en un mal mes en vez de una cuenta liquidada.
  *
  * Toda la aritmética viene del servidor (`/api/risk/sizing`): la fórmula de
- * liquidación vive en un solo lugar. Lo único que se guarda acá, en
- * localStorage, son capital y % de riesgo, que son preferencias del usuario.
+ * liquidación vive en un solo lugar. Los avisos también llegan del servidor,
+ * en el idioma pedido. Lo único que se guarda acá, en localStorage, son
+ * capital y % de riesgo, que son preferencias del usuario.
  */
 
 const PREFS_KEY = "bob.risk.v1";
@@ -63,6 +65,7 @@ function useDebounced<T>(value: T, ms = 250): T {
 const usd = (v: number | null | undefined) => (isNum(v) ? `${v.toFixed(2)} USD` : "—");
 
 export function RiskPage() {
+  const { lang, tr } = useLang();
   const { symbol, timeframe } = useTarget();
   const lastTick = useAppStore((s) => s.lastTick);
   const live = tickPrice(lastTick);
@@ -95,7 +98,11 @@ export function RiskPage() {
   // existe. Se dice de cuándo es, y en ámbar si tiene más de una hora.
   const stale = live === null && last !== undefined && Date.now() - last.open_time > 3_600_000;
   const refLabel =
-    live !== null ? "precio en curso" : last ? `cierre de la vela del ${stamp(last.open_time)}` : "";
+    live !== null
+      ? tr("live price", "precio en curso")
+      : last
+        ? tr(`close of the ${stamp(last.open_time)} bar`, `cierre de la vela del ${stamp(last.open_time)}`)
+        : "";
 
   useEffect(() => {
     if (entry === "" && refPrice !== null && !stale) setEntry(refPrice.toFixed(2));
@@ -146,7 +153,7 @@ export function RiskPage() {
     params.stop !== params.entry;
 
   const sizing = useQuery({
-    queryKey: ["sizing", params],
+    queryKey: ["sizing", params, lang],
     queryFn: () =>
       api.sizing({
         capital: params.capital!,
@@ -158,6 +165,7 @@ export function RiskPage() {
         maker_entry: params.maker_entry,
         sigma_horizon: params.sigma_horizon,
         regime_elevated: params.regime_elevated,
+        lang,
       }),
     enabled: ready,
     retry: false,
@@ -177,34 +185,41 @@ export function RiskPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-xl font-semibold text-neutral-100">Riesgo por trade</h1>
+          <h1 className="text-xl font-semibold text-neutral-100">{tr("Trade risk", "Riesgo por trade")}</h1>
           <span className={`text-xs ${stale ? "text-warn" : "text-neutral-500"}`}>
-            {symbol ?? "—"} · {refPrice !== null ? `${price(refPrice)} (${refLabel})` : "sin precio"}
-            {stale && " — viejo: levantá el backend con el feed en vivo o tipeá la entrada"}
+            {symbol ?? "—"} · {refPrice !== null ? `${price(refPrice)} (${refLabel})` : tr("no price", "sin precio")}
+            {stale &&
+              tr(
+                " — stale: start the backend with the live feed or type the entry",
+                " — viejo: levantá el backend con el feed en vivo o tipeá la entrada",
+              )}
           </span>
         </div>
-        <Badge tone="neutral">MAREA nunca ejecuta órdenes</Badge>
+        <Badge tone="neutral">{tr("MAREA never places orders", "MAREA nunca ejecuta órdenes")}</Badge>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {/* --- Entradas ---------------------------------------------------- */}
-        <Card title="El trade que estás pensando">
+        <Card title={tr("The trade you are considering", "El trade que estás pensando")}>
           <div className="space-y-3">
-            <Field label="Capital de la cuenta (USD)" value={capital} onChange={setCapital} />
+            <Field label={tr("Account capital (USD)", "Capital de la cuenta (USD)")} value={capital} onChange={setCapital} />
             <Field
-              label="Riesgo por trade (% de la cuenta)"
+              label={tr("Risk per trade (% of account)", "Riesgo por trade (% de la cuenta)")}
               value={riskPct}
               onChange={setRiskPct}
-              hint="1–2% es lo prudente. Es lo que perdés si salta el stop, con costos incluidos."
+              hint={tr(
+                "1–2% is the prudent range. It is what you lose if the stop is hit, costs included.",
+                "1–2% es lo prudente. Es lo que perdés si salta el stop, con costos incluidos.",
+              )}
             />
             <Field
-              label="Entrada"
+              label={tr("Entry", "Entrada")}
               value={entry}
               onChange={setEntry}
               right={
                 refPrice !== null &&
                 !stale && (
-                  <MiniButton onClick={() => setEntry(refPrice.toFixed(2))}>usar actual</MiniButton>
+                  <MiniButton onClick={() => setEntry(refPrice.toFixed(2))}>{tr("use current", "usar actual")}</MiniButton>
                 )
               }
             />
@@ -212,7 +227,7 @@ export function RiskPage() {
               label="Stop"
               value={stop}
               onChange={setStop}
-              hint="Debajo de la entrada = long. Encima = short."
+              hint={tr("Below the entry = long. Above = short.", "Debajo de la entrada = long. Encima = short.")}
             />
             <div className="flex flex-wrap gap-1">
               {[0.005, 0.01, 0.02].map((f) => (
@@ -222,16 +237,19 @@ export function RiskPage() {
                 </span>
               ))}
             </div>
-            <Field label="Objetivo (opcional)" value={target} onChange={setTarget} />
+            <Field label={tr("Target (optional)", "Objetivo (opcional)")} value={target} onChange={setTarget} />
             <Field
               label="Leverage"
               value={leverage}
               onChange={setLeverage}
-              hint="No cambia cuánto perdés al stop: cambia el margen y dónde queda la liquidación."
+              hint={tr(
+                "It does not change how much you lose at the stop: it changes the margin and where liquidation sits.",
+                "No cambia cuánto perdés al stop: cambia el margen y dónde queda la liquidación.",
+              )}
             />
             <label className="flex items-center gap-2 text-xs text-neutral-400">
               <input type="checkbox" checked={maker} onChange={(e) => setMaker(e.target.checked)} />
-              entrada con orden límite (maker)
+              {tr("entry with a limit order (maker)", "entrada con orden límite (maker)")}
             </label>
           </div>
         </Card>
@@ -245,21 +263,25 @@ export function RiskPage() {
               stopEvidence={stopFilter.data ?? null}
             />
           ) : (
-            <Card title="Filtro de régimen" right={<Badge tone="muted">sin estado</Badge>}>
+            <Card
+              title={tr("Regime filter", "Filtro de régimen")}
+              right={<Badge tone="muted">{tr("no state", "sin estado")}</Badge>}
+            >
               <p className="text-sm text-neutral-500">
-                El analista no está emitiendo
-                {forecast ? ` (último pronóstico del ${stamp(forecast.open_time)})` : ""}, así que
-                no hay estado del filtro ni sigma para comparar el stop. Levantá el backend con el
-                feed en vivo: tarda ~80 s en ajustar y emite en cada vela cerrada de{" "}
-                {timeframe ?? "15m"}.
+                {tr(
+                  `The analyst is not issuing${forecast ? ` (last forecast from ${stamp(forecast.open_time)})` : ""}, so there is no filter state and no sigma to compare the stop with. Start the backend with the live feed: it takes ~80 s to fit and issues on every closed ${timeframe ?? "15m"} bar.`,
+                  `El analista no está emitiendo${forecast ? ` (último pronóstico del ${stamp(forecast.open_time)})` : ""}, así que no hay estado del filtro ni sigma para comparar el stop. Levantá el backend con el feed en vivo: tarda ~80 s en ajustar y emite en cada vela cerrada de ${timeframe ?? "15m"}.`,
+                )}
               </p>
             </Card>
           )}
           {!ready && (
             <Card>
               <p className="text-sm text-neutral-400">
-                Completá entrada y stop. El tamaño sale del stop y del % que arriesgás, no del
-                leverage.
+                {tr(
+                  "Fill in the entry and the stop. The size comes from the stop and the % you risk, not from the leverage.",
+                  "Completá entrada y stop. El tamaño sale del stop y del % que arriesgás, no del leverage.",
+                )}
               </p>
             </Card>
           )}
@@ -269,9 +291,7 @@ export function RiskPage() {
               s={s}
               calibration={stopFilter.data ?? null}
               horizonHours={
-                fresh && lastCandle.data
-                  ? (forecast.horizon_bars * lastCandle.data.interval_ms) / 3_600_000
-                  : null
+                fresh && lastCandle.data ? (forecast.horizon_bars * lastCandle.data.interval_ms) / 3_600_000 : null
               }
             />
           )}
@@ -290,36 +310,46 @@ function SizingResult({
   horizonHours: number | null;
   calibration: StopFilterEvidence | null;
 }) {
+  const { tr } = useLang();
   const gap = (k: string) => calibration?.calibration_gap[k];
   const touchHint = calibration
-    ? `Fórmula de camino aleatorio sobre la sigma pronosticada. Medido con stop a ${pct(
-        calibration.stop_pct,
-        1,
-      )}: brecha observado − predicho ${pct(gap("normal"), 1)} en normal y ${pct(
-        gap("elevado"),
-        1,
-      )} en elevado (calibrada). Dimensiona, no predice dirección.`
-    : "Fórmula de camino aleatorio sobre la sigma pronosticada; sin medición de calibración. Dimensiona, no predice dirección.";
+    ? tr(
+        `Random-walk formula on the forecast sigma. Measured with a ${pct(calibration.stop_pct, 1)} stop: observed − predicted gap of ${pct(gap("normal"), 1)} in normal and ${pct(gap("elevado"), 1)} in elevated (calibrated). It sizes, it does not predict direction.`,
+        `Fórmula de camino aleatorio sobre la sigma pronosticada. Medido con stop a ${pct(calibration.stop_pct, 1)}: brecha observado − predicho ${pct(gap("normal"), 1)} en normal y ${pct(gap("elevado"), 1)} en elevado (calibrada). Dimensiona, no predice dirección.`,
+      )
+    : tr(
+        "Random-walk formula on the forecast sigma; no calibration measurement. It sizes, it does not predict direction.",
+        "Fórmula de camino aleatorio sobre la sigma pronosticada; sin medición de calibración. Dimensiona, no predice dirección.",
+      );
   const dirTone = s.direction === "long" ? "text-accent" : "text-danger";
   const danger = s.warnings.some((w) => w.level === "danger");
   return (
     <>
       <Card
-        title={`Orden ${s.direction}`}
-        right={danger ? <Badge tone="bad">no operable así</Badge> : <Badge tone="ok">dentro del riesgo</Badge>}
+        title={tr(`${s.direction} order`, `Orden ${s.direction}`)}
+        right={
+          danger ? (
+            <Badge tone="bad">{tr("not tradable like this", "no operable así")}</Badge>
+          ) : (
+            <Badge tone="ok">{tr("within risk", "dentro del riesgo")}</Badge>
+          )
+        }
       >
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Stat
-            label="Cantidad"
+            label={tr("Quantity", "Cantidad")}
             value={<span className={dirTone}>{num(s.quantity, 3)} ETH</span>}
-            sub="redondeada hacia abajo"
+            sub={tr("rounded down", "redondeada hacia abajo")}
           />
           <Stat label="Notional" value={usd(s.notional)} />
-          <Stat label="Margen" value={usd(s.margin)} sub={`a ${multiplier(s.leverage)}`} />
+          <Stat label={tr("Margin", "Margen")} value={usd(s.margin)} sub={`${tr("at", "a")} ${multiplier(s.leverage)}`} />
           <Stat
-            label="Pérdida si salta el stop"
+            label={tr("Loss if the stop is hit", "Pérdida si salta el stop")}
             value={<span className="text-danger">−{usd(s.loss_at_stop)}</span>}
-            sub={`${pct(s.loss_at_stop_fraction)} de la cuenta`}
+            sub={tr(
+              `${pct(s.loss_at_stop_fraction)} of the account`,
+              `${pct(s.loss_at_stop_fraction)} de la cuenta`,
+            )}
           />
         </div>
       </Card>
@@ -330,9 +360,7 @@ function SizingResult({
             <div
               key={w.code}
               className={`rounded border px-3 py-2 text-sm ${
-                w.level === "danger"
-                  ? "border-danger/40 bg-danger/5 text-danger"
-                  : "border-warn/40 bg-warn/5 text-warn"
+                w.level === "danger" ? "border-danger/40 bg-danger/5 text-danger" : "border-warn/40 bg-warn/5 text-warn"
               }`}
             >
               {w.message}
@@ -342,96 +370,123 @@ function SizingResult({
       )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card title="Liquidación (margen aislado)">
-          <Row label="precio de liquidación" value={price(s.liquidation_price)} />
-          <Row label="distancia" value={pct(s.liquidation_pct)} />
+        <Card title={tr("Liquidation (isolated margin)", "Liquidación (margen aislado)")}>
+          <Row label={tr("liquidation price", "precio de liquidación")} value={price(s.liquidation_price)} />
+          <Row label={tr("distance", "distancia")} value={pct(s.liquidation_pct)} />
+          <Row label={tr("distance to stop", "distancia al stop")} value={pct(s.stop_pct)} />
           <Row
-            label="distancia al stop"
-            value={pct(s.stop_pct)}
-          />
-          <Row
-            label="liquidación / stop"
+            label={tr("liquidation / stop", "liquidación / stop")}
             value={`${num(s.liquidation_to_stop, 1)}×`}
             tone={s.liquidation_to_stop < 1 ? "text-danger" : s.liquidation_to_stop < 1.5 ? "text-warn" : "text-accent"}
-            hint="Debe ser ≥ 1.5×: así una mecha que se pase del stop te saca por el stop y no por liquidación"
+            hint={tr(
+              "Should be ≥ 1.5×: that way a wick past the stop takes you out at the stop and not by liquidation",
+              "Debe ser ≥ 1.5×: así una mecha que se pase del stop te saca por el stop y no por liquidación",
+            )}
           />
           <Row
-            label="leverage máx. (liquidación ≥ 1.5× stop)"
-            hint="Es un techo de seguridad contra la liquidación, no una recomendación: el tamaño ya está fijado por el riesgo"
+            label={tr("max leverage (liquidation ≥ 1.5× stop)", "leverage máx. (liquidación ≥ 1.5× stop)")}
+            hint={tr(
+              "It is a safety ceiling against liquidation, not a recommendation: the size is already set by the risk",
+              "Es un techo de seguridad contra la liquidación, no una recomendación: el tamaño ya está fijado por el riesgo",
+            )}
             value={multiplier(Math.floor(s.max_safe_leverage * 10) / 10)}
           />
           <Row
-            label="leverage mínimo para abrirlo"
+            label={tr("minimum leverage to open it", "leverage mínimo para abrirlo")}
             value={multiplier(Math.ceil(s.required_leverage * 10) / 10)}
-            hint="Con menos, el margen no cabe en la cuenta"
+            hint={tr("With less, the margin does not fit in the account", "Con menos, el margen no cabe en la cuenta")}
           />
           <p className="mt-2 text-[11px] text-neutral-600">
-            Estimación conservadora. Antes de entrar, contrastala con la que muestra el exchange.
-            En cross la liquidación queda más lejos, pero lo que arriesgás pasa a ser la cuenta
-            entera.
+            {tr(
+              "Conservative estimate. Before entering, check it against the one the exchange shows. In cross margin liquidation sits further away, but what you risk becomes the whole account.",
+              "Estimación conservadora. Antes de entrar, contrastala con la que muestra el exchange. En cross la liquidación queda más lejos, pero lo que arriesgás pasa a ser la cuenta entera.",
+            )}
           </p>
         </Card>
 
-        <Card title="Costos y objetivo">
-          <Row label="costo ida y vuelta" value={`${pct(s.cost_pct, 3)} · ${usd(s.cost_usd)}`} />
+        <Card title={tr("Costs and target", "Costos y objetivo")}>
+          <Row label={tr("round-trip cost", "costo ida y vuelta")} value={`${pct(s.cost_pct, 3)} · ${usd(s.cost_usd)}`} />
           <Row
-            label="costo / riesgo"
+            label={tr("cost / risk", "costo / riesgo")}
             value={pct(s.cost_share_of_risk, 0)}
             tone={s.cost_share_of_risk > 0.3 ? "text-warn" : ""}
-            hint="Parte de lo que arriesgás que se lleva el exchange aunque el trade salga bien"
+            hint={tr(
+              "Share of what you risk that the exchange takes even if the trade goes well",
+              "Parte de lo que arriesgás que se lleva el exchange aunque el trade salga bien",
+            )}
           />
           {s.stop_sigmas !== null && horizonHours !== null && (
             <>
               <Row
-                label={`stop en σ (${horizonHours.toFixed(0)} h)`}
+                label={tr(`stop in σ (${horizonHours.toFixed(0)} h)`, `stop en σ (${horizonHours.toFixed(0)} h)`)}
                 value={`${num(s.stop_sigmas, 2)}σ`}
                 tone={s.stop_sigmas < 0.5 ? "text-warn" : ""}
-                hint="Distancia al stop en unidades de la sigma pronosticada para el horizonte"
+                hint={tr(
+                  "Distance to the stop in units of the sigma forecast for the horizon",
+                  "Distancia al stop en unidades de la sigma pronosticada para el horizonte",
+                )}
               />
               <Row
-                label="P(el ruido toca el stop)"
+                label={tr("P(noise hits the stop)", "P(el ruido toca el stop)")}
                 value={`≈ ${pct(s.p_touch_stop, 0)}`}
                 hint={touchHint}
               />
               {s.p_touch_target !== null && (
-                <Row label="P(el ruido toca el objetivo)" value={`≈ ${pct(s.p_touch_target, 0)}`} />
+                <Row
+                  label={tr("P(noise hits the target)", "P(el ruido toca el objetivo)")}
+                  value={`≈ ${pct(s.p_touch_target, 0)}`}
+                />
               )}
             </>
           )}
           {s.target !== null ? (
             <>
-              <Row label="ganancia al objetivo (neta)" value={usd(s.gain_at_target)} tone="text-accent" />
-              <Row label="R neto" value={`${num(s.reward_risk_net, 2)} R`} />
               <Row
-                label="% de aciertos para empatar"
+                label={tr("gain at target (net)", "ganancia al objetivo (neta)")}
+                value={usd(s.gain_at_target)}
+                tone="text-accent"
+              />
+              <Row label={tr("net R", "R neto")} value={`${num(s.reward_risk_net, 2)} R`} />
+              <Row
+                label={tr("% wins to break even", "% de aciertos para empatar")}
                 value={pct(s.breakeven_win_rate, 1)}
-                hint="Por debajo de esto, repetir este trade pierde plata"
+                hint={tr(
+                  "Below this, repeating this trade loses money",
+                  "Por debajo de esto, repetir este trade pierde plata",
+                )}
               />
             </>
           ) : (
             <p className="mt-2 text-xs text-neutral-500">
-              Poné un objetivo para ver la ganancia neta y cuántas veces tenés que acertar para
-              empatar.
+              {tr(
+                "Set a target to see the net gain and how often you need to be right to break even.",
+                "Poné un objetivo para ver la ganancia neta y cuántas veces tenés que acertar para empatar.",
+              )}
             </p>
           )}
         </Card>
       </div>
 
-      <Card title="Rachas de pérdidas con este riesgo">
+      <Card title={tr("Losing streaks with this risk", "Rachas de pérdidas con este riesgo")}>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {Object.entries(s.losing_streaks).map(([n, dd]) => (
             <Stat
               key={n}
-              label={`${n} pérdidas seguidas`}
+              label={tr(`${n} losses in a row`, `${n} pérdidas seguidas`)}
               value={<span className={dd > 0.25 ? "text-danger" : dd > 0.1 ? "text-warn" : ""}>−{pct(dd, 1)}</span>}
             />
           ))}
         </div>
         <p className="mt-3 text-[11px] text-neutral-500">
-          Las rachas de 15 y 20 no son exageración: son las peores medidas en el backtest de
-          barridos y order blocks sobre ETH (05-10). Esas reglas pierden{" "}
-          <TechnicalLoss /> por trade y no se distinguen de entrar al azar. Este cálculo protege la cuenta; no
-          dice hacia dónde entrar.
+          {tr(
+            "Streaks of 15 and 20 are not an exaggeration: they are the worst ones measured in the backtest of sweeps and order blocks on ETH (05-10). Those rules lose",
+            "Las rachas de 15 y 20 no son exageración: son las peores medidas en el backtest de barridos y order blocks sobre ETH (05-10). Esas reglas pierden",
+          )}{" "}
+          <TechnicalLoss />{" "}
+          {tr(
+            "per trade and are indistinguishable from entering at random. This calculation protects the account; it does not say which way to enter.",
+            "por trade y no se distinguen de entrar al azar. Este cálculo protege la cuenta; no dice hacia dónde entrar.",
+          )}
         </p>
       </Card>
     </>
@@ -440,14 +495,15 @@ function SizingResult({
 
 /** Rango de pérdida por trade de las reglas técnicas, leído del artefacto vía el Laboratorio. */
 function TechnicalLoss() {
+  const { tr } = useLang();
   const q = useQuery({ queryKey: ["lab", "experiments"], queryFn: () => api.labExperiments(), retry: false });
   const tech = q.data?.experiments.find((e) => e.id === "technical");
   const rules = Array.isArray(tech?.figures.rules) ? (tech.figures.rules as { mean_r?: unknown }[]) : [];
   const rs = rules.map((r) => r.mean_r).filter((v): v is number => isNum(v as number));
-  if (!rs.length) return <>lo medido en el Laboratorio</>;
+  if (!rs.length) return <>{tr("what was measured in the Lab", "lo medido en el Laboratorio")}</>;
   return (
     <>
-      entre {num(Math.min(...rs), 2)} y {num(Math.max(...rs), 2)} R
+      {tr("between", "entre")} {num(Math.min(...rs), 2)} {tr("and", "y")} {num(Math.max(...rs), 2)} R
     </>
   );
 }

@@ -150,7 +150,7 @@ def _cone(cones: list[dict[str, Any]], nominal: float) -> tuple[float, float] | 
     return None
 
 
-def _narrative(symbol: str, tf: str) -> dict[str, Any]:
+def _narrative(symbol: str, tf: str, lang: str = "es") -> dict[str, Any]:
     record = with_session(lambda s: latest_forecast(s, symbol, tf))
     if record is None:
         raise HTTPException(status_code=404, detail=f"sin pronósticos de {symbol} {tf}")
@@ -191,16 +191,19 @@ def _narrative(symbol: str, tf: str) -> dict[str, Any]:
         "map_last_time": m15["last_time"],
         "age_bars": age,
         "is_stale": age > STALE_AFTER_BARS,
-        **market_narrative(snap),
+        **market_narrative(snap, lang="en" if lang == "en" else "es"),
     }
 
 
 @router.get("/analysis/narrative")
-async def narrative(symbol: str | None = SymbolQuery()) -> dict[str, Any]:
+async def narrative(
+    symbol: str | None = SymbolQuery(),
+    lang: Literal["es", "en"] = Query("es"),
+) -> dict[str, Any]:
     """Lectura del mercado en lenguaje natural, armada con plantillas.
 
     Sin LLM: cada frase sale de una cifra del pronóstico, del mapa técnico o
     del vector de features guardado (ver `models/narrative.py`).
     """
     sym, tf = resolve(symbol, None)
-    return await in_thread(lambda: _narrative(sym, tf))
+    return await in_thread(lambda: _narrative(sym, tf, lang))

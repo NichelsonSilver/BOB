@@ -142,6 +142,7 @@ def size_position(
     min_notional: float = DEFAULT_MIN_NOTIONAL,
     sigma_horizon: float | None = None,
     regime_elevated: bool | None = None,
+    lang: str = "es",
 ) -> Sizing:
     """Tamaño tal que, si salta el stop, se pierde `capital · risk_fraction`.
 
@@ -232,18 +233,28 @@ def size_position(
         # Riesgo fijo sobre el saldo que queda: (1 − r)^n.
         losing_streaks={n: 1.0 - (1.0 - risk_fraction) ** n for n in STREAKS},
     )
-    sizing.warnings.extend(_warnings(sizing, min_notional))
+    sizing.warnings.extend(_warnings(sizing, min_notional, lang))
     return sizing
 
 
-def _warnings(s: Sizing, min_notional: float) -> list[SizingWarning]:
+def _t(lang: str, en: str, es: str) -> str:
+    return en if lang == "en" else es
+
+
+def _warnings(s: Sizing, min_notional: float, lang: str = "es") -> list[SizingWarning]:
+    """Avisos de la calculadora, en el idioma pedido (M6.8). `code` y `level`
+    no dependen del idioma: son lo que leen los programas y los tests."""
     out: list[SizingWarning] = []
     if s.quantity <= 0:
         out.append(
             SizingWarning(
                 "qty_zero",
                 "danger",
-                "Con este riesgo y este stop no alcanza ni para el contrato mínimo.",
+                _t(
+                    lang,
+                    "With this risk and this stop there is not enough for even the minimum contract.",
+                    "Con este riesgo y este stop no alcanza ni para el contrato mínimo.",
+                ),
             )
         )
     elif s.notional < min_notional:
@@ -251,8 +262,13 @@ def _warnings(s: Sizing, min_notional: float) -> list[SizingWarning]:
             SizingWarning(
                 "below_min_notional",
                 "danger",
-                f"Notional {s.notional:.2f} USD bajo el mínimo del exchange "
-                f"({min_notional:.0f} USD): la orden se rechaza.",
+                _t(
+                    lang,
+                    f"Notional {s.notional:.2f} USD below the exchange minimum "
+                    f"({min_notional:.0f} USD): the order is rejected.",
+                    f"Notional {s.notional:.2f} USD bajo el mínimo del exchange "
+                    f"({min_notional:.0f} USD): la orden se rechaza.",
+                ),
             )
         )
     if s.margin > s.capital:
@@ -260,8 +276,13 @@ def _warnings(s: Sizing, min_notional: float) -> list[SizingWarning]:
             SizingWarning(
                 "margin_exceeds_capital",
                 "danger",
-                f"El margen ({s.margin:.2f} USD) supera la cuenta: hace falta "
-                f"al menos {s.required_leverage:.1f}x para abrir esto.",
+                _t(
+                    lang,
+                    f"The margin ({s.margin:.2f} USD) exceeds the account: at least "
+                    f"{s.required_leverage:.1f}x is needed to open this.",
+                    f"El margen ({s.margin:.2f} USD) supera la cuenta: hace falta "
+                    f"al menos {s.required_leverage:.1f}x para abrir esto.",
+                ),
             )
         )
     if s.liquidation_to_stop < 1.0:
@@ -269,8 +290,13 @@ def _warnings(s: Sizing, min_notional: float) -> list[SizingWarning]:
             SizingWarning(
                 "liq_before_stop",
                 "danger",
-                "La liquidación llega ANTES que el stop: el stop no protege "
-                "y se pierde todo el margen. Bajá el leverage.",
+                _t(
+                    lang,
+                    "Liquidation comes BEFORE the stop: the stop does not protect you "
+                    "and the whole margin is lost. Lower the leverage.",
+                    "La liquidación llega ANTES que el stop: el stop no protege "
+                    "y se pierde todo el margen. Bajá el leverage.",
+                ),
             )
         )
     elif s.liquidation_to_stop < SAFE_LIQ_RATIO:
@@ -278,9 +304,15 @@ def _warnings(s: Sizing, min_notional: float) -> list[SizingWarning]:
             SizingWarning(
                 "liq_tight",
                 "warn",
-                f"La liquidación está a solo {s.liquidation_to_stop:.1f}× la "
-                "distancia del stop: una mecha o un gap pueden saltarlo. "
-                f"Máximo prudente: {s.max_safe_leverage:.1f}x.",
+                _t(
+                    lang,
+                    f"Liquidation is only {s.liquidation_to_stop:.1f}× the stop "
+                    "distance: a wick or a gap can jump over it. "
+                    f"Prudent maximum: {s.max_safe_leverage:.1f}x.",
+                    f"La liquidación está a solo {s.liquidation_to_stop:.1f}× la "
+                    "distancia del stop: una mecha o un gap pueden saltarlo. "
+                    f"Máximo prudente: {s.max_safe_leverage:.1f}x.",
+                ),
             )
         )
     if s.risk_fraction > MAX_PRUDENT_RISK:
@@ -288,8 +320,13 @@ def _warnings(s: Sizing, min_notional: float) -> list[SizingWarning]:
             SizingWarning(
                 "risk_high",
                 "warn",
-                f"Arriesgar {s.risk_fraction:.1%} por trade: 10 pérdidas "
-                f"seguidas se llevan el {s.losing_streaks[10]:.0%} de la cuenta.",
+                _t(
+                    lang,
+                    f"Risking {s.risk_fraction:.1%} per trade: 10 losses in a row "
+                    f"take {s.losing_streaks[10]:.0%} of the account.",
+                    f"Arriesgar {s.risk_fraction:.1%} por trade: 10 pérdidas "
+                    f"seguidas se llevan el {s.losing_streaks[10]:.0%} de la cuenta.",
+                ),
             )
         )
     if s.cost_share_of_risk > COST_HEAVY_SHARE:
@@ -297,8 +334,13 @@ def _warnings(s: Sizing, min_notional: float) -> list[SizingWarning]:
             SizingWarning(
                 "cost_heavy",
                 "warn",
-                f"Los costos son el {s.cost_share_of_risk:.0%} de lo que se "
-                "arriesga: el stop está muy cerca para lo que cobra el exchange.",
+                _t(
+                    lang,
+                    f"Costs are {s.cost_share_of_risk:.0%} of what is at risk: the stop "
+                    "is very close for what the exchange charges.",
+                    f"Los costos son el {s.cost_share_of_risk:.0%} de lo que se "
+                    "arriesga: el stop está muy cerca para lo que cobra el exchange.",
+                ),
             )
         )
     if s.p_touch_stop is not None and s.p_touch_stop > STOP_IN_NOISE:
@@ -306,9 +348,15 @@ def _warnings(s: Sizing, min_notional: float) -> list[SizingWarning]:
             SizingWarning(
                 "stop_in_noise",
                 "warn",
-                f"El stop está a {s.stop_sigmas:.2f}σ del movimiento esperado en el "
-                f"horizonte: el ruido normal lo toca ~{s.p_touch_stop:.0%} de las veces "
-                "aunque tengas razón en la dirección.",
+                _t(
+                    lang,
+                    f"The stop is {s.stop_sigmas:.2f}σ of the move expected over the "
+                    f"horizon: normal noise hits it ~{s.p_touch_stop:.0%} of the time "
+                    "even if you are right about the direction.",
+                    f"El stop está a {s.stop_sigmas:.2f}σ del movimiento esperado en el "
+                    f"horizonte: el ruido normal lo toca ~{s.p_touch_stop:.0%} de las veces "
+                    "aunque tengas razón en la dirección.",
+                ),
             )
         )
     if s.regime_elevated:
@@ -316,10 +364,17 @@ def _warnings(s: Sizing, min_notional: float) -> list[SizingWarning]:
             SizingWarning(
                 "regime_elevated",
                 "danger" if s.leverage >= ELEVATED_LEVERAGE else "warn",
-                "Filtro de régimen ELEVADO: la volatilidad pronosticada está en el "
-                "20% más alto de su historia. Es donde se concentran las liquidaciones "
-                "(evitarlo evitó el 52% a 20x) y donde el mismo stop salta bastante más "
-                "seguido. Mejor no entrar, o hacerlo con menos riesgo y stop más ancho.",
+                _t(
+                    lang,
+                    "Regime filter ELEVATED: the forecast volatility is in the top 20% "
+                    "of its history. That is where liquidations cluster and where the "
+                    "same stop gets hit much more often. Better not to enter, or to do "
+                    "so with less risk and a wider stop.",
+                    "Filtro de régimen ELEVADO: la volatilidad pronosticada está en el "
+                    "20% más alto de su historia. Es donde se concentran las liquidaciones "
+                    "y donde el mismo stop salta bastante más seguido. Mejor no entrar, "
+                    "o hacerlo con menos riesgo y stop más ancho.",
+                ),
             )
         )
     return out

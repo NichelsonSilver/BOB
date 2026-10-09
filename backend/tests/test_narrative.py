@@ -120,3 +120,49 @@ def test_lectura_del_flujo_oi_contra_precio() -> None:
 def test_sin_derivados_no_inventa_la_seccion() -> None:
     n = market_narrative(_snap(features={}))
     assert all(not s["title"].startswith("Derivados") for s in n["sections"])
+
+
+# ------------------------------------------------------------------ M6.8 --
+
+
+_VARIANTS: tuple[dict[str, Any], ...] = (
+    {},
+    {"regime_elevated": True, "regime_percentile": 93.0},
+    {"change_24h": 0.05},
+    {"sigma_ratio": 1.6},
+    {"sigma_ratio": 0.5},
+    {"features": {}},
+)
+
+
+def test_ingles_lleva_las_mismas_cifras_que_el_espanol() -> None:
+    """El idioma cambia el texto, no el número: cada cifra del español está en el inglés."""
+    number = re.compile(r"[+−-]?\d[\d,]*\.?\d*%?")
+    for kw in _VARIANTS:
+        es = market_narrative(_snap(**kw))
+        en = market_narrative(_snap(**kw), lang="en")
+        assert [s["basis"] for s in es["sections"]] == [s["basis"] for s in en["sections"]]
+        assert [s["tone"] for s in es["sections"]] == [s["tone"] for s in en["sections"]]
+        for a, b in zip(
+            [es["headline"], *(s["text"] for s in es["sections"])],
+            [en["headline"], *(s["text"] for s in en["sections"])],
+            strict=True,
+        ):
+            assert sorted(number.findall(a)) == sorted(number.findall(b))
+
+
+def test_ingles_no_tiene_espanol_ni_pronostica_direccion() -> None:
+    prohibited = re.compile(
+        r"\b(will rise|will fall|should rise|should fall|going to rise|going to fall|"
+        r"buy signal|sell signal|buy now|sell now)\b",
+        re.IGNORECASE,
+    )
+    spanish = re.compile(r"[áéíóúñ]|\b(el|la|los|las|del|que|para|con|por)\b")
+    for kw in _VARIANTS:
+        txt = _all_text(market_narrative(_snap(**kw), lang="en"))
+        assert not prohibited.search(txt)
+        assert not spanish.search(txt), spanish.search(txt)
+
+
+def test_el_default_sigue_en_espanol() -> None:
+    assert market_narrative(_snap()) == market_narrative(_snap(), lang="es")
