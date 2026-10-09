@@ -1,11 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
 
 import { ErrorBox, Loading } from "../components/common/Card";
 import {
   CycleCard,
   LiquidityCard,
-  LiquidityHero,
   PanelCard,
   RecessionCard,
   StablecoinsCard,
@@ -18,19 +16,10 @@ import { api } from "../lib/api";
  * cambio, una frase de qué significa y otra de qué no significa; lo técnico a
  * un clic. Nada de lo que se muestra acá es una recomendación (regla 2).
  *
- * Mientras se elige (`docs/M6_ALCANCE.md` §4.3 y §6) hay dos variantes con las
- * mismas tarjetas y las mismas cifras; cambia solo el dibujo:
- *
- * - **A**: seis tarjetas iguales, cada una con su gráfico chico.
- * - **B**: la liquidez arriba como lectura principal con su historia completa,
- *   y las otras cinco sin gráfico.
- *
- * `?v=b` elige la B. El selector se borra cuando Nichelson decida.
+ * Variante A, elegida por Nichelson el 2026-10-08 (`docs/M6_ALCANCE.md` §6):
+ * seis tarjetas iguales, cada una con su gráfico chico.
  */
 export function HomePage() {
-  const [params, setParams] = useSearchParams();
-  const variant = params.get("v") === "b" ? "b" : "a";
-
   const liq = useQuery({
     queryKey: ["macro", "liquidity"],
     queryFn: () => api.liquidity(),
@@ -57,23 +46,18 @@ export function HomePage() {
     staleTime: 600_000,
   });
 
-  const chart = variant === "a";
   const liquidity = liq.isLoading ? (
     <Loading what="la liquidez" />
   ) : liq.data ? (
-    variant === "a" ? (
-      <LiquidityCard rep={liq.data} chart />
-    ) : (
-      <LiquidityHero rep={liq.data} />
-    )
+    <LiquidityCard rep={liq.data} chart />
   ) : (
     <ErrorBox>{String(liq.error)}</ErrorBox>
   );
   const panoCards = pano.data ? (
     <>
-      <StablecoinsCard p={pano.data} chart={chart} />
-      <CycleCard p={pano.data} chart={chart} />
-      <RecessionCard p={pano.data} chart={chart} />
+      <StablecoinsCard p={pano.data} chart />
+      <CycleCard p={pano.data} chart />
+      <RecessionCard p={pano.data} chart />
     </>
   ) : pano.isLoading ? (
     <Loading what="el panorama (unos segundos la primera vez)" />
@@ -81,7 +65,7 @@ export function HomePage() {
     <ErrorBox>{String(pano.error)}</ErrorBox>
   );
   const strengthCard = strength.data ? (
-    <StrengthCard rep={strength.data} chart={chart} />
+    <StrengthCard rep={strength.data} chart />
   ) : strength.error ? (
     <ErrorBox>{String(strength.error)}</ErrorBox>
   ) : null;
@@ -89,49 +73,19 @@ export function HomePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-100">Cómo está el mercado</h1>
-          <p className="mt-1 text-sm text-neutral-400">
-            Lo que miden los datos hoy. Describe el momento; no dice qué comprar ni hacia dónde va el precio.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-neutral-500">
-          <span>M6.2 · variante en evaluación</span>
-          <div className="flex overflow-hidden rounded border border-neutral-800">
-            {(["a", "b"] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setParams(v === "a" ? {} : { v })}
-                className={`px-2.5 py-1 ${
-                  v === variant ? "bg-neutral-800 text-neutral-100" : "text-neutral-400 hover:text-neutral-200"
-                }`}
-              >
-                {v.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
+      <header>
+        <h1 className="text-2xl font-semibold text-neutral-100">Cómo está el mercado</h1>
+        <p className="mt-1 text-sm text-neutral-400">
+          Lo que miden los datos hoy. Describe el momento; no dice qué comprar ni hacia dónde va el precio.
+        </p>
       </header>
 
-      {variant === "a" ? (
-        <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {liquidity}
-          {panoCards}
-          {strengthCard}
-          {panelCard}
-        </div>
-      ) : (
-        <>
-          {liquidity}
-          <div className="grid items-start gap-4 md:grid-cols-3">{panoCards}</div>
-          <div className="grid items-start gap-4 md:grid-cols-2">
-            {strengthCard}
-            {panelCard}
-          </div>
-        </>
-      )}
+      <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {liquidity}
+        {panoCards}
+        {strengthCard}
+        {panelCard}
+      </div>
     </div>
   );
 }

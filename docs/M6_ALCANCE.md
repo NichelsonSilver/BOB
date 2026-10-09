@@ -104,6 +104,7 @@ verde. La Fase 6 encontró cuatro defectos que solo se veían así.
 | 2026-10-07 | M6.1 navegación (§4.1) | **A. Secciones con desplegable**: Inicio · Liquidez · Flujos · Cripto ▾ · Laboratorio ▾ · Ajustes | pocas entradas arriba, cripto agrupado, lo técnico con lugar fijo |
 | 2026-10-07 | M6.1 lo técnico (§4.2) | **A. "Ver detalle" por tarjeta** | el respaldo queda junto al dato al que pertenece |
 | 2026-10-07 | M6.0 | todo lo referido al forward se mantiene (15m y 10-bis) | se espera el resultado del panel |
+| 2026-10-08 | M6.2 portada (§4.3) | **A. Seis tarjetas con gráfico chico**: liquidez, stablecoins, ciclo BTC, recesión, clases de activo, estudio del panel | se ve de un vistazo qué sube y qué baja; la B ponía en grande la serie más inestable del panel |
 
 ## 7. Dependencias
 
@@ -170,8 +171,7 @@ están en inglés (M6.6); el texto de la Señal 15m usa coma decimal
 
 Las dos variantes muestran las **mismas seis lecturas y las mismas cifras**
 (salen de los mismos componentes en `components/marea/Cards.tsx`). Lo único que
-cambia es el dibujo. Se elige con el selector A/B del Inicio (`?v=b`), que se
-borra cuando se decida.
+cambia es el dibujo. Se comparó con un selector A/B en el Inicio.
 
 | | A. Seis tarjetas con gráfico chico | B. Liquidez como lectura principal |
 |---|---|---|
@@ -202,4 +202,5 @@ lateral de `Layout.tsx` no se pliega en el móvil y se come la mitad del ancho
 De paso se actualizaron los precios de ETFs (`marea.data.ingest etf`): Tiingo
 estaba en 7 días y la tarjeta de clases salía como "dato viejo".
 
-**Pendiente: la elección de Nichelson** (va a §6).
+**Elegida la A (2026-10-08, §6).** Se borraron el selector, `LiquidityHero` y
+el gráfico grande. La historia completa del compuesto sigue en Liquidez.

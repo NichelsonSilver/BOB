@@ -12,7 +12,7 @@ import type {
   Panorama,
   StrengthReport,
 } from "../../types";
-import { LiquidityChart, Spark } from "./Spark";
+import { Spark } from "./Spark";
 
 /**
  * Tarjetas de lectura simple de MAREA (M6.1). Las usan Inicio y Panorama, así
@@ -22,9 +22,9 @@ import { LiquidityChart, Spark } from "./Spark";
  * percentiles dichos como "más alto que el X% de…"; todo lo técnico en el
  * detalle. Ninguna tarjeta sugiere comprar ni vender (regla 2).
  *
- * `chart` agrega el gráfico chico de la variante A de la portada (M6.2). Con o
- * sin él, el número y las frases son los mismos: la variante cambia el dibujo,
- * no la cifra.
+ * `chart` agrega el gráfico chico de la portada (M6.2, variante A elegida).
+ * Con o sin él, el número y las frases son los mismos: cambia el dibujo, no la
+ * cifra.
  */
 
 /** Diferencia bajo la cual la flecha va horizontal. Elección de lectura, no de método. */
@@ -132,30 +132,6 @@ function LiquidityDetail({ rep }: { rep: LiquidityReport }) {
         ver Liquidez →
       </Link>
     </div>
-  );
-}
-
-/**
- * La liquidez como lectura principal, con su historia completa (variante B de
- * la portada). Misma cifra y mismas frases que `LiquidityCard`.
- */
-export function LiquidityHero({ rep }: { rep: LiquidityReport }) {
-  const label = rep.regime.label ?? "sin dato";
-  const from = rep.regime.available_from;
-  const data = rep.history.filter((h) => from !== null && h.date >= from);
-  return (
-    <DetailCard
-      title="Liquidez global · la lectura principal"
-      value={LIQ_WORD[label] ?? "sin dato"}
-      tone={LIQ_TONE[label] ?? ""}
-      delta={liqDelta(rep)}
-      visual={<LiquidityChart data={data} height={200} />}
-      meaning={liqPace(rep.regime.composite_pct)}
-      notMeaning="Es un estado del momento, no un pronóstico de precios. Una lectura dura unas 3 semanas en promedio: la línea salta seguido."
-      asOf={rep.as_of}
-      badge={rep.stale ? <Badge tone="warn">dato viejo</Badge> : undefined}
-      detail={<LiquidityDetail rep={rep} />}
-    />
   );
 }
 
