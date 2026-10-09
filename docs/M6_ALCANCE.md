@@ -165,3 +165,41 @@ temporal (sin dependencias nuevas en el proyecto).
 sigue siendo "BOB — Bursatil Operator Buddy" y los encabezados de Laboratorio
 están en inglés (M6.6); el texto de la Señal 15m usa coma decimal
 ("2.686,29") contra punto en su encabezado (M6.5).
+
+### M6.2 (2026-10-08) — portada, dos variantes con datos reales
+
+Las dos variantes muestran las **mismas seis lecturas y las mismas cifras**
+(salen de los mismos componentes en `components/marea/Cards.tsx`). Lo único que
+cambia es el dibujo. Se elige con el selector A/B del Inicio (`?v=b`), que se
+borra cuando se decida.
+
+| | A. Seis tarjetas con gráfico chico | B. Liquidez como lectura principal |
+|---|---|---|
+| estructura | grilla de 3 × 2, todas iguales | liquidez a lo ancho con su historia desde 2020, debajo 3 + 2 tarjetas sin gráfico |
+| gráficos | uno por tarjeta: línea del último año (liquidez, stablecoins, ciclo), 12 meses (recesión), barras por clase, barra de avance (estudio) | uno grande, más la barra de avance del estudio |
+| a favor | se lee de un vistazo si cada cosa sube o baja; todas pesan lo mismo | jerarquía clara: MAREA es un analista de liquidez y eso va primero |
+| en contra | seis gráficos chicos compiten; el de recesión en escala 0–100% casi no se mueve, y el de stablecoins no parte de cero (está dicho en el detalle) | la línea de liquidez salta mucho (racha mediana de 3 semanas) y, puesta grande, invita a leerle tendencias que no tiene |
+
+**Las seis tarjetas, en orden:** liquidez global, dinero listo para cripto
+(stablecoins), ciclo de BTC, riesgo de recesión EE.UU., clases de activo del
+último mes (nueva, fuerza relativa a 4 semanas) y estudio del panel cripto.
+Cada una lleva una **flecha de cambio en gris**: subir o bajar no se pinta
+como bueno o malo (regla 2). La flecha queda horizontal si el cambio es menor
+a 5 puntos. Esa elección es de lectura, no de método.
+
+**Lenguaje (adelanto de la M6.5, para revisar):** la etiqueta de liquidez se
+dice "Fuerte / Normal / Débil" (expansivo / neutro / contractivo, por
+tercios). La etiqueta técnica queda en el detalle. El percentil se dice "avanza
+más lento que en el 82% de las semanas anteriores", **truncado** para no
+redondear a favor.
+
+**Encontrado en capturas:** en el ancho de un teléfono, el número "6 / 90" se
+partía en dos líneas y las barras por clase quedaban de ancho cero. Los dos
+casos están corregidos. Queda un defecto **previo a esta etapa**: el menú
+lateral de `Layout.tsx` no se pliega en el móvil y se come la mitad del ancho
+(en la B, el gráfico grande queda ilegible). Se registra para la M6.3.
+
+De paso se actualizaron los precios de ETFs (`marea.data.ingest etf`): Tiingo
+estaba en 7 días y la tarjeta de clases salía como "dato viejo".
+
+**Pendiente: la elección de Nichelson** (va a §6).

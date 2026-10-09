@@ -19,6 +19,8 @@ export function DetailCard({
   unit,
   tone = "",
   badge,
+  delta,
+  visual,
   meaning,
   notMeaning,
   asOf,
@@ -30,6 +32,10 @@ export function DetailCard({
   unit?: ReactNode;
   tone?: string;
   badge?: ReactNode;
+  /** Cambio reciente, en una línea ("↓ hace 4 semanas: normal"). */
+  delta?: ReactNode;
+  /** Gráfico chico debajo del número (variante A de la M6.2). */
+  visual?: ReactNode;
   meaning: ReactNode;
   notMeaning?: ReactNode;
   /** Fecha del dato, siempre visible: un número sin fecha no se puede leer. */
@@ -44,10 +50,12 @@ export function DetailCard({
         <h2 className="text-xs uppercase tracking-wider text-neutral-500">{title}</h2>
         {badge}
       </header>
-      <div className="flex items-baseline gap-2">
-        <span className={`font-mono text-3xl ${tone || "text-neutral-100"}`}>{value}</span>
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span className={`whitespace-nowrap font-mono text-3xl ${tone || "text-neutral-100"}`}>{value}</span>
         {unit && <span className="text-sm text-neutral-400">{unit}</span>}
       </div>
+      {delta && <div className="mt-1 text-xs text-neutral-400">{delta}</div>}
+      {visual && <div className="mt-3">{visual}</div>}
       <p className="mt-2 text-sm text-neutral-300">{meaning}</p>
       {notMeaning && <p className="mt-1 text-xs text-neutral-500">{notMeaning}</p>}
       {children && <div className="mt-3">{children}</div>}
@@ -70,6 +78,20 @@ export function DetailCard({
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Flecha de cambio. Va en gris a propósito: subir o bajar no es bueno ni malo
+ * por sí mismo, y pintarlo de verde o rojo sería sugerir qué hacer (regla 2).
+ */
+export function Delta({ dir, children }: { dir: "up" | "down" | "flat"; children: ReactNode }) {
+  const arrow = dir === "up" ? "↑" : dir === "down" ? "↓" : "→";
+  return (
+    <span>
+      <span className="mr-1 font-mono text-neutral-300">{arrow}</span>
+      {children}
+    </span>
   );
 }
 

@@ -1,14 +1,18 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { Badge } from "../common/Card";
-import { BlockMissing, DetailCard } from "../common/DetailCard";
-import { DASH, isNum, num, pct } from "../../lib/format";
+import { BlockMissing, Delta, DetailCard } from "../common/DetailCard";
+import { SERIES } from "../../lib/chartTheme";
+import { DASH, isNum, num, signedPct } from "../../lib/format";
 import { isBlockError } from "../../types";
 import type {
   LiquidityReport,
   PanelStatus,
   Panorama,
+  StrengthReport,
 } from "../../types";
+import { LiquidityChart, Spark } from "./Spark";
 
 /**
  * Tarjetas de lectura simple de MAREA (M6.1). Las usan Inicio y Panorama, así
@@ -17,7 +21,33 @@ import type {
  * Reglas de texto (`docs/M6_ALCANCE.md` §4.4): nada de σ, AUC ni IC arriba;
  * percentiles dichos como "más alto que el X% de…"; todo lo técnico en el
  * detalle. Ninguna tarjeta sugiere comprar ni vender (regla 2).
+ *
+ * `chart` agrega el gráfico chico de la variante A de la portada (M6.2). Con o
+ * sin él, el número y las frases son los mismos: la variante cambia el dibujo,
+ * no la cifra.
  */
+
+/** Diferencia bajo la cual la flecha va horizontal. Elección de lectura, no de método. */
+const FLAT = 0.05;
+
+function dirOf(d: number): "up" | "down" | "flat" {
+  return Math.abs(d) < FLAT ? "flat" : d > 0 ? "up" : "down";
+}
+
+/** Último punto con fecha ≤ `asOf − days`. Las series vienen ordenadas. */
+function pointBefore<T>(rows: T[], key: keyof T, asOf: string, days: number): T | undefined {
+  const cut = new Date(Date.parse(asOf) - days * 86_400_000).toISOString().slice(0, 10);
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (String(rows[i][key]) <= cut) return rows[i];
+  }
+  return undefined;
+}
+
+/** Fracción 0–1 → "0–100". */
+function score(v: number | null | undefined): string {
+  return isNum(v) ? String(Math.round(v * 100)) : DASH;
+}
+
 
 function usdB(v: number | null | undefined, digits = 1): string {
   return isNum(v) ? `${(v / 1e9).toFixed(digits)}` : DASH;
@@ -39,51 +69,112 @@ const LIQ_TONE: Record<string, string> = {
   contractivo: "text-warn",
 };
 
-const LIQ_TEXT: Record<string, string> = {
-  expansivo: "La liquidez global crece más que en la mayoría de las semanas de su historia.",
-  neutro: "La liquidez global se mueve dentro de lo habitual.",
-  contractivo: "La liquidez global crece menos (o se achica) que en la mayoría de las semanas de su historia.",
+/** La etiqueta técnica dicha en simple (§4.4). Son tercios del percentil. */
+const LIQ_WORD: Record<string, string> = {
+  expansivo: "Fuerte",
+  neutro: "Normal",
+  contractivo: "Débil",
 };
 
-export function LiquidityCard({ rep }: { rep: LiquidityReport }) {
-  const r = rep.regime;
-  const label = r.label ?? "sin dato";
+/** El percentil dicho en palabras, truncado: no se redondea a favor. */
+function liqPace(p: number | null): string {
+  if (!isNum(p)) return "Sin lectura disponible.";
+  return p >= 0.5
+    ? `La liquidez global avanza más rápido que en el ${Math.floor(p * 100)}% de las semanas anteriores.`
+    : `La liquidez global avanza más lento que en el ${Math.floor((1 - p) * 100)}% de las semanas anteriores.`;
+}
+
+function liqDelta(rep: LiquidityReport): ReactNode {
+  const now = rep.regime.composite_pct;
+  const hist = rep.history.filter((h) => isNum(h.composite_pct));
+  const past = pointBefore(hist, "date", rep.as_of, 28);
+  if (!past || !isNum(now) || !isNum(past.composite_pct)) return undefined;
+  const word = past.label ? LIQ_WORD[past.label].toLowerCase() : DASH;
+  return <Delta dir={dirOf(now - past.composite_pct)}>hace 4 semanas: {word}</Delta>;
+}
+
+
+export function LiquidityCard({ rep, chart = false }: { rep: LiquidityReport; chart?: boolean }) {
+  const label = rep.regime.label ?? "sin dato";
+  const spark = rep.history.filter((h) => isNum(h.composite_pct)).slice(-52);
   return (
     <DetailCard
       title="Liquidez global"
-      value={label}
+      value={LIQ_WORD[label] ?? "sin dato"}
       tone={LIQ_TONE[label] ?? ""}
-      meaning={LIQ_TEXT[label] ?? "Sin lectura disponible."}
-      notMeaning="Es un estado del momento, no un pronóstico de precios. Una etiqueta dura unas 3 semanas en promedio."
+      delta={liqDelta(rep)}
+      visual={
+        chart ? <Spark data={spark} x="date" y="composite_pct" domain={[0, 1]} bands span="último año" /> : undefined
+      }
+      meaning={liqPace(rep.regime.composite_pct)}
+      notMeaning="Es un estado del momento, no un pronóstico de precios. Una lectura dura unas 3 semanas en promedio."
       asOf={rep.as_of}
       badge={rep.stale ? <Badge tone="warn">dato viejo</Badge> : undefined}
-      detail={
-        <div className="space-y-1">
-          <div>
-            percentil del compuesto: {num(r.composite_pct)} · desde {r.since ?? DASH} · hace 4 semanas:{" "}
-            {r.label_4w_ago ?? DASH} · hace 13: {r.label_13w_ago ?? DASH}
-          </div>
-          <div>
-            racha mediana de una etiqueta: {num(r.persistence.median_run_weeks, 0)} semanas. Cinco
-            componentes con pesos iguales (Fed neta, M2, dólar, tasa real, NFCI).
-          </div>
-          <Link to="/liquidez" className="text-accent hover:underline">
-            ver Liquidez →
-          </Link>
-        </div>
-      }
+      detail={<LiquidityDetail rep={rep} />}
     />
   );
 }
 
-export function RecessionCard({ p }: { p: Panorama }) {
+function LiquidityDetail({ rep }: { rep: LiquidityReport }) {
+  const r = rep.regime;
+  return (
+    <div className="space-y-1">
+      <div>
+        Etiqueta técnica: {r.label ?? DASH} (fuerte = expansivo, débil = contractivo, por tercios). Percentil del
+        compuesto: {num(r.composite_pct)}, contra las semanas anteriores desde {r.available_from ?? DASH}. Desde{" "}
+        {r.since ?? DASH} · hace 4 semanas: {r.label_4w_ago ?? DASH} · hace 13: {r.label_13w_ago ?? DASH}.
+      </div>
+      <div>
+        Racha mediana de una etiqueta: {num(r.persistence.median_run_weeks, 0)} semanas. Cinco componentes con
+        pesos iguales (Fed neta, M2, dólar, tasa real, NFCI), cambio a 13 semanas.
+      </div>
+      <Link to="/liquidez" className="text-accent hover:underline">
+        ver Liquidez →
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * La liquidez como lectura principal, con su historia completa (variante B de
+ * la portada). Misma cifra y mismas frases que `LiquidityCard`.
+ */
+export function LiquidityHero({ rep }: { rep: LiquidityReport }) {
+  const label = rep.regime.label ?? "sin dato";
+  const from = rep.regime.available_from;
+  const data = rep.history.filter((h) => from !== null && h.date >= from);
+  return (
+    <DetailCard
+      title="Liquidez global · la lectura principal"
+      value={LIQ_WORD[label] ?? "sin dato"}
+      tone={LIQ_TONE[label] ?? ""}
+      delta={liqDelta(rep)}
+      visual={<LiquidityChart data={data} height={200} />}
+      meaning={liqPace(rep.regime.composite_pct)}
+      notMeaning="Es un estado del momento, no un pronóstico de precios. Una lectura dura unas 3 semanas en promedio: la línea salta seguido."
+      asOf={rep.as_of}
+      badge={rep.stale ? <Badge tone="warn">dato viejo</Badge> : undefined}
+      detail={<LiquidityDetail rep={rep} />}
+    />
+  );
+}
+
+export function RecessionCard({ p, chart = false }: { p: Panorama; chart?: boolean }) {
   const r = p.recession;
   if (isBlockError(r)) return <BlockMissing title="Riesgo de recesión EE.UU." error={r.error} />;
+  const h = r.history_12m;
+  const past = h.length >= 4 ? h[h.length - 4] : undefined;
   return (
     <DetailCard
       title="Riesgo de recesión EE.UU."
       value={share(r.probability)}
       unit={`a 12 meses (${r.target.slice(0, 7)})`}
+      delta={
+        past ? (
+          <Delta dir={dirOf(r.probability - past.probability)}>hace 3 meses: {share(past.probability)}</Delta>
+        ) : undefined
+      }
+      visual={chart ? <Spark data={h} x="month" y="probability" domain={[0, 1]} span="últimos 12 meses" /> : undefined}
       meaning="Probabilidad de recesión según la curva de tasas, con el modelo que publica la Fed de Nueva York."
       notMeaning={`Ojo: ${r.caveat}.`}
       asOf={r.as_of.slice(0, 7)}
@@ -104,15 +195,22 @@ export function RecessionCard({ p }: { p: Panorama }) {
   );
 }
 
-export function CycleCard({ p }: { p: Panorama }) {
+export function CycleCard({ p, chart = false }: { p: Panorama; chart?: boolean }) {
   const c = p.btc_cycle;
   if (isBlockError(c)) return <BlockMissing title="Ciclo de BTC" error={c.error} />;
+  const past = pointBefore(c.history, "day", c.as_of, 30);
   return (
     <DetailCard
       title="Ciclo de BTC"
-      value={isNum(c.risk_pit) ? Math.round(c.risk_pit * 100) : DASH}
+      value={score(c.risk_pit)}
       unit="/ 100"
       badge={c.zone ? <Badge>{c.zone}</Badge> : undefined}
+      delta={
+        past && isNum(past.risk_pit) && isNum(c.risk_pit) ? (
+          <Delta dir={dirOf(c.risk_pit - past.risk_pit)}>hace 30 días: {score(past.risk_pit)}</Delta>
+        ) : undefined
+      }
+      visual={chart ? <Spark data={c.history} x="day" y="risk_pit" domain={[0, 1]} span="último año" /> : undefined}
       meaning="Dónde está el precio de BTC dentro de su propia historia: cerca de 0 fue zona baja del ciclo; cerca de 100, euforia."
       notMeaning="No dice hacia dónde va el precio."
       asOf={c.as_of}
@@ -228,26 +326,34 @@ export function OptionsCard({ p }: { p: Panorama }) {
   );
 }
 
-export function StablecoinsCard({ p }: { p: Panorama }) {
+export function StablecoinsCard({ p, chart = false }: { p: Panorama; chart?: boolean }) {
   const s = p.stablecoins;
   if (isBlockError(s)) return <BlockMissing title="Dinero listo para cripto" error={s.error} />;
+  const ch = s.change_30d_usd;
   return (
     <DetailCard
       title="Dinero listo para cripto"
       value={usdB(s.supply_usd)}
       unit="mil millones USD en stablecoins"
-      meaning={`Dólares digitales en circulación. En 30 días: ${signedUsdB(s.change_30d_usd)} mil millones (${pct(s.change_30d_pct, 1)}).`}
+      delta={
+        isNum(ch) ? (
+          <Delta dir={ch > 0 ? "up" : ch < 0 ? "down" : "flat"}>
+            {signedUsdB(ch)} mil millones en 30 días ({signedPct(s.change_30d_pct, 1)})
+          </Delta>
+        ) : undefined
+      }
+      visual={chart ? <Spark data={s.history} x="day" y="supply_usd" span="último año" /> : undefined}
+      meaning="Dólares digitales en circulación: dinero que ya está dentro de cripto, disponible para comprar."
       notMeaning="Que entre dinero no garantiza que suba el precio."
       asOf={s.as_of}
       detail={
         <div className="space-y-1">
-          <div>
-            Emisión neta, media de 7 días: {signedUsdB(s.net_mints_7d_usd)} mil millones por día.
-          </div>
+          <div>Emisión neta, media de 7 días: {signedUsdB(s.net_mints_7d_usd)} mil millones por día.</div>
           <div>
             SSR (capitalización de BTC / stablecoins): {num(s.ssr)}; por encima del {share(s.ssr_rank_since_2020)} de los
             días desde 2020. Bajo = mucho dinero disponible en relación al tamaño de BTC.
           </div>
+          {chart && <div>El gráfico chico no parte de cero: muestra la forma del año, no el tamaño del cambio.</div>}
           <div>{s.evidence}</div>
         </div>
       }
@@ -255,12 +361,87 @@ export function StablecoinsCard({ p }: { p: Panorama }) {
   );
 }
 
+/**
+ * A qué clase de activo le fue mejor y peor en el último mes: retorno de la
+ * clase menos el del ETF típico. Descriptivo; la M3 midió que el orden no
+ * predice, y la tarjeta lo dice.
+ */
+export function StrengthCard({ rep, chart = false }: { rep: StrengthReport; chart?: boolean }) {
+  const rows = rep.classes
+    .filter((c) => isNum(c.rel_4s))
+    .sort((a, b) => (b.rel_4s as number) - (a.rel_4s as number));
+  if (rows.length < 4) return <BlockMissing title="Clases de activo" error="sin fuerza relativa a 4 semanas" />;
+  const top = rows.slice(0, 2);
+  const bottom = rows.slice(-2).reverse();
+  const fmt = (c: (typeof rows)[number]) => `${c.label} (${signedPct(c.rel_4s, 1)})`;
+  const max = Math.max(...rows.map((c) => Math.abs(c.rel_4s as number))) || 1;
+  return (
+    <DetailCard
+      title="Clases de activo · último mes"
+      value={top[0].label}
+      unit="le fue mejor"
+      badge={rep.stale ? <Badge tone="warn">dato viejo</Badge> : <Badge tone="muted">descriptivo</Badge>}
+      visual={
+        chart ? (
+          <div className="space-y-1">
+            {rows.map((c) => {
+              const v = c.rel_4s as number;
+              const w = `${(Math.abs(v) / max) * 50}%`;
+              return (
+                <div key={c.block} className="grid grid-cols-[minmax(0,7.5rem)_minmax(3rem,1fr)_3rem] items-center gap-2 text-[11px]">
+                  <span className="truncate text-neutral-400">{c.label}</span>
+                  <div className="relative h-2.5">
+                    <div className="absolute inset-y-0 left-1/2 w-px bg-neutral-700" />
+                    <div
+                      className="absolute inset-y-0 rounded-sm"
+                      style={{ background: SERIES[0], width: w, left: v >= 0 ? "50%" : `calc(50% - ${w})` }}
+                    />
+                  </div>
+                  <span className="text-right font-mono text-neutral-300">{signedPct(v, 1)}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : undefined
+      }
+      meaning={`Arriba: ${top.map(fmt).join(" y ")}. Abajo: ${bottom.map(fmt).join(" y ")}. Comparado con el ETF típico.`}
+      notMeaning="Dice a quién le fue mejor, no a quién le va a ir mejor: medido, este orden no se sostiene hacia adelante."
+      asOf={rep.as_of}
+      detail={
+        <div className="space-y-1">
+          <div>
+            Retorno total de cada clase en 20 sesiones menos la mediana de los {rep.etfs.length} ETFs. Una clase es
+            el promedio simple de sus ETFs; el dólar es solo UUP. Cripto no entra: tiene su propia sección.
+          </div>
+          <div>
+            A 13 y 26 semanas:{" "}
+            {rows.map((c) => `${c.label} ${signedPct(c.rel_13s, 1)} / ${signedPct(c.rel_26s, 1)}`).join(" · ")}.
+          </div>
+          <div>
+            No es flujo de dinero: las creaciones y rescates de ETFs no están en ninguna fuente gratuita. El orden no
+            predice: la M3 lo midió y no pasó.
+          </div>
+          <Link to="/flujos" className="text-accent hover:underline">
+            ver Flujos →
+          </Link>
+        </div>
+      }
+    />
+  );
+}
+
 export function PanelCard({ st }: { st: PanelStatus }) {
+  const done = Math.min(st.valid / st.interim_valid_days, 1);
   return (
     <DetailCard
       title="Estudio del panel cripto"
       value={`${st.valid} / ${st.interim_valid_days}`}
       unit="días válidos hasta la primera revisión"
+      visual={
+        <div className="h-2 overflow-hidden rounded bg-neutral-800" title={`${st.valid} de ${st.interim_valid_days}`}>
+          <div className="h-full rounded" style={{ width: `${done * 100}%`, background: SERIES[0] }} />
+        </div>
+      }
       meaning="Validación en curso: el modelo del panel diario se está probando con datos que no existían cuando se entrenó. Todavía no hay resultado."
       notMeaning={`Al ritmo actual (${share(st.valid_rate)} de los días cuentan), la revisión llega el ${st.eta_interim_at_current_rate ?? DASH}.`}
       asOf={st.last_decision}
