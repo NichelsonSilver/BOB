@@ -58,7 +58,7 @@ export function AnalysisPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-100">Analysis</h1>
+          <h1 className="text-xl font-semibold text-neutral-100">Análisis del modelo 15m</h1>
           <p className="text-xs text-neutral-500">
             {features.data
               ? `${features.data.n_features} features · set ${features.data.feature_set} · barra ${stamp(

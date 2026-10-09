@@ -43,6 +43,7 @@ const GROUPS: Group[] = [
     label: "Laboratorio",
     prefix: "/lab",
     items: [
+      { to: "/lab", label: "Resumen" },
       { to: "/lab/forward-15m", label: "Validación forward 15m" },
       { to: "/lab/backtest", label: "Backtest" },
       { to: "/lab/analisis", label: "Análisis" },
@@ -60,7 +61,7 @@ function linkClass({ isActive }: { isActive: boolean }): string {
 
 function NavItem({ item, nested = false }: { item: Item; nested?: boolean }) {
   return (
-    <NavLink to={item.to} end={item.to === "/" || item.to === "/cripto"} className={linkClass}>
+    <NavLink to={item.to} end={item.to === "/" || item.to === "/cripto" || item.to === "/lab"} className={linkClass}>
       <span className={nested ? "pl-3" : ""}>{item.label}</span>
       {item.note && <span className="text-[10px] text-neutral-600">{item.note}</span>}
     </NavLink>

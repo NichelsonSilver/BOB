@@ -232,3 +232,47 @@ parece el estado de hoy. La página Riesgo ya lo ocultaba cuando el pronóstico
 no está vigente; en la Señal se deja (la página *es* el último pronóstico),
 pero en gris, con el medidor en gris y la frase "Estado del <fecha>, no de
 ahora". La lectura en texto ya se marcaba "vieja".
+
+### M6.4 (2026-10-09) — Laboratorio
+
+Hasta ahora el Laboratorio solo mostraba el trabajo de 15m. Los resultados del
+panel diario, de las reglas técnicas, del filtro con stop y del ranking macro
+no tenían ningún lugar donde verse juntos.
+
+**Laboratorio ▸ Resumen** (`/lab`, `pages/LabPage.tsx`): una tarjeta por
+experimento, agrupadas por escala (cripto 15m, cripto diario, macro semanal).
+Cada una lleva la pregunta en lenguaje simple, el veredicto en una palabra, una
+o dos frases con las cifras y "Ver detalle" con los intervalos, el criterio, el
+commit del pre-registro y el nombre del artefacto. Arriba va el conteo: 5
+pasaron, 4 no pasaron, 1 en curso, 1 control limpio y 1 informativa.
+
+**Backend**: `GET /api/lab/experiments` (`api/routes/lab.py`) lee cada familia
+de `backend/artifacts/`. El veredicto sale del campo que escribió su propio
+runner (`criteria.viable`, `verdict.c1_pass`, `RunSummary.habilitado`,
+`adopted`…) y no se recalcula. Hay dos excepciones, declaradas en el código:
+la volatilidad del gate usa `DieboldMariano.favors_model`, y el cono forward usa
+"nominal dentro del IC por bloques", que es el criterio del cierre de la Fase 5.
+La única tabla escrita a mano es la de pre-registros (documento y commit, sin
+cifras). El placebo se marca como "control limpio" cuando falla. Si un
+artefacto tiene otro esquema, la entrada se omite y la página sigue cargando.
+Hay 2 tests nuevos y la suite completa pasa (1.172).
+
+**El forward del panel diario aparece como "en curso"** con su avance (de
+`/api/macro/panel-status`) y nunca con su resultado: el endpoint del
+Laboratorio no lee esos registros (Enmienda 1).
+
+**Tono**: "no pasó" va en gris neutro, no en rojo. Un negativo bien medido es
+información. La página lo dice arriba, junto con que "pasar habilita seguir
+midiendo, no operar".
+
+**Títulos**: las tres páginas de 15m ahora se llaman "Backtest del gate 15m",
+"Análisis del modelo 15m" y "Validación forward 15m".
+
+**Encontrado en capturas:**
+
+1. Abrir un detalle estiraba las tarjetas vecinas (es el mismo defecto de la
+   M6.1). Se corrigió con `items-start` en la grilla.
+2. "p <0.0001" se partía en dos líneas. Las cifras ahora van sin corte de línea.
+3. En las frases, "IC" se leía como intervalo de confianza cuando era el
+   coeficiente de orden. En la frase simple ahora dice "correlación del orden",
+   y la sigla queda en el detalle.

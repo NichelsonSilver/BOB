@@ -4,6 +4,7 @@
     /api/analysis/*   último pronóstico, reproyección por leverage, features
     /api/history/*    pronósticos emitidos, cobertura forward, export CSV
     /api/backtest/*   artefactos del gate y del corte forward congelado
+    /api/lab/*        registro de experimentos con su veredicto (M6.4)
     /api/settings     espejo de la config efectiva
     /api/analysis/technical  mapa técnico con la evidencia del backtest
     /api/risk/*       calculadora de tamaño de posición (aritmética pura)
@@ -17,7 +18,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from bob.api.routes import analysis, backtest, history, market, risk, settings, technical
+from bob.api.routes import analysis, backtest, history, lab, market, risk, settings, technical
 from marea.api import router as marea_router
 
 router = APIRouter(prefix="/api")
@@ -25,6 +26,7 @@ router.include_router(market.router)
 router.include_router(analysis.router)
 router.include_router(history.router)
 router.include_router(backtest.router)
+router.include_router(lab.router)
 router.include_router(settings.router)
 router.include_router(risk.router)
 router.include_router(technical.router)

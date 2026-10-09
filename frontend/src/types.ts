@@ -1038,3 +1038,22 @@ export type Panorama = {
 export function isBlockError(b: object): b is BlockError {
   return "error" in b;
 }
+
+/** Laboratorio ▸ Resumen (M6.4): un experimento con su veredicto, leído del artefacto. */
+export type LabStatus = "pasa" | "no_pasa" | "control_ok" | "control_falla" | "informativo";
+
+export type LabExperiment = {
+  id: string;
+  status: LabStatus;
+  artifact_id: string;
+  date: string | null;
+  criterion_doc: string | null;
+  criterion_commit: string | null;
+  /** Cifras propias de cada experimento; la página las lee por id. */
+  figures: Record<string, unknown>;
+};
+
+export type LabExperiments = {
+  experiments: LabExperiment[];
+  counts: Partial<Record<LabStatus, number>>;
+};

@@ -53,7 +53,7 @@ export function BacktestPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-100">Backtest</h1>
+        <h1 className="text-xl font-semibold text-neutral-100">Backtest del gate 15m</h1>
         <p className="text-xs text-neutral-500">
           {runs.data?.n ?? 0} runs versionados · solo lectura (los runs se corren
           con <span className="font-mono">bob.backtest.runner</span>)

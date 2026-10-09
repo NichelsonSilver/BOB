@@ -681,3 +681,57 @@ def test_stopfilter_sale_del_artefacto(
     # No se cuela en el listado del gate.
     runs = client.get("/api/backtest/runs").json()["runs"]
     assert all(not r["run_id"].startswith("stopfilter-") for r in runs)
+
+
+# --------------------------------------------------------------- M6.4 lab --
+
+
+def test_lab_lee_el_veredicto_de_cada_artefacto(client: TestClient) -> None:
+    """Contra los artefactos versionados: el resumen dice lo mismo que el registro."""
+    from bob.api.routes import _common
+
+    if not any(_common.ARTIFACTS_DIR.glob("*.json")):
+        pytest.skip("sin artefactos versionados")
+    body = client.get("/api/lab/experiments").json()
+    status = {e["id"]: e["status"] for e in body["experiments"]}
+    expected = {
+        "gate_direction": "no_pasa",
+        "gate_volatility": "pasa",
+        "forward_15m": "pasa",
+        "riskfilter": "pasa",
+        "sigmatail": "no_pasa",
+        "stopfilter": "pasa",
+        "technical": "no_pasa",
+        "panel_offline": "pasa",
+        "panel_placebo": "control_ok",
+        "macro_ranking": "no_pasa",
+    }
+    for k, v in expected.items():
+        if k in status:
+            assert status[k] == v, k
+    # El IC del forward del panel no viaja por acá (Enmienda 1).
+    assert "panel_forward" not in status
+    for e in body["experiments"]:
+        if "panel" in e["id"]:
+            assert e["artifact_id"].startswith("panel-1d-"), "solo artefactos offline del panel"
+
+
+def test_lab_placebo_que_pasa_es_falla_de_control(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from bob.api.routes import _common
+
+    monkeypatch.setattr(_common, "ARTIFACTS_DIR", tmp_path)
+    assert client.get("/api/lab/experiments").json()["experiments"] == []
+    art = {"config": {"placebo": True}, "criteria": {"viable": True}, "auc": 0.56,
+           "intervals": {}}
+    (tmp_path / "panel-1d-H5-xs-PLACEBO-20260922204238.json").write_text(
+        json.dumps(art), encoding="utf-8"
+    )
+    # Un artefacto roto se omite, no tumba la página.
+    (tmp_path / "riskfilter-ETHUSDT-15m-x-20260914202117.json").write_text("{", encoding="utf-8")
+    body = client.get("/api/lab/experiments").json()
+    assert [(e["id"], e["status"]) for e in body["experiments"]] == [
+        ("panel_placebo", "control_falla")
+    ]
+    assert body["counts"] == {"control_falla": 1}

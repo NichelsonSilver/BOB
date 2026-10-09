@@ -7,6 +7,7 @@ import { CryptoPage } from "./pages/CryptoPage";
 import { FlowsPage } from "./pages/FlowsPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { HomePage } from "./pages/HomePage";
+import { LabPage } from "./pages/LabPage";
 import { MacroPage } from "./pages/MacroPage";
 import { MapPage } from "./pages/MapPage";
 import { PanelPage } from "./pages/PanelPage";
@@ -49,6 +50,7 @@ export function App() {
         <Route path="/cripto/riesgo" element={<RiskPage />} />
         <Route path="/cripto/mapa" element={<MapPage />} />
         <Route path="/cripto/senal-15m" element={<SignalPage />} />
+        <Route path="/lab" element={<LabPage />} />
         <Route path="/lab/forward-15m" element={<HistoryPage />} />
         <Route path="/lab/backtest" element={<BacktestPage />} />
         <Route path="/lab/analisis" element={<AnalysisPage />} />

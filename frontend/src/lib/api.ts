@@ -19,6 +19,7 @@ import type {
   GateResponse,
   HealthResponse,
   HistoryResponse,
+  LabExperiments,
   LatestResponse,
   LiquidityReport,
   RankingVerdict,
@@ -131,6 +132,9 @@ export const api = {
 
   /** MAREA: ciclo y cripto de la M5. ~4 s la primera vez; después, caché del servidor. */
   panorama: () => request<Panorama>("/api/macro/panorama"),
+
+  /** Laboratorio: cada experimento con su veredicto, leído de su artefacto (M6.4). */
+  labExperiments: () => request<LabExperiments>("/api/lab/experiments"),
 
   /** Forward del panel diario (10-bis): estado operativo, nunca el IC. */
   panelStatus: () => request<PanelStatus>("/api/macro/panel-status"),
