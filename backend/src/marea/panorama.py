@@ -25,7 +25,7 @@ from marea import cycle
 from marea.data import store
 from marea.funding import annualized_pct, daily_funding, spread, trailing_mean
 from marea.pit import OPEN_END, as_of
-from marea.recession import recession_series
+from marea.recession import ALPHA, BETA, recession_series
 from marea.stablecoins import known_series, net_mints, ssr
 
 MONITOR = "medido (monitoreo, sin pronóstico)"
@@ -56,6 +56,7 @@ def recession(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
         "probability": last.probability,
         "target": last.target.isoformat(),
         "spread": last.spread,
+        "model": {"alpha": ALPHA, "beta": BETA},
         "history_12m": [
             {"month": r.month.isoformat(), "probability": r.probability} for r in rows[-12:]
         ],
@@ -65,6 +66,15 @@ def recession(conn: sqlite3.Connection, today: date) -> dict[str, Any]:
         ),
         "sahm": {"as_of": sahm[-1].obs_date.isoformat(), "value": sahm[-1].value} if sahm else None,
     }
+
+
+#: Fechas de referencia para leer el número de hoy: el techo de precio de 2021
+#: (docs/M5_ALCANCE.md §M5.3). La fecha es un hecho histórico; el valor se
+#: calcula, no se copia.
+CYCLE_REFERENCES = {"techo de precio 2021": date(2021, 11, 10)}
+
+#: Lo mismo para la amplitud (§M5.4): el piso de 2022 y el máximo de 2024.
+BREADTH_REFERENCES = {"piso 2022": date(2022, 11, 21), "máximo 2024": date(2024, 12, 5)}
 
 
 def btc_cycle(conn: sqlite3.Connection) -> dict[str, Any]:
@@ -86,6 +96,12 @@ def btc_cycle(conn: sqlite3.Connection) -> dict[str, Any]:
             "mean_abs_diff": dv.mean_abs_diff,
             "share_far": dv.share_far,
         },
+        "references": [
+            {"label": label, "day": r.day.isoformat(), "risk_pit": r.risk_pit, "risk_full": r.risk_full}
+            for label, d in CYCLE_REFERENCES.items()
+            for r in rows
+            if r.day == d
+        ],
         "history": [
             {"day": r.day.isoformat(), "risk_pit": r.risk_pit, "risk_full": r.risk_full}
             for r in rows[-365:]
@@ -122,6 +138,12 @@ def crypto_breadth(bob_db: Path, universe_json: Path) -> dict[str, Any]:
         "n_symbols": n200,
         "altseason": last.altseason,
         "altseason_label": br.season_label(last.altseason),
+        "references": [
+            {"label": label, "day": r.day.isoformat(), "above_sma200": r.above[200][0]}
+            for label, d in BREADTH_REFERENCES.items()
+            for r in rows
+            if r.day == d and math.isfinite(r.above[200][0])
+        ],
         "history": [
             {
                 "day": r.day.isoformat(),

@@ -151,7 +151,7 @@ export function RegimeFilter({
             </span>
             . Lift {num(evidence.lift, 2)} — IC95%{" "}
             {num(evidence.lift_ci95[0], 2)}–{num(evidence.lift_ci95[1], 2)};
-            rechazar al azar daría exactamente 1,00 y el mismo filtro con EWMA
+            rechazar al azar daría exactamente 1.00 y el mismo filtro con EWMA
             da {num(evidence.baseline_lift, 2)}.
           </p>
           <p className="mt-1">

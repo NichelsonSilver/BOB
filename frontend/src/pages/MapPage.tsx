@@ -195,8 +195,8 @@ function Context({ data }: { data: TechnicalResponse }) {
       ))}
       <Row label="ATR 14" value={`${price(data.atr)} · ${pct(data.atr_pct)}`} />
       <p className="mt-2 text-[11px] text-neutral-600">
-        RSI y medias ya entraron al gate de la Fase 4 como features y no anticipan dirección (AUC
-        0,52). Describen dónde está el precio, no hacia dónde va.
+        RSI y medias ya entraron como features al modelo de dirección de 15m, que no pasó la prueba (ver
+        Laboratorio). Describen dónde está el precio, no hacia dónde va.
       </p>
     </Card>
   );
@@ -267,7 +267,7 @@ function Levels({ data }: { data: TechnicalResponse }) {
       </div>
       <div>{below.map(line)}</div>
       <p className="mt-2 text-[11px] text-neutral-600">
-        "Stop aquí" abre la calculadora con la entrada en el último cierre y el stop 0,1·ATR detrás
+        "Stop aquí" abre la calculadora con la entrada en el último cierre y el stop 0.1·ATR detrás
         del nivel: debajo para un long, encima para un short.
       </p>
     </Card>

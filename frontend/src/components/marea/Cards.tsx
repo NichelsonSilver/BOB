@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "../common/Card";
 import { BlockMissing, Delta, DetailCard } from "../common/DetailCard";
 import { SERIES } from "../../lib/chartTheme";
-import { DASH, isNum, num, signedPct } from "../../lib/format";
+import { DASH, isNum, num, pct, signedPct } from "../../lib/format";
 import { isBlockError } from "../../types";
 import type {
   LiquidityReport,
@@ -63,6 +63,27 @@ function share(v: number | null | undefined): string {
   return isNum(v) ? `${Math.round(v * 100)}%` : DASH;
 }
 
+/**
+ * Percentil dicho como "más que el X% de los días": truncado, igual que el de
+ * liquidez. Redondear 0.996 a "100%" diría "nunca estuvo más alto" sin ser cierto.
+ */
+function rank(v: number | null | undefined): string {
+  return isNum(v) ? `${Math.floor(v * 100)}%` : DASH;
+}
+
+/**
+ * Un percentil dicho hacia el lado que corresponde: "más alto que el 84%" o
+ * "más bajo que el 83%", no "más alto que el 16%". `p` es la fracción de días
+ * estrictamente por debajo, así que el lado de abajo es `1 − p` (incluye los
+ * empates, que no favorecen a nadie).
+ */
+function aboveBelow(p: number | null | undefined, since: string): string {
+  if (!isNum(p)) return "";
+  return p >= 0.5
+    ? `Hoy es más alto que en el ${rank(p)} de los días desde ${since}.`
+    : `Hoy es más bajo que en el ${rank(1 - p)} de los días desde ${since}.`;
+}
+
 const LIQ_TONE: Record<string, string> = {
   expansivo: "text-accent",
   neutro: "text-neutral-100",
@@ -107,7 +128,10 @@ export function LiquidityCard({ rep, chart = false }: { rep: LiquidityReport; ch
         chart ? <Spark data={spark} x="date" y="composite_pct" domain={[0, 1]} bands span="último año" /> : undefined
       }
       meaning={liqPace(rep.regime.composite_pct)}
-      notMeaning="Es un estado del momento, no un pronóstico de precios. Una lectura dura unas 3 semanas en promedio."
+      notMeaning={`Es un estado del momento, no un pronóstico de precios. La lectura suele cambiar en unas ${num(
+        rep.regime.persistence.median_run_weeks,
+        0,
+      )} semanas.`}
       asOf={rep.as_of}
       badge={rep.stale ? <Badge tone="warn">dato viejo</Badge> : undefined}
       detail={<LiquidityDetail rep={rep} />}
@@ -157,8 +181,10 @@ export function RecessionCard({ p, chart = false }: { p: Panorama; chart?: boole
       detail={
         <div className="space-y-1">
           <div>
-            Probit de Estrella y Trubin: Φ(−0.5333 − 0.6330 · spread). Spread 10a − letra 3m:{" "}
-            {num(r.spread)} pp. Reproducido desde FRED: 760 meses, diferencia máxima 0.23 pp con la NY Fed.
+            Probit de Estrella y Trubin: Φ(α + β · spread), con α = {num(r.model.alpha, 4)} y β ={" "}
+            {num(r.model.beta, 4)}. Spread 10a −
+            letra 3m: {num(r.spread)} pp. Reproducido desde FRED contra el archivo de la NY Fed (detalle en{" "}
+            <span className="font-mono">marea/recession.py</span>).
           </div>
           <div>
             Regla de Sahm (desempleo): {r.sahm ? `${num(r.sahm.value)} (${r.sahm.as_of.slice(0, 7)})` : DASH}.
@@ -199,7 +225,14 @@ export function CycleCard({ p, chart = false }: { p: Panorama; chart?: boolean }
           <div>
             La misma receta mirando el futuro (como la de Outliers) da {num(c.risk_full, 3)}. Correlación entre
             las dos: {num(c.pit_vs_full.correlation)}; difieren en más de 0.20 el {share(c.pit_vs_full.share_far)} de
-            los días. En el techo de 2021 la versión con futuro marcaba 0.867 y la honesta 0.756.
+            los días.
+            {c.references.map((ref) => (
+              <span key={ref.day}>
+                {" "}
+                En el {ref.label} ({ref.day}) la versión con futuro marcaba {num(ref.risk_full, 3)} y la honesta{" "}
+                {num(ref.risk_pit, 3)}.
+              </span>
+            ))}
           </div>
         </div>
       }
@@ -223,7 +256,9 @@ export function BreadthCard({ p }: { p: Panorama }) {
           <div>Sobre la media de 20 semanas: {share(b.above_sma20w)}.</div>
           <div>
             Universo: perpetuos de Binance con deslistados incluidos y la regla de liquidez pre-registrada de la
-            Fase 10. Referencias: 7.6% en el piso de 2022-11; 97.2% en 2024-12.
+            Fase 10.
+            {b.references.length > 0 &&
+              ` Referencias: ${b.references.map((ref) => `${pct(ref.above_sma200, 1)} en el ${ref.label} (${ref.day})`).join("; ")}.`}
           </div>
         </div>
       }
@@ -241,6 +276,7 @@ export function AltseasonCard({ p }: { p: Panorama }) {
       unit="/ 100"
       badge={<Badge>{b.altseason_label}</Badge>}
       meaning="Cuántas de las 50 altcoins más negociadas le ganaron a BTC en los últimos 90 días. Desde 75 se habla de temporada de alts; bajo 25, de BTC."
+      notMeaning="Dice a quién le fue mejor en 90 días, no cuál va a subir."
       asOf={b.as_of}
       detail={
         <div>
@@ -260,16 +296,22 @@ export function FundingCard({ p }: { p: Panorama }) {
       title="Apalancamiento (funding)"
       value={num(f.btc_annual_pct, 1)}
       unit="% al año, BTC"
-      meaning="Lo que pagan los que apuestan apalancados al alza en BTC. Más alto = más gente apalancada a favor de la subida."
-      notMeaning={`Está por encima del ${share(f.btc_rank)} de los días desde ${f.rank_since.slice(0, 4)}.`}
+      meaning={`Lo que pagan, en un año, los que apuestan al alza en BTC con dinero prestado. ${aboveBelow(
+        f.btc_rank,
+        f.rank_since.slice(0, 4),
+      )}`}
+      notMeaning="Mide cuánto apalancamiento hay a favor de la subida, no hacia dónde va el precio."
       asOf={f.as_of}
       detail={
         <div className="space-y-1">
           <div>
             ETH: {num(f.eth_annual_pct, 2)}% al año. Diferencia ETH − BTC: {num(f.spread_eth_btc_pct, 2)} pp, por
-            encima del {share(f.spread_rank)} de los días.
+            encima del {rank(f.spread_rank)} de los días.
           </div>
-          <div>Media de 7 días de la suma diaria de liquidaciones de Binance, anualizada (× 365).</div>
+          <div>
+            Funding de Binance: suma de las tasas cobradas en cada día UTC, media de 7 días, por 365 (sin componer).
+            Positivo = los largos les pagan a los cortos.
+          </div>
         </div>
       }
     />
@@ -326,7 +368,7 @@ export function StablecoinsCard({ p, chart = false }: { p: Panorama; chart?: boo
         <div className="space-y-1">
           <div>Emisión neta, media de 7 días: {signedUsdB(s.net_mints_7d_usd)} mil millones por día.</div>
           <div>
-            SSR (capitalización de BTC / stablecoins): {num(s.ssr)}; por encima del {share(s.ssr_rank_since_2020)} de los
+            SSR (capitalización de BTC / stablecoins): {num(s.ssr)}; por encima del {rank(s.ssr_rank_since_2020)} de los
             días desde 2020. Bajo = mucho dinero disponible en relación al tamaño de BTC.
           </div>
           {chart && <div>El gráfico chico no parte de cero: muestra la forma del año, no el tamaño del cambio.</div>}
@@ -349,7 +391,7 @@ export function StrengthCard({ rep, chart = false }: { rep: StrengthReport; char
   if (rows.length < 4) return <BlockMissing title="Clases de activo" error="sin fuerza relativa a 4 semanas" />;
   const top = rows.slice(0, 2);
   const bottom = rows.slice(-2).reverse();
-  const fmt = (c: (typeof rows)[number]) => `${c.label} (${signedPct(c.rel_4s, 1)})`;
+  const fmt = (c: (typeof rows)[number]) => `${c.label} ${signedPct(c.rel_4s, 1)}`;
   const max = Math.max(...rows.map((c) => Math.abs(c.rel_4s as number))) || 1;
   return (
     <DetailCard
@@ -381,7 +423,7 @@ export function StrengthCard({ rep, chart = false }: { rep: StrengthReport; char
         ) : undefined
       }
       meaning={`Arriba: ${top.map(fmt).join(" y ")}. Abajo: ${bottom.map(fmt).join(" y ")}. Comparado con el ETF típico.`}
-      notMeaning="Dice a quién le fue mejor, no a quién le va a ir mejor: medido, este orden no se sostiene hacia adelante."
+      notMeaning="Dice a quién le fue mejor, no a quién le va a ir mejor: se midió si este orden anticipa las semanas siguientes y no se encontró que lo haga."
       asOf={rep.as_of}
       detail={
         <div className="space-y-1">
@@ -395,7 +437,7 @@ export function StrengthCard({ rep, chart = false }: { rep: StrengthReport; char
           </div>
           <div>
             No es flujo de dinero: las creaciones y rescates de ETFs no están en ninguna fuente gratuita. El orden no
-            predice: la M3 lo midió y no pasó.
+            predice: se midió y no pasó (ver Laboratorio).
           </div>
           <Link to="/flujos" className="text-accent hover:underline">
             ver Flujos →
@@ -418,8 +460,8 @@ export function PanelCard({ st }: { st: PanelStatus }) {
           <div className="h-full rounded" style={{ width: `${done * 100}%`, background: SERIES[0] }} />
         </div>
       }
-      meaning="Validación en curso: el modelo del panel diario se está probando con datos que no existían cuando se entrenó. Todavía no hay resultado."
-      notMeaning={`Al ritmo actual (${share(st.valid_rate)} de los días cuentan), la revisión llega el ${st.eta_interim_at_current_rate ?? DASH}.`}
+      meaning={`Validación en curso: el modelo del panel diario se está probando con datos que no existían cuando se entrenó. Al ritmo actual (cuenta el ${rank(st.valid_rate)} de los días), la primera revisión llega el ${st.eta_interim_at_current_rate ?? DASH}.`}
+      notMeaning="El avance no dice si el modelo funciona: el resultado no se mira antes de esa revisión."
       asOf={st.last_decision}
       detail={
         <div className="space-y-1">

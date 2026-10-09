@@ -276,3 +276,44 @@ midiendo, no operar".
 3. En las frases, "IC" se leía como intervalo de confianza cuando era el
    coeficiente de orden. En la frase simple ahora dice "correlación del orden",
    y la sigla queda en el detalle.
+
+### M6.5 (2026-10-09) — lenguaje y glosario
+
+La lista de textos para revisar está en `docs/M6_TEXTOS.md`. Los textos se
+leyeron en la página real, no en el código.
+
+**Un error de contenido, no de estilo:** el detalle del funding decía "suma
+diaria de **liquidaciones**", pero `marea/funding.py` suma las **tasas de
+funding**. Para un usuario que ya fue liquidado, la confusión no es menor.
+
+**Cifras escritas a mano que pasaron a la API:**
+
+- techo de 2021 del ciclo (0.867 / 0.756);
+- referencias de amplitud (7.6% / 97.2%);
+- coeficientes del probit;
+- racha mediana de la liquidez;
+- rango de pérdida de las reglas técnicas en Riesgo;
+- "AUC 0,52" en el Mapa y en la lectura de la Señal.
+
+Las fechas de referencia son hechos históricos (`CYCLE_REFERENCES`,
+`BREADTH_REFERENCES` en `marea/panorama.py`) y el valor se calcula en esa
+fecha. Los valores calculados reproducen exactamente lo que estaba escrito.
+
+**Percentiles:** se dicen hacia el lado que corresponde y truncados. El funding
+decía "más que el 16% de los días" y ahora dice "más bajo que el 83%". El panel
+redondeaba 43,75% a 44% y ahora dice 43%.
+
+**Frases que afirmaban más de lo medido:** "este orden no se sostiene" pasó a
+"no se encontró que lo anticipe", y "medias y RSI no anticiparon dirección
+(AUC 0,52)" pasó a "el modelo de dirección no pasó la prueba".
+
+**Punto decimal en la lectura de la Señal 15m** (`bob/models/narrative.py`, que
+no está en la lista de la regla 12). Era el pendiente registrado en la M6.1.
+
+**Glosario** en Ajustes (`components/marea/Glossary.tsx`): 29 términos sin
+cifras y con buscador. Separa los dos "IC". Ajustes ahora abre con el
+glosario; la configuración de 15m queda debajo, sin cambios.
+
+Hay 3 preguntas abiertas en `docs/M6_TEXTOS.md` §5: el color de la etiqueta
+de liquidez, la frase "disponible para comprar" y un enlace al glosario desde
+cada tarjeta.

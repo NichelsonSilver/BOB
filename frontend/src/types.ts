@@ -960,6 +960,8 @@ export type PanoramaRecession = {
   target: string;
   spread: number;
   history_12m: { month: string; probability: number }[];
+  /** Coeficientes del probit, importados de `marea/recession.py`. */
+  model: { alpha: number; beta: number };
   peak_since_2022: { month: string; probability: number };
   caveat: string;
   sahm: { as_of: string; value: number } | null;
@@ -974,6 +976,8 @@ export type PanoramaCycle = {
   risk_full: number;
   zone: string | null;
   pit_vs_full: { correlation: number; mean_abs_diff: number; share_far: number };
+  /** Valor en fechas históricas de referencia (techo de 2021), calculado. */
+  references: { label: string; day: string; risk_pit: number | null; risk_full: number | null }[];
   history: { day: string; risk_pit: number | null; risk_full: number }[];
 };
 
@@ -985,6 +989,7 @@ export type PanoramaBreadth = {
   n_symbols: number;
   altseason: number | null;
   altseason_label: string;
+  references: { label: string; day: string; above_sma200: number }[];
   history: { day: string; above_sma200: number | null; altseason: number | null }[];
 };
 

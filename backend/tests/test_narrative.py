@@ -73,12 +73,12 @@ def test_cada_seccion_declara_su_respaldo() -> None:
 
 def test_las_cifras_del_texto_salen_del_snapshot() -> None:
     txt = _all_text(market_narrative(_snap()))
-    assert "±0,76%" in txt and "percentil 19" in txt
-    assert "2.650,55" in txt and "2.730,72" in txt
-    assert "cae 0,41%" in txt
-    assert "+0,68%" in txt  # interés abierto
-    assert "2,55 cuentas en largo" in txt
-    assert "−0,35 R" in txt and "−0,30 R" in txt
+    assert "±0.76%" in txt and "percentil 19" in txt
+    assert "2,650.55" in txt and "2,730.72" in txt
+    assert "cae 0.41%" in txt
+    assert "+0.68%" in txt  # interés abierto
+    assert "2.55 cuentas en largo" in txt
+    assert "−0.35 R" in txt and "−0.30 R" in txt
 
 
 def test_nunca_pronostica_direccion() -> None:

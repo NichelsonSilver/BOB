@@ -109,6 +109,12 @@ def test_los_seis_bloques_responden_con_su_fecha(
     assert p["recession"]["probability"] == pytest.approx(probability(4.0 - bond_equivalent(3.5)))
     assert p["recession"]["sahm"]["value"] == pytest.approx(0.9)
     assert p["btc_cycle"]["risk_full"] is not None and p["btc_cycle"]["zone"] is not None
+    # M6.5: la referencia del techo de 2021 se calcula en su fecha, no se copia.
+    (ref,) = p["btc_cycle"]["references"]
+    assert ref["day"] == "2021-11-10" and ref["risk_full"] is not None and "risk_pit" in ref
+    # La amplitud sintética arranca en 2025-12: sus referencias no existen y no se inventan.
+    assert p["breadth"]["references"] == []
+    assert p["recession"]["model"] == {"alpha": -0.5333, "beta": -0.6330}
     assert p["breadth"]["n_symbols"] == 56  # USDC excluida
     assert p["breadth"]["altseason"] == pytest.approx(0.5, abs=0.06)
     assert p["funding"]["btc_annual_pct"] == pytest.approx(0.0003 * 365 * 100)

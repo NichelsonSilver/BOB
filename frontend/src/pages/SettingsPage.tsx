@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { Badge, Card, ErrorBox, Loading, Row } from "../components/common/Card";
+import { Glossary } from "../components/marea/Glossary";
 import { api } from "../lib/api";
 import { multiplier, num, pct } from "../lib/format";
 import { useAppStore } from "../stores/appStore";
@@ -23,7 +24,24 @@ import { useAppStore } from "../stores/appStore";
  * Las credenciales no se muestran nunca — la API solo dice si están
  * configuradas.
  */
+/**
+ * Ajustes (M6.5): el glosario arriba, porque es lo que sirve a cualquier
+ * lector; la configuración efectiva del módulo de 15m abajo, tal como estaba.
+ */
 export function SettingsPage() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-neutral-100">Ajustes</h1>
+        <p className="text-xs text-neutral-500">Glosario y configuración del módulo de 15m.</p>
+      </div>
+      <Glossary />
+      <ConfigSection />
+    </div>
+  );
+}
+
+function ConfigSection() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["settings"],
     queryFn: api.settings,
@@ -41,7 +59,7 @@ export function SettingsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-neutral-100">Settings</h1>
+        <h2 className="text-base font-semibold text-neutral-100">Configuración del módulo 15m</h2>
         <Badge tone="muted">solo lectura</Badge>
       </div>
 

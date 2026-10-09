@@ -54,7 +54,7 @@ class MarketSnapshot:
 
 
 def _pct(x: float, digits: int = 2) -> str:
-    return f"{x * 100:.{digits}f}%".replace(".", ",")
+    return f"{x * 100:.{digits}f}%"
 
 
 def _signed_pct(x: float, digits: int = 2) -> str:
@@ -63,12 +63,14 @@ def _signed_pct(x: float, digits: int = 2) -> str:
 
 
 def _px(x: float) -> str:
-    # 2.686,29 — el mismo formato que usa el dashboard en español.
-    return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    # 2,686.29 — la misma convención que `lib/format.ts` (M6.5): punto decimal
+    # en todo el dashboard. Con coma, el texto decía "2.686,29" al lado de un
+    # encabezado que decía "2,686.29".
+    return f"{x:,.2f}"
 
 
 def _num(x: float, digits: int = 2) -> str:
-    return f"{x:.{digits}f}".replace(".", ",")
+    return f"{x:.{digits}f}"
 
 
 def _f(features: dict[str, float], key: str) -> float | None:
@@ -176,8 +178,8 @@ def _trend(s: MarketSnapshot) -> dict[str, Any]:
         zone = "neutral"
     parts.append(f"El RSI de {tf} está en {rsi:.0f}, {zone}.")
     parts.append(
-        "Esto describe dónde está el precio, no hacia dónde va: medias y RSI no "
-        "anticiparon dirección en el gate (AUC 0,52)."
+        "Esto describe dónde está el precio, no hacia dónde va: el modelo de "
+        "dirección, que usa estas mismas medidas, no pasó la prueba (ver Laboratorio)."
     )
     return {
         "title": "Precio y tendencia",
@@ -259,7 +261,7 @@ def _structure(s: MarketSnapshot) -> dict[str, Any]:
 
 
 def _signed_r(x: float) -> str:
-    s = f"{abs(x):.2f}".replace(".", ",")
+    s = f"{abs(x):.2f}"
     return f"+{s} R" if x > 0 else f"−{s} R"
 
 
@@ -360,8 +362,8 @@ def market_narrative(s: MarketSnapshot) -> dict[str, Any]:
             "basis": SCOPE,
             "tone": "muted",
             "text": (
-                "Nada de esta lectura anticipa la dirección del precio. BOB no tiene una "
-                "ventaja direccional demostrada: el KPI de Seguridad sigue sin pasar el gate. "
+                "Nada de esta lectura anticipa la dirección del precio. MAREA no tiene una "
+                "ventaja demostrada para la dirección: el modelo que la pronostica no pasó la prueba. "
                 "Lo que sí está medido es cuánto se va a mover y cuándo conviene no entrar. "
                 "La dirección la decides tú, con el tamaño que fija la calculadora."
             ),

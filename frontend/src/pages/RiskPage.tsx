@@ -353,10 +353,10 @@ function SizingResult({
             label="liquidación / stop"
             value={`${num(s.liquidation_to_stop, 1)}×`}
             tone={s.liquidation_to_stop < 1 ? "text-danger" : s.liquidation_to_stop < 1.5 ? "text-warn" : "text-accent"}
-            hint="Debe ser ≥ 1,5×: así una mecha que se pase del stop te saca por el stop y no por liquidación"
+            hint="Debe ser ≥ 1.5×: así una mecha que se pase del stop te saca por el stop y no por liquidación"
           />
           <Row
-            label="leverage máx. (liquidación ≥ 1,5× stop)"
+            label="leverage máx. (liquidación ≥ 1.5× stop)"
             hint="Es un techo de seguridad contra la liquidación, no una recomendación: el tamaño ya está fijado por el riesgo"
             value={multiplier(Math.floor(s.max_safe_leverage * 10) / 10)}
           />
@@ -429,11 +429,25 @@ function SizingResult({
         </div>
         <p className="mt-3 text-[11px] text-neutral-500">
           Las rachas de 15 y 20 no son exageración: son las peores medidas en el backtest de
-          barridos y order blocks sobre ETH (05-10). Esas reglas pierden −0,15 a −0,35 R por
-          trade y no se distinguen de entrar al azar. Este cálculo protege la cuenta; no
+          barridos y order blocks sobre ETH (05-10). Esas reglas pierden{" "}
+          <TechnicalLoss /> por trade y no se distinguen de entrar al azar. Este cálculo protege la cuenta; no
           dice hacia dónde entrar.
         </p>
       </Card>
+    </>
+  );
+}
+
+/** Rango de pérdida por trade de las reglas técnicas, leído del artefacto vía el Laboratorio. */
+function TechnicalLoss() {
+  const q = useQuery({ queryKey: ["lab", "experiments"], queryFn: () => api.labExperiments(), retry: false });
+  const tech = q.data?.experiments.find((e) => e.id === "technical");
+  const rules = Array.isArray(tech?.figures.rules) ? (tech.figures.rules as { mean_r?: unknown }[]) : [];
+  const rs = rules.map((r) => r.mean_r).filter((v): v is number => isNum(v as number));
+  if (!rs.length) return <>lo medido en el Laboratorio</>;
+  return (
+    <>
+      entre {num(Math.min(...rs), 2)} y {num(Math.max(...rs), 2)} R
     </>
   );
 }
