@@ -144,7 +144,9 @@ async def _boot_analyst(
 
 
 app = FastAPI(
-    title="BOB — Asistente de Decisión Intradía",
+    # MAREA es el nombre visible (M6.6). El paquete, la DB y la tarea programada
+    # siguen llamándose `bob` hasta el corte de la Fase 10-bis (regla 12).
+    title="MAREA — API de solo lectura (liquidez global y módulo cripto)",
     version="0.2.0",
     lifespan=lifespan,
 )
@@ -195,8 +197,11 @@ async def health(request: Request) -> dict[str, Any]:
     analyst: LiveAnalyst | None = getattr(request.app.state, "analyst", None)
     return {
         "status": "ok",
+        # `service` es el identificador interno y no cambia con el renombre:
+        # quien lo lea por programa no se entera de la M6.6.
         "service": "bob",
-        "mode": "assistant",  # BOB nunca ejecuta órdenes
+        "product": "MAREA",
+        "mode": "assistant",  # MAREA nunca ejecuta órdenes
         "watchlist": settings.watchlist,
         "default_timeframe": settings.bob_default_timeframe,
         "signal_threshold": settings.bob_signal_threshold,

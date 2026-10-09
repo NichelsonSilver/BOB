@@ -317,3 +317,30 @@ glosario; la configuración de 15m queda debajo, sin cambios.
 Hay 3 preguntas abiertas en `docs/M6_TEXTOS.md` §5: el color de la etiqueta
 de liquidez, la frase "disponible para comprar" y un enlace al glosario desde
 cada tarjeta.
+
+### M6.6 (2026-10-09) — renombre visible
+
+**Lo que cambió:**
+
+- pestaña "MAREA — liquidez global y cripto", con un título por página
+  ("Cripto · Riesgo por trade — MAREA") que sale del mismo menú;
+- favicon con una "M";
+- las dos frases "BOB nunca ejecuta órdenes" (Riesgo y Señal);
+- los títulos de Ajustes, que seguían en inglés (Runtime, Setup, Gate, Venue);
+- el título de la API en `/docs`;
+- el README, que ahora abre con MAREA y sus cuatro capas, deja a BOB como
+  "módulo cripto" y pone al día el estado por fase (10, 10-bis, M0–M6), los
+  tests (824 → 1.172) y la documentación.
+
+**Verificado en la app real:** ninguna de las 15 páginas muestra "BOB".
+
+**Lo que NO cambió, a propósito:**
+
+- el paquete `bob`, el directorio, la DB y la tarea `BOB_panel_forward_diario`
+  (M6.7, después del corte de la 10-bis);
+- el `model_version` `bob-forecast-0.1.0`, que es un dato de la muestra
+  forward y se ve en el pie de la Señal;
+- el campo `service: "bob"` de `/api/health`, que es un identificador para
+  programas. Se agregó al lado `product: "MAREA"`;
+- los logs (`BOB starting`) y el encabezado de los reportes del gate. Los dos
+  son internos, y los reportes viejos tienen que seguir comparables.

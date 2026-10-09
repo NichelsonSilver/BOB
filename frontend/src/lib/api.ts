@@ -1,5 +1,5 @@
 /**
- * Cliente REST tipado del backend de BOB.
+ * Cliente REST tipado del backend de MAREA (el paquete Python sigue llamándose `bob`).
  *
  * Vite proxea `/api` → el backend, así que todo se pide con rutas relativas y
  * funciona igual en dev y servido desde el mismo origen.

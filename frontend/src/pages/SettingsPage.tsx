@@ -77,7 +77,7 @@ function ConfigSection() {
       </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        <Card title="Runtime">
+        <Card title="Ejecución del backend">
           <Row label="watchlist" value={data.runtime.watchlist.join(", ")} />
           <Row label="timeframe" value={data.runtime.default_timeframe} />
           <Row
@@ -128,7 +128,7 @@ function ConfigSection() {
           <Row label="semilla" value={String(data.model.seed)} />
         </Card>
 
-        <Card title="Setup (barreras del etiquetado)">
+        <Card title="Barreras del etiquetado">
           <Row label="TP" value={`${num(data.barrier.tp_mult, 2)} σ`} />
           <Row label="SL" value={`${num(data.barrier.sl_mult, 2)} σ`} />
           <Row label="horizonte" value={`${data.barrier.horizon_bars} barras`} />
@@ -146,7 +146,7 @@ function ConfigSection() {
           </p>
         </Card>
 
-        <Card title="Gate — umbrales de salida">
+        <Card title="Prueba de entrada (gate) — umbrales">
           <Row label="AUC mínimo" value={num(data.gate.min_auc, 2)} />
           <Row label="BSS mínimo" value={num(data.gate.min_bss, 2)} />
           <Row
@@ -159,11 +159,11 @@ function ConfigSection() {
           </p>
         </Card>
 
-        <Card title={`Venue de ejecución — ${venue?.name ?? "—"}`}>
+        <Card title={`Exchange de referencia — ${venue?.name ?? "—"}`}>
           <Row label="fee maker / taker" value={`${pct(venue?.maker_fee, 3)} / ${pct(venue?.taker_fee, 3)}`} />
           <Row label="slippage de referencia" value={pct(venue?.slippage_pct, 3)} />
           <Row label="funding cada" value={`${num(venue?.funding_interval_hours, 0)} h`} />
-          <Row label="leverage máximo del venue" value={multiplier(venue?.max_leverage, 0)} />
+          <Row label="leverage máximo del exchange" value={multiplier(venue?.max_leverage, 0)} />
           <Row label="MMR base" value={pct(data.leverage.default_mmr, 2)} />
           <Row
             label="buffer de seguridad"

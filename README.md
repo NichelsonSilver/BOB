@@ -1,9 +1,41 @@
-# BOB — Bursatil Operator Buddy
+# MAREA — global liquidity and cross-asset flow analyst
 
-A decision assistant for **intraday perpetual-futures trading** on Binance.
-BOB watches the market live, computes an advanced statistical state, and
-tells the user — with probabilistic honesty — which scenario is the safest
-and what the risk is. **BOB never places orders.**
+MAREA maps where global liquidity is moving and which asset classes receive
+it, on a horizon of **weeks to months**, and turns that into a dashboard for
+deciding investment tilts that are aligned with the global macro picture.
+**MAREA never places orders** and suggests tilts between asset classes, not
+trades.
+
+It has four layers:
+
+| layer | what | status |
+|---|---|---|
+| **1. Liquidity** | Fed balance sheet net of TGA and RRP, M2, dollar, real rates, credit, financial conditions, COT, plus a Chile lens (copper, USD/CLP, BCCh) | **Monitoring, no forecast.** Point-in-time regime: rebuilding a past date reproduces history row by row |
+| **2. Macro assets** | Relative ranking over ~23 ETF proxies (equities, Treasuries, credit, gold/silver, commodities, copper, REITs, FX) | **Measured and not viable** (phase M3, pre-registered): IC +0.036, 95% CI [−0.008, +0.078], tied with 12-1 momentum. MAREA macro stays descriptive |
+| **3. Crypto = the BOB module** | Everything below this section: the 15m volatility work, the regime filter and the daily cross-sectional panel | Panel forward validation **in progress** (Phase 10-bis) |
+| **4. Narrative** | News pasted into a session, classified and checked against the data | **Never a model feature**; low, declared weight |
+
+Free data only (FRED with vintages, Tiingo, CFTC, BCCh, DefiLlama, Binance,
+Deribit). No LLM sits in the computation path: the agents in `.claude/` read
+and compute with the code in this repo.
+
+> **On the name.** MAREA is the product name everywhere a user looks. The
+> Python package (`bob`), the directory, the database and the scheduled task
+> `BOB_panel_forward_diario` keep the old name until the Phase 10-bis cutoff:
+> the task runs `bob.paper.panel_forward` by absolute path, and renaming it
+> mid-sample would break the forward run. New macro code lives in the sibling
+> package `marea`.
+
+---
+
+# Crypto module — BOB (Bursatil Operator Buddy)
+
+Started on 2026-08-19 as a decision assistant for **intraday perpetual-futures
+trading** on Binance: it watches the market, computes a statistical state, and
+tells the user — with probabilistic honesty — which scenario is the safest and
+what the risk is. It never places orders. Since 2026-09-26 it is the crypto
+module of MAREA; the live 15m analyst is frozen and the daily panel is the
+active front.
 
 Starting pair: `ETHUSDT` perp. The model is symbol-agnostic (configurable
 watchlist).
@@ -686,6 +718,16 @@ they are re-measured they change on their own.
 
 ## Dashboard and API
 
+**Navigation since M6** (Spanish UI): Inicio · Liquidez · Flujos · Cripto ▾
+(summary, panorama, daily panel, risk calculator, technical map, frozen 15m
+signal) · Laboratorio ▾ (every experiment with its verdict read from its
+artifact, plus the 15m backtest, forward and analysis pages) · Ajustes
+(glossary and the 15m config mirror). Every card shows a number, what it
+means and what it does not mean; the technical backing is one click away.
+The numbers come from the API, never from the TSX.
+
+The original 15m layer, still served under Cripto and Laboratorio:
+
 Five read-only route groups under `/api` — `market`, `analysis`, `history`,
 `backtest`, `settings` — and the five pages that consume them. Four scope
 decisions are worth stating, because each one is a deliberate *no*:
@@ -746,7 +788,7 @@ uv run python -m pytest      # do NOT use `uv run pytest` on Windows (trampoline
 uv run python -m pytest --cov=bob.signals --cov=bob.models --cov=bob.backtest --cov=bob.data
 ```
 
-**824 tests green.** Coverage ≥ 90% in `signals/`, `models/` and `backtest/` —
+**1,172 tests green** (2026-10-09). Coverage ≥ 90% in `signals/`, `models/` and `backtest/` —
 a bug there is a false probability applied to leveraged capital.
 
 Two tests hold up the invariants that, if broken, corrupt everything silently
@@ -773,9 +815,24 @@ Two tests hold up the invariants that, if broken, corrupt everything silently
 | 5-bis | Regime filter — *when not to enter* | ✅ passes its pre-registered criterion · offline only |
 | 5-ter | The sigma ceiling — does a quantile fix it? | ✅ measured · ❌ hypothesis refuted, nothing adopted |
 | 6 | API + dashboard | ✅ built — read-only by design |
+| 10 | Daily cross-sectional panel (659 perps, survivorship-corrected) | ✅ passes its three pre-registered criteria offline; placebo clean |
+| 10-bis | Forward validation of the panel | 🟡 running daily since 2026-09-24 — no result shown before the interim look |
+| — | Technical rules (liquidity sweep, order block) + risk calculator | ✅ measured · ❌ rules do not beat a random entry; the calculator is arithmetic |
 | 7 | Telegram alerts + sentiment | ⬜ |
 | 8 | Outliers Club + multi-symbol | ⬜ |
 | 9 | End-to-end validation | ⬜ |
+
+MAREA phases, on top of the crypto module:
+
+| Phase | What | Status |
+|---|---|---|
+| M0 | Decision, agents and skills | ✅ |
+| M1 | Free macro ingestion with vintages (FRED, Tiingo, CFTC, BCCh) | ✅ |
+| M2 | Point-in-time liquidity monitor | ✅ |
+| M3 | Power → pre-registration → ranking gate | ✅ closed · ❌ ranking not viable |
+| M4 | Narrative log and memo inputs | ✅ |
+| M5 | Stablecoins, recession probit, BTC cycle, breadth, funding, options | ✅ monitoring only |
+| M6 | Dashboard for any reader: simple home, crypto section, lab, glossary, visible rename | 🟡 in progress |
 
 ---
 
@@ -784,6 +841,12 @@ Two tests hold up the invariants that, if broken, corrupt everything silently
 All design documents are in Spanish, the working language of the project.
 
 - `CLAUDE.md` — identity, architecture, KPIs, phases and project rules
+- `docs/REESTRUCTURACION_MAREA.md` — why BOB became the crypto module of MAREA
+- `docs/MAREA_FUENTES.md`, `docs/MAREA_MONITOR.md`, `docs/M5_ALCANCE.md` —
+  macro sources, the liquidity monitor and the crypto-cycle readings
+- `docs/PREREGISTRO_*.md` — every pre-registration, each committed before its run
+- `docs/M6_ALCANCE.md`, `docs/M6_TEXTOS.md` — the dashboard redesign and the
+  plain-language texts
 - `docs/PROBABILITY_MODEL.md` — derivation of the forecasting stack, the gate
   and its results, with the discarded alternatives and the known limits
 - `docs/PREREGISTRO_FILTRO_RIESGO.md` — the regime filter's criterion and test
@@ -801,7 +864,7 @@ All design documents are in Spanish, the working language of the project.
 
 ## Non-negotiable rules
 
-1. **BOB never places orders.** There is no execution code on `main`. Period.
+1. **MAREA never places orders.** There is no execution code on `main`. Period.
 2. **No probabilistic KPI is shown as tradeable without demonstrated
    calibration AND discrimination.** Greyed out and "experimental" until then.
 3. **Layer purity**: `signals/`, `models/` and `backtest/` do no I/O.

@@ -183,7 +183,7 @@ export function RiskPage() {
             {stale && " — viejo: levantá el backend con el feed en vivo o tipeá la entrada"}
           </span>
         </div>
-        <Badge tone="neutral">BOB nunca ejecuta órdenes</Badge>
+        <Badge tone="neutral">MAREA nunca ejecuta órdenes</Badge>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">

@@ -315,7 +315,7 @@ export function SignalPage() {
           <p className="text-center text-[11px] text-neutral-600">
             modelo <span className="font-mono">{forecast.model_version}</span> ·
             entrenado hasta {stamp(forecast.fit_through_ms)} sobre{" "}
-            {count(forecast.n_train)} barras · BOB nunca ejecuta
+            {count(forecast.n_train)} barras · MAREA nunca ejecuta
             órdenes
           </p>
         </>

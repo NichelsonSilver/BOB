@@ -130,10 +130,20 @@ function Freshness() {
   );
 }
 
+/** Título de la pestaña: la página y después MAREA (M6.6). Sale del mismo menú, así no hay dos listas. */
+function pageTitle(pathname: string): string {
+  const all = [...TOP, ...GROUPS.flatMap((g) => g.items.map((it) => ({ ...it, label: `${g.label} · ${it.label}` }))), ...BOTTOM];
+  const hit = all.find((it) => it.to === pathname);
+  return hit && hit.to !== "/" ? `${hit.label} — MAREA` : "MAREA — liquidez global y cripto";
+}
+
 export function Layout() {
   // El socket alimenta la Señal 15m (precio en curso); se abre una sola vez acá.
   useAppWebSocket();
   const { pathname } = useLocation();
+  useEffect(() => {
+    document.title = pageTitle(pathname);
+  }, [pathname]);
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => setMenuOpen(false), [pathname]);
 
