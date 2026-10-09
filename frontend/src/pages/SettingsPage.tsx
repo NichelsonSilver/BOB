@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { Badge, Card, ErrorBox, Loading, Row } from "../components/common/Card";
 import { Glossary } from "../components/marea/Glossary";
+import { useLang } from "../i18n";
 import { api } from "../lib/api";
 import { multiplier, num, pct } from "../lib/format";
 import { useAppStore } from "../stores/appStore";
@@ -29,11 +30,14 @@ import { useAppStore } from "../stores/appStore";
  * lector; la configuración efectiva del módulo de 15m abajo, tal como estaba.
  */
 export function SettingsPage() {
+  const { tr } = useLang();
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-neutral-100">Ajustes</h1>
-        <p className="text-xs text-neutral-500">Glosario y configuración del módulo de 15m.</p>
+        <h1 className="text-xl font-semibold text-neutral-100">{tr("Settings", "Ajustes")}</h1>
+        <p className="text-xs text-neutral-500">
+          {tr("Glossary and configuration of the 15m module.", "Glosario y configuración del módulo de 15m.")}
+        </p>
       </div>
       <Glossary />
       <ConfigSection />

@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from "react";
 
+import { useLang } from "../../i18n";
+
 /**
  * Tarjeta de lectura simple con su respaldo técnico a un clic (M6.1, opción A
  * de `docs/M6_ALCANCE.md` §4.2).
@@ -44,6 +46,7 @@ export function DetailCard({
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const { tr } = useLang();
   return (
     <section className="flex flex-col rounded-lg border border-neutral-800 bg-neutral-900/70 p-4">
       <header className="mb-2 flex items-baseline justify-between gap-2">
@@ -60,7 +63,7 @@ export function DetailCard({
       {notMeaning && <p className="mt-1 text-xs text-neutral-500">{notMeaning}</p>}
       {children && <div className="mt-3">{children}</div>}
       <footer className="mt-auto flex items-center justify-between gap-2 pt-3 text-[11px] text-neutral-600">
-        <span>{asOf ? `dato al ${asOf}` : ""}</span>
+        <span>{asOf ? `${tr("as of", "dato al")} ${asOf}` : ""}</span>
         {detail && (
           <button
             type="button"
@@ -68,7 +71,7 @@ export function DetailCard({
             className="rounded px-2 py-0.5 text-neutral-400 hover:bg-neutral-800 hover:text-accent"
             aria-expanded={open}
           >
-            {open ? "Ocultar detalle" : "Ver detalle"}
+            {open ? tr("Hide detail", "Ocultar detalle") : tr("Show detail", "Ver detalle")}
           </button>
         )}
       </footer>
@@ -97,10 +100,11 @@ export function Delta({ dir, children }: { dir: "up" | "down" | "flat"; children
 
 /** Error de un bloque: se dice qué falta, no se dibuja un cero. */
 export function BlockMissing({ title, error }: { title: string; error: string }) {
+  const { tr } = useLang();
   return (
     <section className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-4">
       <h2 className="text-xs uppercase tracking-wider text-neutral-500">{title}</h2>
-      <p className="mt-2 text-sm text-neutral-500">Sin dato todavía.</p>
+      <p className="mt-2 text-sm text-neutral-500">{tr("No data yet.", "Sin dato todavía.")}</p>
       <p className="mt-1 font-mono text-[11px] text-neutral-600">{error}</p>
     </section>
   );

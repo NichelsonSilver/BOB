@@ -75,3 +75,7 @@ que más conviene revisar:
 Queda para la M6.6 (renombre visible): los títulos de la configuración en
 Ajustes siguen en inglés (Runtime, Setup, Gate, Venue), y el título de la
 pestaña sigue siendo BOB.
+
+**Respuestas de Nichelson (2026-10-09):** (1) la liquidez **conserva sus
+colores**; (2) la frase "disponible para comprar" **se deja**; (3) **sin**
+enlace al glosario desde cada tarjeta.

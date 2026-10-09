@@ -8,6 +8,7 @@ import {
 } from "recharts";
 
 import { SERIES, STATUS } from "../../lib/chartTheme";
+import { useLang } from "../../i18n";
 import { isNum } from "../../lib/format";
 
 /**
@@ -41,6 +42,7 @@ export function Spark({
   /** Tercios del compuesto de liquidez (débil / normal / fuerte). */
   bands?: boolean;
 }) {
+  const { tr } = useLang();
   const val = (d: Point, k: string) => (d as Record<string, unknown>)[k];
   const pts = data.filter((d) => isNum(val(d, y) as number | null));
   if (pts.length < 2) return null;
@@ -66,7 +68,7 @@ export function Spark({
       <div className="flex justify-between text-[10px] text-neutral-600">
         <span>{first}</span>
         <span>{span}</span>
-        <span>hoy</span>
+        <span>{tr("today", "hoy")}</span>
       </div>
     </div>
   );

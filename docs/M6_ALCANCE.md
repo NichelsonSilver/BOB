@@ -105,6 +105,8 @@ verde. La Fase 6 encontró cuatro defectos que solo se veían así.
 | 2026-10-07 | M6.1 lo técnico (§4.2) | **A. "Ver detalle" por tarjeta** | el respaldo queda junto al dato al que pertenece |
 | 2026-10-07 | M6.0 | todo lo referido al forward se mantiene (15m y 10-bis) | se espera el resultado del panel |
 | 2026-10-08 | M6.2 portada (§4.3) | **A. Seis tarjetas con gráfico chico**: liquidez, stablecoins, ciclo BTC, recesión, clases de activo, estudio del panel | se ve de un vistazo qué sube y qué baja; la B ponía en grande la serie más inestable del panel |
+| 2026-10-09 | M6.5 preguntas abiertas | la etiqueta de liquidez **conserva sus colores**; se deja "disponible para comprar"; **sin** enlace al glosario desde cada tarjeta | decisión de Nichelson tras ver la app levantada |
+| 2026-10-09 | idioma | **interfaz bilingüe, inglés por defecto**, con botón EN / ES; se hace en **dos pasos** (páginas simples primero, técnicas y textos del backend después); README del repo en inglés | pedido de Nichelson |
 
 ## 7. Dependencias
 
@@ -344,3 +346,49 @@ cada tarjeta.
   programas. Se agregó al lado `product: "MAREA"`;
 - los logs (`BOB starting`) y el encabezado de los reportes del gate. Los dos
   son internos, y los reportes viejos tienen que seguir comparables.
+
+### M6.8 (2026-10-09) — idioma, paso 1
+
+La interfaz es **bilingüe y parte en inglés** (decisión del 09-10, §6). Hay un
+botón EN / ES en el encabezado, la elección se guarda en el navegador
+(`marea.lang`) y `<html lang>` acompaña.
+
+**Diseño** (`src/i18n.ts`): sin librería. Los dos textos van juntos donde se
+usan, `tr("Home", "Inicio")`, porque un diccionario aparte se desincroniza del
+código sin que nada falle. **Las cifras no cambian con el idioma**: siguen
+pasando por `lib/format.ts`, con punto decimal en los dos.
+
+**Paso 1, hecho:**
+
+- el menú y el título de pestaña de las 15 rutas;
+- el encabezado;
+- Inicio, Cripto ▸ Resumen, Panorama y Panel diario;
+- Laboratorio ▸ Resumen;
+- el glosario (29 términos) y el encabezado de Ajustes;
+- los componentes compartidos ("Show detail", "as of", "today", "Loading").
+
+Los textos que hoy arma el backend en estas páginas (nombres de clases de
+activo, zona del ciclo, etiqueta de altseason, advertencia de recesión, líneas
+de respaldo) se traducen en el frontend desde claves estables. Si llega uno
+desconocido, se muestra tal cual. La advertencia de recesión se rearma con
+`peak_since_2022`, que la API ya envía.
+
+**Verificado en la app:**
+
+- en inglés, ninguna de las seis páginas del paso 1 tiene una línea en
+  español (se buscaron tildes y palabras frecuentes);
+- ES persiste al recargar;
+- con 390 px de ancho no hay desborde en ninguno de los dos idiomas.
+
+De paso, el porcentaje de días que cuentan del Panel diario se trunca (decía
+44% con 43,75%).
+
+**Paso 2, pendiente:**
+
+- las páginas técnicas: Liquidez, Flujos, Riesgo, Mapa, Señal 15m, Backtest,
+  Forward 15m, Análisis y la configuración de Ajustes;
+- los textos que arma el backend: la lectura de la Señal, los avisos de la
+  calculadora y los mensajes de error. Recibirían un parámetro `lang`.
+
+**README del repositorio:** ya estaba entero en inglés. Se corrigió la frase
+que decía "Spanish UI".

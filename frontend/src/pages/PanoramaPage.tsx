@@ -10,6 +10,7 @@ import {
   RecessionCard,
   StablecoinsCard,
 } from "../components/marea/Cards";
+import { useLang } from "../i18n";
 import { api } from "../lib/api";
 
 /**
@@ -18,21 +19,25 @@ import { api } from "../lib/api";
  * monitoreo: ninguna tarjeta pronostica (`docs/M5_ALCANCE.md` §5).
  */
 export function PanoramaPage() {
+  const { tr } = useLang();
   const q = useQuery({
     queryKey: ["macro", "panorama"],
     queryFn: () => api.panorama(),
     retry: false,
     staleTime: 600_000,
   });
-  if (q.isLoading) return <Loading what="el panorama (unos segundos la primera vez)" />;
+  if (q.isLoading) return <Loading what={tr("the panorama (a few seconds the first time)", "el panorama (unos segundos la primera vez)")} />;
   if (q.error || !q.data) return <ErrorBox>{String(q.error)}</ErrorBox>;
   const p = q.data;
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold text-neutral-100">Panorama cripto</h1>
+        <h1 className="text-2xl font-semibold text-neutral-100">{tr("Crypto panorama", "Panorama cripto")}</h1>
         <p className="mt-1 text-sm text-neutral-400">
-          Dónde está el ciclo, cuán extendida está la subida y cuánto apalancamiento hay. Describe; no pronostica.
+          {tr(
+            "Where the cycle is, how widespread the rise is and how much leverage there is. It describes; it does not forecast.",
+            "Dónde está el ciclo, cuán extendida está la subida y cuánto apalancamiento hay. Describe; no pronostica.",
+          )}
         </p>
       </header>
       <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">

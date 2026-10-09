@@ -9,6 +9,7 @@ import {
   StablecoinsCard,
   StrengthCard,
 } from "../components/marea/Cards";
+import { useLang } from "../i18n";
 import { api } from "../lib/api";
 
 /**
@@ -20,6 +21,7 @@ import { api } from "../lib/api";
  * seis tarjetas iguales, cada una con su gráfico chico.
  */
 export function HomePage() {
+  const { tr } = useLang();
   const liq = useQuery({
     queryKey: ["macro", "liquidity"],
     queryFn: () => api.liquidity(),
@@ -47,7 +49,7 @@ export function HomePage() {
   });
 
   const liquidity = liq.isLoading ? (
-    <Loading what="la liquidez" />
+    <Loading what={tr("liquidity", "la liquidez")} />
   ) : liq.data ? (
     <LiquidityCard rep={liq.data} chart />
   ) : (
@@ -60,7 +62,7 @@ export function HomePage() {
       <RecessionCard p={pano.data} chart />
     </>
   ) : pano.isLoading ? (
-    <Loading what="el panorama (unos segundos la primera vez)" />
+    <Loading what={tr("the panorama (a few seconds the first time)", "el panorama (unos segundos la primera vez)")} />
   ) : (
     <ErrorBox>{String(pano.error)}</ErrorBox>
   );
@@ -74,9 +76,12 @@ export function HomePage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold text-neutral-100">Cómo está el mercado</h1>
+        <h1 className="text-2xl font-semibold text-neutral-100">{tr("Where the market stands", "Cómo está el mercado")}</h1>
         <p className="mt-1 text-sm text-neutral-400">
-          Lo que miden los datos hoy. Describe el momento; no dice qué comprar ni hacia dónde va el precio.
+          {tr(
+            "What the data measure today. It describes the moment; it does not say what to buy or where prices are going.",
+            "Lo que miden los datos hoy. Describe el momento; no dice qué comprar ni hacia dónde va el precio.",
+          )}
         </p>
       </header>
 

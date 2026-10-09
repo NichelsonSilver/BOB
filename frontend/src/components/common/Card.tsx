@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { useLang } from "../../i18n";
+
 export function Card({
   title,
   right,
@@ -109,8 +111,11 @@ export function ErrorBox({ children }: { children: ReactNode }) {
 }
 
 export function Loading({ what }: { what: string }) {
+  const { tr } = useLang();
   return (
-    <div className="animate-pulse text-sm text-neutral-500">Cargando {what}…</div>
+    <div className="animate-pulse text-sm text-neutral-500">
+      {tr("Loading", "Cargando")} {what}…
+    </div>
   );
 }
 

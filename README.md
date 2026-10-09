@@ -718,11 +718,13 @@ they are re-measured they change on their own.
 
 ## Dashboard and API
 
-**Navigation since M6** (Spanish UI): Inicio · Liquidez · Flujos · Cripto ▾
-(summary, panorama, daily panel, risk calculator, technical map, frozen 15m
-signal) · Laboratorio ▾ (every experiment with its verdict read from its
-artifact, plus the 15m backtest, forward and analysis pages) · Ajustes
-(glossary and the 15m config mirror). Every card shows a number, what it
+**Navigation since M6**: Home · Liquidity · Flows · Crypto ▾ (overview,
+panorama, daily panel, trade-risk calculator, technical map, frozen 15m
+signal) · Lab ▾ (every experiment with its verdict read from its artifact,
+plus the 15m backtest, forward and analysis pages) · Settings (glossary and
+the 15m config mirror). **The UI is bilingual**: English by default, with an
+EN / ES toggle in the header that is remembered per browser. Both languages
+show the same numbers; only the surrounding text changes. Every card shows a number, what it
 means and what it does not mean; the technical backing is one click away.
 The numbers come from the API, never from the TSX.
 
