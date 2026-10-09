@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Layout } from "./components/layout/Layout";
 import { AnalysisPage } from "./pages/AnalysisPage";
 import { BacktestPage } from "./pages/BacktestPage";
+import { CryptoPage } from "./pages/CryptoPage";
 import { FlowsPage } from "./pages/FlowsPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { HomePage } from "./pages/HomePage";
@@ -42,6 +43,7 @@ export function App() {
         <Route index element={<HomePage />} />
         <Route path="/liquidez" element={<MacroPage />} />
         <Route path="/flujos" element={<FlowsPage />} />
+        <Route path="/cripto" element={<CryptoPage />} />
         <Route path="/cripto/panorama" element={<PanoramaPage />} />
         <Route path="/cripto/panel" element={<PanelPage />} />
         <Route path="/cripto/riesgo" element={<RiskPage />} />

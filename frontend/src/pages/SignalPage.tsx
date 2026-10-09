@@ -166,6 +166,7 @@ export function SignalPage() {
             regime={forecast.regime}
             evidence={riskFilter.data ?? null}
             stopEvidence={stopFilter.data ?? null}
+            staleSince={forecast.is_stale ? stamp(forecast.open_time) : null}
           />
 
           {/* --- Chart + proyección ------------------------------------- */}

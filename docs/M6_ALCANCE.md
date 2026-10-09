@@ -204,3 +204,31 @@ estaba en 7 días y la tarjeta de clases salía como "dato viejo".
 
 **Elegida la A (2026-10-08, §6).** Se borraron el selector, `LiquidityHero` y
 el gráfico grande. La historia completa del compuesto sigue en Liquidez.
+
+### M6.3 (2026-10-09) — sección Cripto
+
+La agrupación ya existía desde la M6.1 (Cripto ▾ con Panorama, Panel diario,
+Riesgo, Mapa y Señal 15m). Lo que agrega esta etapa:
+
+**Cripto ▸ Resumen** (`/cripto`, `pages/CryptoPage.tsx`): la puerta de la
+sección. Una tarjeta por página con la pregunta que contesta, una línea de qué
+muestra y su **respaldo en una palabra**:
+
+| página | respaldo | dato vivo (de la API) |
+|---|---|---|
+| Panorama | descriptivo | — |
+| Panel diario | en prueba | días válidos / 90 (nunca el IC) |
+| Riesgo por trade | aritmética | — |
+| Mapa técnico | descriptivo (las reglas de entrada no le ganaron al azar) | — |
+| Señal 15m | congelada (gris) | edad del último pronóstico |
+
+**Menú en el móvil** (`Layout.tsx`): bajo `md` el menú es un panel que se abre
+con ☰ en el encabezado y se cierra al navegar o al tocar fuera. Medido en
+390 px: ninguna de las 13 páginas desborda a lo ancho.
+
+**Encontrado en capturas:** en la Señal 15m el filtro de régimen decía
+"Régimen normal" grande y en verde con un pronóstico de 3 días. Leído así
+parece el estado de hoy. La página Riesgo ya lo ocultaba cuando el pronóstico
+no está vigente; en la Señal se deja (la página *es* el último pronóstico),
+pero en gris, con el medidor en gris y la frase "Estado del <fecha>, no de
+ahora". La lectura en texto ya se marcaba "vieja".

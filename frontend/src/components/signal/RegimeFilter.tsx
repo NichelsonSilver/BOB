@@ -26,7 +26,7 @@ import type { RegimeState, RiskFilterEvidence, StopFilterEvidence } from "../../
  *   entienda "va a bajar" estaría operando contra un modelo que no existe.
  */
 
-function Meter({ percentile, q }: { percentile: number; q: number }) {
+function Meter({ percentile, q, muted = false }: { percentile: number; q: number; muted?: boolean }) {
   const p = Math.min(Math.max(percentile, 0), 100);
   const threshold = q * 100;
   const elevated = p >= threshold;
@@ -35,7 +35,7 @@ function Meter({ percentile, q }: { percentile: number; q: number }) {
     <div className="mt-3">
       <div className="relative h-2 w-full rounded-full bg-neutral-800">
         <div
-          className={`h-2 rounded-full ${elevated ? "bg-warn" : "bg-accent"}`}
+          className={`h-2 rounded-full ${muted ? "bg-neutral-600" : elevated ? "bg-warn" : "bg-accent"}`}
           style={{ width: `${p}%` }}
         />
         {/* La marca del umbral va SOBRE la barra: sin ella un 74% y un 82% se
@@ -59,12 +59,17 @@ export function RegimeFilter({
   regime,
   evidence,
   stopEvidence = null,
+  staleSince = null,
 }: {
   regime: RegimeState | null;
   evidence: RiskFilterEvidence | null;
   /** La lectura con stop (05-10). Es la que le importa a quien opera con
    *  stop y leverage bajo; sin ella se cae al texto de alcance genérico. */
   stopEvidence?: StopFilterEvidence | null;
+  /** Fecha legible del pronóstico cuando ya no está vigente (M6.3: la Señal
+   *  15m congelada). El estado se dibuja en gris y fechado: "Régimen normal"
+   *  en verde con datos de hace días se lee como el mercado de hoy. */
+  staleSince?: string | null;
 }) {
   if (!regime) {
     return (
@@ -97,7 +102,7 @@ export function RegimeFilter({
       <div className="flex items-baseline gap-3">
         <span
           className={`text-2xl font-semibold ${
-            elevated ? "text-warn" : "text-accent"
+            staleSince ? "text-neutral-500" : elevated ? "text-warn" : "text-accent"
           }`}
         >
           {elevated ? "No entrar" : "Régimen normal"}
@@ -107,13 +112,18 @@ export function RegimeFilter({
         </span>
       </div>
 
+      {staleSince && (
+        <p className="mt-1 text-sm text-warn">
+          Estado del {staleSince}, no de ahora: el análisis de 15m está detenido.
+        </p>
+      )}
       <p className="mt-1 text-sm text-neutral-400">
         {elevated
           ? "La volatilidad que viene está en el quintil alto de lo que este modelo pronostica. Esperar, o entrar con menos leverage."
           : "La volatilidad pronosticada está dentro del rango habitual del modelo."}
       </p>
 
-      <Meter percentile={percentile} q={regime.q} />
+      <Meter percentile={percentile} q={regime.q} muted={Boolean(staleSince)} />
 
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
         <dt className="text-neutral-500">sigma pronosticada</dt>

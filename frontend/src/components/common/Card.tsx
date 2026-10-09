@@ -54,7 +54,7 @@ export function Stat({
   );
 }
 
-type BadgeTone = "neutral" | "ok" | "warn" | "bad" | "muted";
+export type BadgeTone = "neutral" | "ok" | "warn" | "bad" | "muted";
 
 const BADGE_TONES: Record<BadgeTone, string> = {
   neutral: "border-neutral-700 text-neutral-300",
