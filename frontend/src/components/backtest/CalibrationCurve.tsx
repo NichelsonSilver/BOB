@@ -12,6 +12,7 @@ import {
 } from "recharts";
 
 import { INK, SERIES_BY_ROLE, TOOLTIP_STYLE } from "../../lib/chartTheme";
+import { useLang } from "../../i18n";
 import { count, pct } from "../../lib/format";
 import type { CalibrationBucket } from "../../types";
 
@@ -38,6 +39,7 @@ export function CalibrationCurve({
   buckets: CalibrationBucket[];
   baseRate: number;
 }) {
+  const { tr } = useLang();
   const data = buckets.map((b) => ({
     predicted: b.mean_predicted,
     observed: b.observed_rate,
@@ -62,7 +64,7 @@ export function CalibrationCurve({
           stroke={INK.axis}
           tick={{ fill: INK.muted, fontSize: 10 }}
           label={{
-            value: "probabilidad predicha",
+            value: tr("predicted probability", "probabilidad predicha"),
             position: "insideBottom",
             offset: -10,
             fill: INK.muted,
@@ -97,7 +99,7 @@ export function CalibrationCurve({
           stroke={SERIES_BY_ROLE.reference}
           strokeDasharray="2 3"
           label={{
-            value: `tasa base ${pct(baseRate, 1)}`,
+            value: `${tr("base rate", "tasa base")} ${pct(baseRate, 1)}`,
             fill: SERIES_BY_ROLE.reference,
             fontSize: 10,
             position: "insideBottomRight",
@@ -108,8 +110,8 @@ export function CalibrationCurve({
           cursor={{ stroke: INK.axis }}
           formatter={(value, name) => {
             const v = typeof value === "number" ? value : null;
-            if (name === "n") return [count(v), "casos"];
-            return [pct(v, 1), name === "observed" ? "observado" : "predicho"];
+            if (name === "n") return [count(v), tr("cases", "casos")];
+            return [pct(v, 1), name === "observed" ? tr("observed", "observado") : tr("predicted", "predicho")];
           }}
         />
         <Scatter

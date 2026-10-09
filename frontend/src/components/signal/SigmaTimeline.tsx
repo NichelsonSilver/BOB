@@ -10,6 +10,7 @@ import {
 } from "recharts";
 
 import { INK, SERIES_BY_ROLE, TOOLTIP_STYLE } from "../../lib/chartTheme";
+import { useLang } from "../../i18n";
 import { pct, stamp } from "../../lib/format";
 import type { ForecastRow } from "../../types";
 
@@ -30,6 +31,7 @@ import type { ForecastRow } from "../../types";
  * través de un pronóstico sin resolver dibujaría un dato que no existe.
  */
 export function SigmaTimeline({ rows }: { rows: ForecastRow[] }) {
+  const { tr } = useLang();
   const data = [...rows]
     .sort((a, b) => a.open_time - b.open_time)
     .map((r) => ({
@@ -41,7 +43,10 @@ export function SigmaTimeline({ rows }: { rows: ForecastRow[] }) {
   if (data.length < 2) {
     return (
       <div className="py-8 text-center text-sm text-neutral-500">
-        Hacen falta al menos dos pronósticos para dibujar la evolución.
+        {tr(
+          "At least two forecasts are needed to draw the evolution.",
+          "Hacen falta al menos dos pronósticos para dibujar la evolución.",
+        )}
       </div>
     );
   }
@@ -78,7 +83,7 @@ export function SigmaTimeline({ rows }: { rows: ForecastRow[] }) {
         <Line
           type="monotone"
           dataKey="pronosticada"
-          name="sigma pronosticada"
+          name={tr("forecast sigma", "sigma pronosticada")}
           stroke={SERIES_BY_ROLE.forecast}
           strokeWidth={2}
           dot={false}
@@ -87,7 +92,7 @@ export function SigmaTimeline({ rows }: { rows: ForecastRow[] }) {
         <Line
           type="monotone"
           dataKey="realizada"
-          name="sigma realizada"
+          name={tr("realized sigma", "sigma realizada")}
           stroke={SERIES_BY_ROLE.realized}
           strokeWidth={2}
           dot={false}

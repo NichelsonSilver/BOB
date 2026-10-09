@@ -10,6 +10,8 @@ import {
 } from "lightweight-charts";
 import { useEffect, useMemo, useRef } from "react";
 
+import { useLang } from "../../i18n";
+
 import { SERIES_BY_ROLE, STATUS } from "../../lib/chartTheme";
 import type { Candle, ConeBand, SetupProjection } from "../../types";
 
@@ -48,6 +50,7 @@ export function PriceChart({
   cone: ConeBand | null;
   height?: number;
 }) {
+  const { lang } = useLang();
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const series = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -141,7 +144,7 @@ export function PriceChart({
     };
 
     if (projection) {
-      add(projection.entry_price, COLORS.entry, "entrada", LineStyle.Dotted, 1);
+      add(projection.entry_price, COLORS.entry, lang === "en" ? "entry" : "entrada", LineStyle.Dotted, 1);
       add(projection.take_profit, COLORS.tp, "TP", LineStyle.Dashed, 1);
       add(projection.stop_loss, COLORS.sl, "SL", LineStyle.Dashed, 1);
       // Sólida y más gruesa: es el nivel del que no se vuelve.
@@ -154,11 +157,11 @@ export function PriceChart({
       );
     }
     if (cone) {
-      const label = `cono ${(cone.nominal * 100).toFixed(0)}%`;
+      const label = `${lang === "en" ? "cone" : "cono"} ${(cone.nominal * 100).toFixed(0)}%`;
       add(cone.price_hi, COLORS.cone, `${label} ↑`, LineStyle.LargeDashed, 1);
       add(cone.price_lo, COLORS.cone, `${label} ↓`, LineStyle.LargeDashed, 1);
     }
-  }, [projection, cone]);
+  }, [projection, cone, lang]);
 
   return <div ref={container} className="w-full" style={{ height }} />;
 }

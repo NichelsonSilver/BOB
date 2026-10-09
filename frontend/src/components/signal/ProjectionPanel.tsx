@@ -8,6 +8,7 @@ import {
   sigmas,
   signedPct,
 } from "../../lib/format";
+import { useLang } from "../../i18n";
 import type { SetupProjection } from "../../types";
 
 /**
@@ -39,6 +40,7 @@ export function ProjectionPanel({
   onLeverage: (v: number) => void;
   maxLeverage: number;
 }) {
+  const { tr } = useLang();
   const p = projection;
   const noLiquidation = p.liquidation_price <= 0;
   const liqTone = p.liquidation_before_stop
@@ -51,17 +53,17 @@ export function ProjectionPanel({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xs uppercase tracking-wider text-neutral-500">
-          KPI 2 — Proyección
+          {tr("KPI 2 — Projection", "KPI 2 — Proyección")}
         </h2>
         <Badge tone={p.is_actionable ? "ok" : "muted"}>
-          {p.is_actionable ? "EV positivo" : "EV no positivo"}
+          {p.is_actionable ? tr("positive EV", "EV positivo") : tr("EV not positive", "EV no positivo")}
         </Badge>
       </div>
 
       {/* --- Niveles ---------------------------------------------------- */}
       <div className="grid grid-cols-3 gap-2 text-center">
         <Level label="Stop loss" value={price(p.stop_loss)} sub={pct(-p.sl_pct)} tone="text-danger" />
-        <Level label="Entrada" value={price(p.entry_price)} sub={`R:B ${num(p.risk_reward, 2)}`} />
+        <Level label={tr("Entry", "Entrada")} value={price(p.entry_price)} sub={`R:B ${num(p.risk_reward, 2)}`} />
         <Level label="Take profit" value={price(p.take_profit)} sub={signedPct(p.tp_pct)} tone="text-accent" />
       </div>
 
@@ -70,7 +72,7 @@ export function ProjectionPanel({
         <div className="flex items-end justify-between gap-4">
           <div>
             <div className="text-xs uppercase tracking-wider text-neutral-500">
-              EV neto (sin leverage)
+              {tr("Net EV (no leverage)", "EV neto (sin leverage)")}
             </div>
             <div className={`font-mono text-2xl ${signClass(p.net_ev_pct)}`}>
               {signedPct(p.net_ev_pct, 3)}
@@ -78,31 +80,31 @@ export function ProjectionPanel({
           </div>
           <div className="text-right">
             <div className="text-xs uppercase tracking-wider text-neutral-500">
-              hace falta acertar
+              {tr("win rate needed", "hace falta acertar")}
             </div>
             <div className="font-mono text-lg text-warn">
               {pct(p.breakeven_probability, 1)}
             </div>
             <div className="font-mono text-[11px] text-neutral-500">
-              el modelo dice {pct(p.probability, 1)} ({num(p.edge_pp, 1)}pp)
+              {tr("the model says", "el modelo dice")} {pct(p.probability, 1)} ({num(p.edge_pp, 1)}pp)
             </div>
           </div>
         </div>
         <div className="mt-2 border-t border-neutral-800 pt-2">
-          <Row label="EV bruto" value={signedPct(p.gross_ev_pct, 3)} />
+          <Row label={tr("gross EV", "EV bruto")} value={signedPct(p.gross_ev_pct, 3)} />
           <Row
-            label="costo (fees + slippage + funding)"
+            label={tr("cost (fees + slippage + funding)", "costo (fees + slippage + funding)")}
             value={`−${pct(p.cost_pct, 3)}`}
-            hint="entra en el etiquetado, no se descuenta después"
+            hint={tr("it goes into the labelling, it is not deducted afterwards", "entra en el etiquetado, no se descuenta después")}
           />
           <Row
-            label="horizonte"
-            value={`${p.horizon_bars} barras · ${num(p.horizon_hours, 1)} h`}
+            label={tr("horizon", "horizonte")}
+            value={`${p.horizon_bars} ${tr("bars", "barras")} · ${num(p.horizon_hours, 1)} h`}
           />
           <Row
-            label="sigma del horizonte"
+            label={tr("horizon sigma", "sigma del horizonte")}
             value={pct(p.sigma_horizon, 3)}
-            hint="pronosticada por el modelo que sí pasó el gate"
+            hint={tr("forecast by the model that did pass the gate", "pronosticada por el modelo que sí pasó el gate")}
           />
         </div>
       </div>
@@ -133,7 +135,7 @@ export function ProjectionPanel({
         <div className="flex justify-between font-mono text-[10px] text-neutral-600">
           <span>1x</span>
           <span>
-            máx seguro {multiplier(p.max_safe_leverage)} · venue{" "}
+            {tr("safe max", "máx seguro")} {multiplier(p.max_safe_leverage)} · {tr("exchange", "exchange")}{" "}
             {multiplier(maxLeverage, 0)}
           </span>
           <span>20x</span>
@@ -142,45 +144,51 @@ export function ProjectionPanel({
 
       <div className="rounded border border-neutral-800 bg-neutral-950/60 p-3">
         <Row
-          label="precio de liquidación"
+          label={tr("liquidation price", "precio de liquidación")}
           value={
             // A 1x con margen aislado la fórmula da exactamente 0: un long
             // solo se liquida si el precio llega a cero. Mostrar "0.00" es
             // correcto y se lee como un dato faltante, que es peor que no
             // mostrarlo — el usuario es averso al riesgo y este es el número
             // que vino a buscar.
-            noLiquidation ? "no alcanzable" : price(p.liquidation_price)
+            noLiquidation ? tr("not reachable", "no alcanzable") : price(p.liquidation_price)
           }
           tone={noLiquidation ? "text-accent" : liqTone}
           hint={
             noLiquidation
-              ? "a este leverage la posición solo se liquidaría con el precio en cero (margen aislado)"
+              ? tr(
+                  "at this leverage the position would only be liquidated with the price at zero (isolated margin)",
+                  "a este leverage la posición solo se liquidaría con el precio en cero (margen aislado)",
+                )
               : undefined
           }
         />
         <Row
-          label="distancia a liquidación"
+          label={tr("distance to liquidation", "distancia a liquidación")}
           value={
             noLiquidation
-              ? "todo el precio"
+              ? tr("the whole price", "todo el precio")
               : `${pct(p.liq_distance_pct)} · ${sigmas(p.liq_distance_sigmas)}`
           }
           tone={noLiquidation ? "text-accent" : liqTone}
-          hint="en sigmas del horizonte: cuántos movimientos típicos caben antes"
+          hint={tr(
+            "in horizon sigmas: how many typical moves fit before it",
+            "en sigmas del horizonte: cuántos movimientos típicos caben antes",
+          )}
         />
         <Row
-          label="P(tocar liquidación)"
+          label={tr("P(hit liquidation)", "P(tocar liquidación)")}
           value={pct(p.prob_touch_liquidation, 3)}
           tone={liqTone}
         />
-        <Row label="margen inicial" value={pct(p.margin_pct, 1)} />
+        <Row label={tr("initial margin", "margen inicial")} value={pct(p.margin_pct, 1)} />
         <Row
-          label="ROE esperado"
+          label={tr("expected ROE", "ROE esperado")}
           value={signedPct(p.roe_pct, 3)}
           tone={signClass(p.roe_pct)}
         />
         <Row
-          label="ROE en TP / en SL"
+          label={tr("ROE at TP / at SL", "ROE en TP / en SL")}
           value={`${signedPct(p.roe_tp_pct)} / ${signedPct(p.roe_sl_pct)}`}
         />
       </div>

@@ -12,6 +12,7 @@ import { RegimeFilter } from "../components/signal/RegimeFilter";
 import { SecurityGauge } from "../components/signal/SecurityGauge";
 import { SigmaTimeline } from "../components/signal/SigmaTimeline";
 import { useTarget } from "../hooks/useTarget";
+import { useLang } from "../i18n";
 import { api } from "../lib/api";
 import { count, num, pct, price, stamp } from "../lib/format";
 import { tickPrice, useAppStore } from "../stores/appStore";
@@ -28,6 +29,7 @@ import { tickPrice, useAppStore } from "../stores/appStore";
  * darle al número menos respaldado el lugar de más autoridad.
  */
 export function SignalPage() {
+  const { lang, tr } = useLang();
   const { symbol, timeframe, settings } = useTarget();
   const leverage = useAppStore((s) => s.leverage);
   const setLeverage = useAppStore((s) => s.setLeverage);
@@ -46,8 +48,8 @@ export function SignalPage() {
     enabled,
   });
   const projection = useQuery({
-    queryKey: ["projection", symbol, timeframe, leverage],
-    queryFn: () => api.projection({ ...target, leverage }),
+    queryKey: ["projection", symbol, timeframe, leverage, lang],
+    queryFn: () => api.projection({ ...target, leverage, lang }),
     enabled,
     retry: false, // un 409 de horizonte no se arregla reintentando
   });
@@ -71,8 +73,8 @@ export function SignalPage() {
     staleTime: 300_000, // los artefactos no cambian solos
   });
   const narrative = useQuery({
-    queryKey: ["narrative", symbol, latest.data?.forecast?.open_time],
-    queryFn: () => api.narrative({ symbol }),
+    queryKey: ["narrative", symbol, latest.data?.forecast?.open_time, lang],
+    queryFn: () => api.narrative({ symbol, lang }),
     enabled: enabled && Boolean(latest.data?.forecast),
     retry: false,
   });
@@ -95,8 +97,8 @@ export function SignalPage() {
     staleTime: 60_000,
   });
 
-  if (!enabled) return <Loading what="la configuración del backend" />;
-  if (latest.isLoading) return <Loading what="el último pronóstico" />;
+  if (!enabled) return <Loading what={tr("the backend configuration", "la configuración del backend")} />;
+  if (latest.isLoading) return <Loading what={tr("the latest forecast", "el último pronóstico")} />;
   if (latest.error) return <ErrorBox>{String(latest.error)}</ErrorBox>;
 
   const forecast = latest.data?.forecast ?? null;
@@ -114,12 +116,18 @@ export function SignalPage() {
     <div className="space-y-4">
       <div className="space-y-2 rounded border border-neutral-800 bg-neutral-900/60 px-3 py-2">
         <div className="text-xs text-neutral-400">
-          <span className="font-semibold text-warn">Módulo congelado.</span> El análisis en vivo de 15m no corre
-          desde el 26-09; lo que sigue es el último pronóstico emitido
+          <span className="font-semibold text-warn">{tr("Frozen module.", "Módulo congelado.")}</span>{" "}
+          {tr(
+            "The live 15m analysis has not run since 26-09; what follows is the last forecast issued",
+            "El análisis en vivo de 15m no corre desde el 26-09; lo que sigue es el último pronóstico emitido",
+          )}
           {ageHours !== null && ageHours > 1
-            ? `, de hace ${ageHours < 48 ? `${Math.round(ageHours)} h` : `${Math.round(ageHours / 24)} días`}`
+            ? tr(
+                `, from ${ageHours < 48 ? `${Math.round(ageHours)} h` : `${Math.round(ageHours / 24)} days`} ago`,
+                `, de hace ${ageHours < 48 ? `${Math.round(ageHours)} h` : `${Math.round(ageHours / 24)} días`}`,
+              )
             : ""}
-          . La calculadora de Riesgo no depende de él.
+          . {tr("The Risk calculator does not depend on it.", "La calculadora de Riesgo no depende de él.")}
         </div>
         <FeedStatus />
       </div>
@@ -131,7 +139,7 @@ export function SignalPage() {
             {live !== null ? price(live) : price(forecast?.reference_price)}
           </span>
           <span className="text-xs text-neutral-500">
-            {live !== null ? "precio en curso" : "última barra cerrada"}
+            {live !== null ? tr("live price", "precio en curso") : tr("last closed bar", "última barra cerrada")}
           </span>
         </div>
         <TargetBar />
@@ -144,14 +152,18 @@ export function SignalPage() {
       />
 
       {analysisError && (
-        <ErrorBox>El analista reportó: {analysisError}</ErrorBox>
+        <ErrorBox>
+          {tr("The analyst reported", "El analista reportó")}: {analysisError}
+        </ErrorBox>
       )}
 
       {!forecast && (
         <Card>
           <p className="text-sm text-neutral-400">
-            Todavía no hay pronósticos de {symbol} {timeframe}. El analista
-            necesita ~80s para el ajuste inicial y emite en cada vela cerrada.
+            {tr(
+              `There are no ${symbol} ${timeframe} forecasts yet. The analyst needs ~80s for the initial fit and issues on every closed bar.`,
+              `Todavía no hay pronósticos de ${symbol} ${timeframe}. El analista necesita ~80s para el ajuste inicial y emite en cada vela cerrada.`,
+            )}
           </p>
         </Card>
       )}
@@ -173,19 +185,19 @@ export function SignalPage() {
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             <Card
               className="xl:col-span-2"
-              title="Precio y niveles del setup"
+              title={tr("Price and setup levels", "Precio y niveles del setup")}
               right={
                 <div className="flex items-center gap-2">
                   <DirectionToggle value={direction} onChange={setDirection} />
                   <select
-                    aria-label="nivel del cono"
+                    aria-label={tr("cone level", "nivel del cono")}
                     value={coneAlpha}
                     onChange={(e) => setConeAlpha(e.target.value)}
                     className="rounded border border-neutral-800 bg-neutral-900 px-2 py-1 font-mono text-[11px] text-neutral-300"
                   >
                     {forecast.cones.map((c) => (
                       <option key={c.alpha} value={c.alpha.toFixed(2)}>
-                        cono {Math.round(c.nominal * 100)}%
+                        {tr("cone", "cono")} {Math.round(c.nominal * 100)}%
                       </option>
                     ))}
                   </select>
@@ -193,7 +205,7 @@ export function SignalPage() {
               }
             >
               {candles.isLoading ? (
-                <Loading what="las velas" />
+                <Loading what={tr("the candles", "las velas")} />
               ) : (
                 <PriceChart
                   candles={candles.data?.candles ?? []}
@@ -203,9 +215,11 @@ export function SignalPage() {
               )}
               {(candles.data?.gaps.length ?? 0) > 0 && (
                 <p className="mt-2 text-[11px] text-warn">
-                  ⚠ {candles.data?.gaps.length} hueco(s) en el rango dibujado: el
-                  precio salta sin que haya habido movimiento, y el analista no
-                  emite sobre una ventana con barras faltantes.
+                  ⚠{" "}
+                  {tr(
+                    `${candles.data?.gaps.length} gap(s) in the drawn range: the price jumps without any move having happened, and the analyst does not issue on a window with missing bars.`,
+                    `${candles.data?.gaps.length} hueco(s) en el rango dibujado: el precio salta sin que haya habido movimiento, y el analista no emite sobre una ventana con barras faltantes.`,
+                  )}
                 </p>
               )}
             </Card>
@@ -223,7 +237,7 @@ export function SignalPage() {
                   }
                 />
               ) : (
-                <Loading what="la proyección" />
+                <Loading what={tr("the projection", "la proyección")} />
               )}
             </Card>
           </div>
@@ -231,8 +245,8 @@ export function SignalPage() {
           {/* --- Cono + sigma ------------------------------------------- */}
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             <Card
-              title="Cono de precio"
-              right={<Badge tone="ok">validado forward</Badge>}
+              title={tr("Price cone", "Cono de precio")}
+              right={<Badge tone="ok">{tr("validated forward", "validado forward")}</Badge>}
             >
               <div className="space-y-3">
                 {forecast.cones.map((band) => {
@@ -249,33 +263,36 @@ export function SignalPage() {
                         value={`${price(band.price_lo)} — ${price(band.price_hi)}`}
                       />
                       <Row
-                        label="cobertura medida"
-                        value={coverageLabel(measured?.empirical_coverage, ci)}
-                        hint="IC por bootstrap de bloques: los pronósticos se solapan y tratarlos como independientes encoge el error estándar"
+                        label={tr("measured coverage", "cobertura medida")}
+                        value={coverageLabel(measured?.empirical_coverage, ci, lang)}
+                        hint={tr(
+                          "Block-bootstrap CI: forecasts overlap, and treating them as independent shrinks the standard error",
+                          "IC por bootstrap de bloques: los pronósticos se solapan y tratarlos como independientes encoge el error estándar",
+                        )}
                       />
                     </div>
                   );
                 })}
                 <div className="border-t border-neutral-800 pt-2">
                   <Row
-                    label="sigma pronosticada"
+                    label={tr("forecast sigma", "sigma pronosticada")}
                     value={pct(forecast.sigma_forecast, 3)}
                   />
                   <Row
-                    label="sigma realizada pasada"
+                    label={tr("past realized sigma", "sigma realizada pasada")}
                     value={pct(forecast.sigma_backward, 3)}
                   />
                   <Row
-                    label="razón"
+                    label={tr("ratio", "razón")}
                     value={num(forecast.sigma_ratio, 3)}
-                    hint=">1 = viene más movimiento del habitual"
+                    hint={tr(">1 = more movement than usual is coming", ">1 = viene más movimiento del habitual")}
                   />
                   <Row
-                    label="muestra forward"
-                    value={`${coverage.data?.n_resolved ?? "—"} resueltos · ${num(
-                      coverage.data?.n_blocks,
-                      0,
-                    )} bloques`}
+                    label={tr("forward sample", "muestra forward")}
+                    value={tr(
+                      `${coverage.data?.n_resolved ?? "—"} resolved · ${num(coverage.data?.n_blocks, 0)} blocks`,
+                      `${coverage.data?.n_resolved ?? "—"} resueltos · ${num(coverage.data?.n_blocks, 0)} bloques`,
+                    )}
                   />
                 </div>
               </div>
@@ -283,15 +300,18 @@ export function SignalPage() {
 
             <Card
               className="xl:col-span-2"
-              title="Seguimiento in-live — sigma pronosticada vs realizada"
+              title={tr("Live tracking — forecast vs realized sigma", "Seguimiento in-live — sigma pronosticada vs realizada")}
               right={
                 <span className="font-mono text-[11px] text-neutral-600">
-                  últimas {recent.data?.forecasts.length ?? 0} barras
+                  {tr(
+                    `last ${recent.data?.forecasts.length ?? 0} bars`,
+                    `últimas ${recent.data?.forecasts.length ?? 0} barras`,
+                  )}
                 </span>
               }
             >
               {recent.isLoading ? (
-                <Loading what="el histórico reciente" />
+                <Loading what={tr("recent history", "el histórico reciente")} />
               ) : (
                 <SigmaTimeline rows={recent.data?.forecasts ?? []} />
               )}
@@ -313,10 +333,11 @@ export function SignalPage() {
           </Card>
 
           <p className="text-center text-[11px] text-neutral-600">
-            modelo <span className="font-mono">{forecast.model_version}</span> ·
-            entrenado hasta {stamp(forecast.fit_through_ms)} sobre{" "}
-            {count(forecast.n_train)} barras · MAREA nunca ejecuta
-            órdenes
+            {tr("model", "modelo")} <span className="font-mono">{forecast.model_version}</span> ·{" "}
+            {tr(
+              `trained up to ${stamp(forecast.fit_through_ms)} on ${count(forecast.n_train)} bars · MAREA never places orders`,
+              `entrenado hasta ${stamp(forecast.fit_through_ms)} sobre ${count(forecast.n_train)} barras · MAREA nunca ejecuta órdenes`,
+            )}
           </p>
         </>
       )}

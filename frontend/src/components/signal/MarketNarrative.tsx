@@ -1,4 +1,5 @@
 import { Badge, Card } from "../common/Card";
+import { type Lang, useLang } from "../../i18n";
 import { stamp } from "../../lib/format";
 import type { NarrativeResponse, NarrativeSection } from "../../types";
 
@@ -20,21 +21,37 @@ const BASIS_TONE: Record<NarrativeSection["basis"], "ok" | "neutral" | "muted"> 
   alcance: "muted",
 };
 
+/** `basis` es un código del backend; se traduce al dibujarlo. */
+const BASIS_EN: Record<NarrativeSection["basis"], string> = {
+  validado: "validated",
+  descriptivo: "descriptive",
+  "sin ventaja medida": "no measured edge",
+  alcance: "scope",
+};
+
+function basisText(lang: Lang, b: NarrativeSection["basis"]): string {
+  return lang === "en" ? BASIS_EN[b] : b;
+}
+
 export function MarketNarrative({ data }: { data: NarrativeResponse }) {
+  const { lang, tr } = useLang();
+  // La última sección siempre es la de alcance y va a todo el ancho; se
+  // reconoce por su código y no por su título, que cambia con el idioma.
   return (
     <Card
-      title="Lectura del mercado"
+      title={tr("Market reading", "Lectura del mercado")}
       right={
         <span
           className={`font-mono text-[11px] ${data.is_stale ? "text-warn" : "text-neutral-600"}`}
         >
-          {data.is_stale ? "vieja · " : ""}vela del {stamp(data.forecast_open_time)}
+          {data.is_stale ? tr("stale · ", "vieja · ") : ""}
+          {tr("bar of", "vela del")} {stamp(data.forecast_open_time)}
         </span>
       }
     >
       <p
         className={`text-base leading-snug ${
-          data.headline.includes("ELEVADO") ? "text-warn" : "text-neutral-100"
+          /ELEVADO|ELEVATED/.test(data.headline) ? "text-warn" : "text-neutral-100"
         }`}
       >
         {data.headline}
@@ -47,11 +64,11 @@ export function MarketNarrative({ data }: { data: NarrativeResponse }) {
               s.tone === "warn"
                 ? "border-warn/40 bg-warn/5"
                 : "border-neutral-800 bg-neutral-950/60"
-            } ${s.title === "Lo que esto no dice" ? "lg:col-span-2" : ""}`}
+            } ${s.basis === "alcance" ? "lg:col-span-2" : ""}`}
           >
             <header className="mb-1 flex items-baseline justify-between gap-2">
               <h3 className="text-xs uppercase tracking-wider text-neutral-400">{s.title}</h3>
-              <Badge tone={BASIS_TONE[s.basis]}>{s.basis}</Badge>
+              <Badge tone={BASIS_TONE[s.basis]}>{basisText(lang, s.basis)}</Badge>
             </header>
             <p
               className={`text-sm leading-relaxed ${

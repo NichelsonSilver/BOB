@@ -1,3 +1,4 @@
+import { useLang } from "../../i18n";
 import { useAppStore } from "../../stores/appStore";
 
 /**
@@ -9,6 +10,7 @@ import { useAppStore } from "../../stores/appStore";
  * única página que lo usa: la Señal 15m.
  */
 export function FeedStatus() {
+  const { tr } = useLang();
   const wsConnected = useAppStore((s) => s.wsConnected);
   const conn = useAppStore((s) => s.connStatus);
   const feedDown = conn !== null && !conn.connected;
@@ -20,7 +22,7 @@ export function FeedStatus() {
           aria-hidden
         />
         <span className="text-neutral-400">
-          {wsConnected ? "dashboard: live" : "dashboard: desconectado"}
+          {wsConnected ? "dashboard: live" : tr("dashboard: disconnected", "dashboard: desconectado")}
         </span>
       </span>
       {conn ? (
@@ -28,7 +30,10 @@ export function FeedStatus() {
           className="flex items-center gap-2"
           title={
             conn.mute_streams.length > 0
-              ? `streams mudos: ${conn.mute_streams.join(", ")} — se rellenan por REST`
+              ? tr(
+                  `muted streams: ${conn.mute_streams.join(", ")} — filled in via REST`,
+                  `streams mudos: ${conn.mute_streams.join(", ")} — se rellenan por REST`,
+                )
               : undefined
           }
         >
@@ -38,15 +43,19 @@ export function FeedStatus() {
           />
           <span className="font-mono text-neutral-500">{conn.source}</span>
           {conn.reconnects > 0 && (
-            <span className="text-neutral-600">{conn.reconnects} reconexiones</span>
+            <span className="text-neutral-600">
+              {conn.reconnects} {tr("reconnections", "reconexiones")}
+            </span>
           )}
         </span>
       ) : (
-        <span className="text-neutral-500">feed de Binance: apagado (vivo congelado)</span>
+        <span className="text-neutral-500">
+          {tr("Binance feed: off (live module frozen)", "feed de Binance: apagado (vivo congelado)")}
+        </span>
       )}
       {conn?.last_error && (
         <span className="text-warn" title={conn.last_error}>
-          último error: {conn.last_error.slice(0, 60)}
+          {tr("last error", "último error")}: {conn.last_error.slice(0, 60)}
         </span>
       )}
     </div>

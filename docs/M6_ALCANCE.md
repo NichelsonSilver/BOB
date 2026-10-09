@@ -392,3 +392,58 @@ De paso, el porcentaje de días que cuentan del Panel diario se trunca (decía
 
 **README del repositorio:** ya estaba entero en inglés. Se corrigió la frase
 que decía "Spanish UI".
+
+### M6.8 (2026-10-09) — idioma, paso 2
+
+Con esto las 15 páginas son bilingües, con inglés por defecto.
+
+**Backend con `lang`** (default `"es"`, así que quien llamaba antes no nota
+nada):
+
+- `models/narrative.py`: la lectura de la Señal;
+- `models/sizing.py`: los avisos de la calculadora (`code` y `level` no
+  cambian con el idioma);
+- `models/projection.py`: los avisos de la proyección;
+- las rutas `/api/analysis/narrative`, `/api/risk/sizing` y
+  `/api/analysis/projection`.
+
+Hay tests que exigen que el inglés lleve **las mismas cifras** que el español,
+que no tenga palabras en español y que no pronostique dirección.
+
+**`marea/i18n.py`** traduce al servirlos el reporte de liquidez, la fuerza
+relativa y el veredicto M3. El reporte ya calculado en la DB y el artefacto de
+la M3 no se tocan. La traducción va por clave estable (indicador, código COT,
+ticker, clase), y un test exige que toda clave que existe hoy tenga su inglés.
+
+**Frontend**: Liquidez, Flujos, Riesgo, Mapa, Señal 15m (página y siete
+componentes), Backtest, Forward 15m, Análisis y la configuración de Ajustes.
+Los códigos que llegan del backend (etiqueta de régimen, respaldo de cada
+sección, familia de features, veredicto de las reglas, veredicto de
+Diebold-Mariano, notas del exchange) se traducen al dibujarlos. La sección
+"Lo que esto no dice" se reconoce por su código `basis` y no por su título,
+que ahora cambia con el idioma.
+
+**Verificado en la app real:**
+
+- en inglés, ninguna de las 14 rutas tiene una línea en español, salvo
+  nombres de archivo y apellidos de autores;
+- la única que apareció (`sin-etiqueta`, el identificador de variante del
+  primer run) se traduce al dibujarla;
+- en un teléfono (390 px) ninguna ruta se desborda en ninguno de los dos
+  idiomas;
+- 1.179 tests en verde y mypy limpio.
+
+**Tres textos corregidos de paso, porque afirmaban algo falso:**
+
+1. El hint de QLIKE en el corte forward decía "no depende de la dispersión de
+   la muestra". La Fase 5 (punto 13) midió lo contrario: su media la domina la
+   cola.
+2. Flujos decía que la M3 "midió que su orden no se sostiene". En realidad la
+   M3 no encontró evidencia, que no es lo mismo (la misma corrección de la
+   M6.5). También remitía a "la página Macro", que ahora se llama Liquidez.
+3. El aviso de régimen elevado de la calculadora traía "52% a 20x" escrito a
+   mano. La página ya muestra ese efecto al lado, leído del artefacto.
+
+**Lo que no se traduce:** los mensajes de error HTTP (diagnóstico técnico,
+salen tal cual), los nombres de archivo y los identificadores internos
+(`model_version`, estados `resolved/open/gap`).

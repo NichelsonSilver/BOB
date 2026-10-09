@@ -1,5 +1,6 @@
 import { useAppStore } from "../../stores/appStore";
 import { useTarget } from "../../hooks/useTarget";
+import { useLang } from "../../i18n";
 
 /**
  * Selector de símbolo y timeframe. Vive en el layout porque la elección es
@@ -11,6 +12,7 @@ import { useTarget } from "../../hooks/useTarget";
  * dashboard tiene que enterarse de un cambio en el `.env` sin recompilarse.
  */
 export function TargetBar() {
+  const { tr } = useLang();
   const { watchlist, timeframes, symbol, timeframe } = useTarget();
   const setSymbol = useAppStore((s) => s.setSymbol);
   const setTimeframe = useAppStore((s) => s.setTimeframe);
@@ -21,7 +23,7 @@ export function TargetBar() {
   return (
     <div className="flex items-center gap-2">
       <select
-        aria-label="símbolo"
+        aria-label={tr("symbol", "símbolo")}
         className={select}
         value={symbol ?? ""}
         onChange={(e) => setSymbol(e.target.value || null)}

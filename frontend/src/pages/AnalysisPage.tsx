@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, ErrorBox, Loading, Row } from "../components/common/Card";
 import { TargetBar } from "../components/layout/TargetBar";
 import { useTarget } from "../hooks/useTarget";
+import { type Lang, useLang } from "../i18n";
 import { api } from "../lib/api";
 import { num, stamp } from "../lib/format";
 import type { FeatureItem } from "../types";
@@ -23,7 +24,24 @@ import type { FeatureItem } from "../types";
  *   esperada. Inventar acá una duración a partir de otra cosa sería
  *   exactamente el tipo de número sin respaldo que el proyecto no muestra.
  */
+/** Las familias son claves del backend (`features.py`, `experiment.py`); se traducen al dibujarlas. */
+const FAMILY_EN: Record<string, string> = {
+  momentum: "momentum",
+  volatilidad: "volatility",
+  osciladores: "oscillators",
+  estructura: "structure",
+  microestructura: "microstructure",
+  estacionalidad: "seasonality",
+  derivados: "derivatives",
+  libro: "order book",
+};
+
+function familyName(lang: Lang, f: string): string {
+  return lang === "en" ? (FAMILY_EN[f] ?? f) : f;
+}
+
 export function AnalysisPage() {
+  const { lang, tr } = useLang();
   const { symbol, timeframe } = useTarget();
   const enabled = Boolean(symbol && timeframe);
   const target = { symbol, timeframe };
@@ -48,7 +66,7 @@ export function AnalysisPage() {
     staleTime: 300_000,
   });
 
-  if (!enabled) return <Loading what="la configuración del backend" />;
+  if (!enabled) return <Loading what={tr("the backend configuration", "la configuración del backend")} />;
 
   const families = features.data?.families ?? {};
   const familyImportance = run.data?.artifact.family_importance ?? {};
@@ -58,10 +76,10 @@ export function AnalysisPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-100">Análisis del modelo 15m</h1>
+          <h1 className="text-xl font-semibold text-neutral-100">{tr("15m model analysis", "Análisis del modelo 15m")}</h1>
           <p className="text-xs text-neutral-500">
             {features.data
-              ? `${features.data.n_features} features · set ${features.data.feature_set} · barra ${stamp(
+              ? `${features.data.n_features} features · set ${features.data.feature_set} · ${tr("bar", "barra")} ${stamp(
                   features.data.open_time,
                 )}`
               : "—"}
@@ -75,17 +93,18 @@ export function AnalysisPage() {
       {features.data && features.data.n_missing > 0 && (
         <Card>
           <p className="text-sm text-warn">
-            ⚠ {features.data.n_missing} de {features.data.n_features} features sin
-            dato en esta barra. Un salto en este número es la firma de una familia
-            que dejó de publicarse — y es lo que deja mudo al analista, porque no
-            se pronostica sobre un hueco.
+            ⚠{" "}
+            {tr(
+              `${features.data.n_missing} of ${features.data.n_features} features have no data on this bar. A jump in this number is the signature of a family that stopped publishing — and it is what silences the analyst, because it does not forecast over a gap.`,
+              `${features.data.n_missing} de ${features.data.n_features} features sin dato en esta barra. Un salto en este número es la firma de una familia que dejó de publicarse — y es lo que deja mudo al analista, porque no se pronostica sobre un hueco.`,
+            )}
           </p>
         </Card>
       )}
 
       {/* --- Aporte por familia ----------------------------------------- */}
       <Card
-        title="Aporte de cada familia (permutación, fuera de muestra)"
+        title={tr("Contribution of each family (permutation, out of sample)", "Aporte de cada familia (permutación, fuera de muestra)")}
         right={
           gate.data && (
             <span className="font-mono text-[11px] text-neutral-600">
@@ -95,21 +114,29 @@ export function AnalysisPage() {
         }
       >
         {run.isLoading ? (
-          <Loading what="el artefacto del gate" />
+          <Loading what={tr("the gate artifact", "el artefacto del gate")} />
         ) : Object.keys(familyImportance).length === 0 ? (
           <p className="text-sm text-neutral-500">
-            Sin artefacto del gate para esta configuración.
+            {tr("No gate artifact for this configuration.", "Sin artefacto del gate para esta configuración.")}
           </p>
         ) : (
           <>
-            <ImportanceBars values={familyImportance} />
+            <ImportanceBars values={familyImportance} lang={lang} />
             <p className="mt-3 border-t border-neutral-800 pt-3 text-[11px] leading-relaxed text-neutral-500">
-              Importancia positiva ≠ ganancia fuera de muestra. Medido en este
-              proyecto: en <span className="font-mono">price+deriv</span> la
-              familia derivados marcó 0.00151 —segundo lugar— y en{" "}
-              <span className="font-mono">full</span> cayó a 0.00006 mientras el
-              AUC bajaba y la familia libro salía negativa. El modelo usa las
-              columnas; usarlas no es acertar más.
+              {tr(
+                <>
+                  Positive importance ≠ out-of-sample gain. Measured in this project: in{" "}
+                  <span className="font-mono">price+deriv</span> the derivatives family scored 0.00151 — second place —
+                  and in <span className="font-mono">full</span> it fell to 0.00006 while the AUC dropped and the order-book
+                  family came out negative. The model uses the columns; using them is not being right more often.
+                </>,
+                <>
+                  Importancia positiva ≠ ganancia fuera de muestra. Medido en este proyecto: en{" "}
+                  <span className="font-mono">price+deriv</span> la familia derivados marcó 0.00151 —segundo lugar— y en{" "}
+                  <span className="font-mono">full</span> cayó a 0.00006 mientras el AUC bajaba y la familia libro salía
+                  negativa. El modelo usa las columnas; usarlas no es acertar más.
+                </>,
+              )}
             </p>
           </>
         )}
@@ -122,7 +149,7 @@ export function AnalysisPage() {
           .map(([family, items]) => (
             <Card
               key={family}
-              title={family}
+              title={familyName(lang, family)}
               right={
                 <Badge tone={items.some((i) => i.value === null) ? "warn" : "neutral"}>
                   {items.length}
@@ -136,7 +163,7 @@ export function AnalysisPage() {
 
       {/* --- Top features ----------------------------------------------- */}
       {topFeatures.length > 0 && (
-        <Card title="Features más importantes del run (permutación)">
+        <Card title={tr("Most important features of the run (permutation)", "Features más importantes del run (permutación)")}>
           <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
             {topFeatures.slice(0, 15).map(([name, value]) => (
               <Row key={name} label={name} value={num(value, 5)} />
@@ -146,14 +173,22 @@ export function AnalysisPage() {
       )}
 
       {/* --- KPI 3: lo que todavía no hay ------------------------------- */}
-      <Card title="KPI 3 — duración estimada de régimen">
+      <Card title={tr("KPI 3 — estimated regime duration", "KPI 3 — duración estimada de régimen")}>
         <p className="text-sm text-neutral-400">
-          No se emite en vivo. El HMM gaussiano existe y está testeado
-          (<span className="font-mono">models/hmm.py</span>: Baum-Welch propio,
-          filtrado causal separado del suavizado, n por BIC/ICL), pero el
-          analista todavía no publica régimen ni duración esperada, así que acá
-          no hay nada que mostrar. Estimarla a partir de otra cosa sería un
-          número sin respaldo, que es justo lo que este dashboard no hace.
+          {tr(
+            <>
+              It is not issued live. The Gaussian HMM exists and is tested (<span className="font-mono">models/hmm.py</span>:
+              own Baum-Welch, causal filtering separate from smoothing, n by BIC/ICL), but the analyst does not yet publish
+              the regime or its expected duration, so there is nothing to show here. Estimating it from something else would
+              be a number without backing, which is exactly what this dashboard does not do.
+            </>,
+            <>
+              No se emite en vivo. El HMM gaussiano existe y está testeado (<span className="font-mono">models/hmm.py</span>:
+              Baum-Welch propio, filtrado causal separado del suavizado, n por BIC/ICL), pero el analista todavía no publica
+              régimen ni duración esperada, así que acá no hay nada que mostrar. Estimarla a partir de otra cosa sería un
+              número sin respaldo, que es justo lo que este dashboard no hace.
+            </>,
+          )}
         </p>
       </Card>
     </div>
@@ -161,13 +196,14 @@ export function AnalysisPage() {
 }
 
 function FeatureList({ items }: { items: FeatureItem[] }) {
+  const { tr } = useLang();
   return (
     <div className="max-h-64 overflow-auto pr-1">
       {items.map((item) => (
         <Row
           key={item.name}
           label={item.name}
-          value={item.value === null ? "sin dato" : num(item.value, 4)}
+          value={item.value === null ? tr("no data", "sin dato") : num(item.value, 4)}
           tone={item.value === null ? "text-warn" : ""}
         />
       ))}
@@ -181,7 +217,7 @@ function FeatureList({ items }: { items: FeatureItem[] }) {
  * la izquierda y se pintan distinto porque significan algo concreto —
  * permutar esa familia MEJORÓ el modelo, o sea que estorbaba.
  */
-function ImportanceBars({ values }: { values: Record<string, number> }) {
+function ImportanceBars({ values, lang }: { values: Record<string, number>; lang: Lang }) {
   const entries = Object.entries(values).sort((a, b) => b[1] - a[1]);
   const scale = Math.max(...entries.map(([, v]) => Math.abs(v)), 1e-9);
 
@@ -192,7 +228,7 @@ function ImportanceBars({ values }: { values: Record<string, number> }) {
         const negative = value < 0;
         return (
           <div key={family} className="flex items-center gap-2">
-            <span className="w-32 shrink-0 text-xs text-neutral-400">{family}</span>
+            <span className="w-32 shrink-0 text-xs text-neutral-400">{familyName(lang, family)}</span>
             <div className="relative h-3 flex-1 overflow-hidden rounded bg-neutral-950">
               <div className="absolute inset-y-0 left-1/2 w-px bg-neutral-700" />
               <div

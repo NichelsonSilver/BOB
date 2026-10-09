@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Badge, Card, ErrorBox, Loading, Row, Warning } from "../components/common/Card";
 import { TargetBar } from "../components/layout/TargetBar";
 import { useTarget } from "../hooks/useTarget";
+import { useLang } from "../i18n";
 import { api } from "../lib/api";
 import { count, num, pct, pValue, price, stamp } from "../lib/format";
 import type { ForecastRow } from "../types";
@@ -32,6 +33,7 @@ const PAGE = 50;
  *   con apariencia de rigor. El IC de bloques lo da vuelta.
  */
 export function HistoryPage() {
+  const { tr } = useLang();
   const { symbol, timeframe } = useTarget();
   const [offset, setOffset] = useState(0);
   const [status, setStatus] = useState<string>("");
@@ -51,7 +53,7 @@ export function HistoryPage() {
     enabled,
   });
 
-  if (!enabled) return <Loading what="la configuración del backend" />;
+  if (!enabled) return <Loading what={tr("the backend configuration", "la configuración del backend")} />;
 
   const report = coverage.data;
 
@@ -59,10 +61,10 @@ export function HistoryPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-100">Validación forward 15m</h1>
+          <h1 className="text-xl font-semibold text-neutral-100">{tr("15m forward validation", "Validación forward 15m")}</h1>
           <p className="text-xs text-neutral-500">
             {history.data
-              ? `${history.data.total} pronósticos · ${Object.entries(
+              ? `${history.data.total} ${tr("forecasts", "pronósticos")} · ${Object.entries(
                   history.data.counts,
                 )
                   .map(([k, v]) => `${v} ${k}`)
@@ -75,7 +77,7 @@ export function HistoryPage() {
             href={api.csvUrl({ ...target, status: status || undefined })}
             className="rounded border border-neutral-800 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800/60"
           >
-            exportar CSV
+            {tr("export CSV", "exportar CSV")}
           </a>
           <TargetBar />
         </div>
@@ -85,45 +87,43 @@ export function HistoryPage() {
 
       {report?.mixed_sample && (
         <Warning>
-          <strong>Muestra mixta</strong>: conviven {report.model_versions.length}{" "}
-          versiones del modelo ({report.model_versions.join(", ")}). La cobertura
-          promediada no describe a ninguna de las dos — hay que purgar los
-          registros viejos antes de leer estos números como un veredicto.
+          <strong>{tr("Mixed sample", "Muestra mixta")}</strong>:{" "}
+          {tr(
+            `${report.model_versions.length} model versions coexist (${report.model_versions.join(", ")}). The averaged coverage describes neither — the old records must be purged before reading these numbers as a verdict.`,
+            `conviven ${report.model_versions.length} versiones del modelo (${report.model_versions.join(", ")}). La cobertura promediada no describe a ninguna de las dos — hay que purgar los registros viejos antes de leer estos números como un veredicto.`,
+          )}
         </Warning>
       )}
 
       {/* --- Cobertura forward ------------------------------------------ */}
-      {coverage.isLoading && <Loading what="el reporte de cobertura" />}
+      {coverage.isLoading && <Loading what={tr("the coverage report", "el reporte de cobertura")} />}
       {report && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card
-            title="Muestra forward"
+            title={tr("Forward sample", "Muestra forward")}
             right={
               <Badge tone={report.n_gap > 0 ? "warn" : "neutral"}>
-                {report.n_gap} con hueco
+                {report.n_gap} {tr("with a gap", "con hueco")}
               </Badge>
             }
           >
-            <Row label="resueltos" value={count(report.n_resolved)} />
-            <Row label="abiertos" value={count(report.n_open)} />
+            <Row label={tr("resolved", "resueltos")} value={count(report.n_resolved)} />
+            <Row label={tr("open", "abiertos")} value={count(report.n_open)} />
             <Row
-              label="bloques independientes"
+              label={tr("independent blocks", "bloques independientes")}
               value={num(report.n_blocks, 1)}
-              hint="n / horizonte: los pronósticos se solapan"
+              hint={tr("n / horizon: forecasts overlap", "n / horizonte: los pronósticos se solapan")}
             />
-            <Row label="desde (UTC)" value={report.date_from} />
-            <Row label="hasta (UTC)" value={report.date_to} />
+            <Row label={tr("from (UTC)", "desde (UTC)")} value={report.date_from} />
+            <Row label={tr("to (UTC)", "hasta (UTC)")} value={report.date_to} />
             <Row
-              label="razón realizada/pronosticada"
-              value={`${num(report.vol_ratio_mean, 3)} (mediana ${num(
-                report.vol_ratio_median,
-                3,
-              )})`}
-              hint=">1 = la sigma salió corta en las colas"
+              label={tr("realized/forecast ratio", "razón realizada/pronosticada")}
+              value={`${num(report.vol_ratio_mean, 3)} (${tr("median", "mediana")} ${num(report.vol_ratio_median, 3)})`}
+              hint={tr(">1 = sigma fell short in the tails", ">1 = la sigma salió corta en las colas")}
             />
           </Card>
 
-          <Card title="Volatilidad — modelo contra baselines">
+          <Card title={tr("Volatility — model against baselines", "Volatilidad — modelo contra baselines")}>
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-neutral-600">
@@ -135,7 +135,7 @@ export function HistoryPage() {
               </thead>
               <tbody className="font-mono">
                 <tr className="border-t border-neutral-800">
-                  <td className="py-1 text-accent">modelo</td>
+                  <td className="py-1 text-accent">{tr("model", "modelo")}</td>
                   <td className="text-right text-neutral-300">
                     {num(report.volatility?.rmse, 5)}
                   </td>
@@ -161,7 +161,7 @@ export function HistoryPage() {
                 label="R² vs EWMA"
                 value={num(report.volatility?.r2_vs_baseline, 3)}
                 tone="text-accent"
-                hint="el número comparable entre ventanas"
+                hint={tr("the number that is comparable across windows", "el número comparable entre ventanas")}
               />
               {report.dm_vs_ewma && (
                 <Row
@@ -178,18 +178,20 @@ export function HistoryPage() {
               <Row
                 label="Mincer-Zarnowitz β"
                 value={num(report.volatility?.mincer_zarnowitz_beta, 3)}
-                hint="1.0 = insesgado y eficiente"
+                hint={tr("1.0 = unbiased and efficient", "1.0 = insesgado y eficiente")}
               />
             </div>
             {!report.with_baselines && (
               <p className="mt-2 text-[11px] text-warn">
-                Sin baselines: el R² de arriba se lee solo contra la media de
-                esta muestra y no es comparable con el del walk-forward.
+                {tr(
+                  "No baselines: the R² above reads only against this sample's mean and is not comparable with the walk-forward's.",
+                  "Sin baselines: el R² de arriba se lee solo contra la media de esta muestra y no es comparable con el del walk-forward.",
+                )}
               </p>
             )}
           </Card>
 
-          <Card title="Cono — cobertura medida">
+          <Card title={tr("Cone — measured coverage", "Cono — cobertura medida")}>
             {Object.entries(report.cones).map(([alpha, m]) => {
               const ci = report.cone_ci[alpha];
               const dentro =
@@ -204,17 +206,20 @@ export function HistoryPage() {
                     value={pct(m.empirical_coverage, 1)}
                   />
                   <Row
-                    label="IC95 (bloques)"
+                    label={tr("95% CI (blocks)", "IC95 (bloques)")}
                     value={ci ? `[${pct(ci[0], 1)}, ${pct(ci[1], 1)}]` : "—"}
                     tone={dentro ? "text-accent" : "text-warn"}
                   />
-                  <Row label="ancho medio" value={num(m.mean_width, 4)} />
+                  <Row label={tr("mean width", "ancho medio")} value={num(m.mean_width, 4)} />
                   <Row label="Winkler" value={num(m.winkler_score, 4)} />
                   {ci && (
                     <p className="mt-1 text-[10px] text-neutral-500">
                       {dentro
-                        ? "el nominal cae dentro del intervalo: la cobertura es compatible con lo prometido"
-                        : "el nominal queda fuera del intervalo"}
+                        ? tr(
+                            "the nominal falls inside the interval: coverage is compatible with what was promised",
+                            "el nominal cae dentro del intervalo: la cobertura es compatible con lo prometido",
+                          )
+                        : tr("the nominal falls outside the interval", "el nominal queda fuera del intervalo")}
                     </p>
                   )}
                 </div>
@@ -226,10 +231,10 @@ export function HistoryPage() {
 
       {/* --- Tabla ------------------------------------------------------- */}
       <Card
-        title="Pronósticos emitidos"
+        title={tr("Issued forecasts", "Pronósticos emitidos")}
         right={
           <select
-            aria-label="estado"
+            aria-label={tr("status", "estado")}
             value={status}
             onChange={(e) => {
               setStatus(e.target.value);
@@ -237,29 +242,29 @@ export function HistoryPage() {
             }}
             className="rounded border border-neutral-800 bg-neutral-900 px-2 py-1 font-mono text-[11px] text-neutral-300"
           >
-            <option value="">todos</option>
-            <option value="resolved">resueltos</option>
-            <option value="open">abiertos</option>
-            <option value="gap">con hueco</option>
+            <option value="">{tr("all", "todos")}</option>
+            <option value="resolved">{tr("resolved", "resueltos")}</option>
+            <option value="open">{tr("open", "abiertos")}</option>
+            <option value="gap">{tr("with a gap", "con hueco")}</option>
           </select>
         }
       >
         {history.isLoading ? (
-          <Loading what="el historial" />
+          <Loading what={tr("the history", "el historial")} />
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[820px] text-xs">
                 <thead>
                   <tr className="text-neutral-600">
-                    <th className="py-1 text-left font-normal">barra (local)</th>
-                    <th className="text-right font-normal">precio</th>
-                    <th className="text-right font-normal">σ pronosticada</th>
-                    <th className="text-right font-normal">σ realizada</th>
-                    <th className="text-right font-normal">razón</th>
-                    <th className="text-right font-normal">retorno</th>
-                    <th className="text-center font-normal">cono</th>
-                    <th className="text-right font-normal">estado</th>
+                    <th className="py-1 text-left font-normal">{tr("bar (local)", "barra (local)")}</th>
+                    <th className="text-right font-normal">{tr("price", "precio")}</th>
+                    <th className="text-right font-normal">{tr("forecast σ", "σ pronosticada")}</th>
+                    <th className="text-right font-normal">{tr("realized σ", "σ realizada")}</th>
+                    <th className="text-right font-normal">{tr("ratio", "razón")}</th>
+                    <th className="text-right font-normal">{tr("return", "retorno")}</th>
+                    <th className="text-center font-normal">{tr("cone", "cono")}</th>
+                    <th className="text-right font-normal">{tr("status", "estado")}</th>
                   </tr>
                 </thead>
                 <tbody className="font-mono">
@@ -277,10 +282,10 @@ export function HistoryPage() {
                 onClick={() => setOffset(Math.max(0, offset - PAGE))}
                 className="rounded border border-neutral-800 px-2 py-1 text-neutral-300 disabled:opacity-30"
               >
-                ← anteriores
+                ← {tr("previous", "anteriores")}
               </button>
               <span className="text-neutral-500">
-                {offset + 1}–{offset + (history.data?.forecasts.length ?? 0)} de{" "}
+                {offset + 1}–{offset + (history.data?.forecasts.length ?? 0)} {tr("of", "de")}{" "}
                 {history.data?.total ?? 0}
               </span>
               <button
@@ -292,7 +297,7 @@ export function HistoryPage() {
                 onClick={() => setOffset(offset + PAGE)}
                 className="rounded border border-neutral-800 px-2 py-1 text-neutral-300 disabled:opacity-30"
               >
-                siguientes →
+                {tr("next", "siguientes")} →
               </button>
             </div>
           </>
