@@ -447,3 +447,10 @@ que ahora cambia con el idioma.
 **Lo que no se traduce:** los mensajes de error HTTP (diagnóstico técnico,
 salen tal cual), los nombres de archivo y los identificadores internos
 (`model_version`, estados `resolved/open/gap`).
+
+### Cierre de la fase (2026-10-09)
+
+M6 cerrada por decisión de Nichelson, con M6.0 a M6.6 y M6.8 completas. Queda
+fuera la **M6.7**: el renombre interno del paquete `bob`, el directorio, la
+DB, la tarea `BOB_panel_forward_diario`, `model_version` y `service`. Espera al
+corte de la 10-bis y requiere su propia decisión.
