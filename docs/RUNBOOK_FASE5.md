@@ -97,7 +97,7 @@ Las **dos** líneas tienen que decir `0x00000000`.
 **2. Poner los datos al día y confirmar que no hay huecos.**
 
 ```powershell
-cd C:\Users\niche\proyectos\bob\backend
+cd C:\Users\niche\proyectos\MAREA\backend
 uv run python -m bob.data.download --symbol ETHUSDT --timeframe 15m --repair
 uv run python -m bob.data.snapshots --symbol ETHUSDT --period 5m
 ```
@@ -155,7 +155,7 @@ que ya no existe.
 ## Arrancar
 
 ```powershell
-cd C:\Users\niche\proyectos\bob\backend
+cd C:\Users\niche\proyectos\MAREA\backend
 uv run python -m uvicorn bob.main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -203,7 +203,7 @@ archivo **sin sacar el de consola** — lo ves en vivo y queda en disco
 (`logs/` está en `.gitignore`; rota a los 50 MB, retiene 7 días):
 
 ```powershell
-cd C:\Users\niche\proyectos\bob\backend
+cd C:\Users\niche\proyectos\MAREA\backend
 $env:BOB_LOG_FILE = "logs\backend.log"
 uv run python -m uvicorn bob.main:app --host 127.0.0.1 --port 8000
 ```
@@ -223,7 +223,7 @@ Una corrida de ~72 h no tiene a nadie mirando `/api/health`. Este script lo
 mira solo y escribe una línea por chequeo:
 
 ```powershell
-cd C:\Users\niche\proyectos\bob\backend
+cd C:\Users\niche\proyectos\MAREA\backend
 uv run python scripts/watch_run.py --every-min 10
 ```
 
@@ -276,7 +276,7 @@ features que dejó de llegar lo deja mudo. Las tres se distinguen ahí.
 ## Ver el avance (cuando quieras)
 
 ```powershell
-cd C:\Users\niche\proyectos\bob\backend
+cd C:\Users\niche\proyectos\MAREA\backend
 uv run python -m bob.paper.tracker --symbol ETHUSDT
 ```
 

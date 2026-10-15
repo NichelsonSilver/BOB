@@ -26,7 +26,9 @@ $ErrorActionPreference = "Continue"
 # auditoria de 180 dias, asi que se fuerza UTF-8 en la captura.
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$backend = "C:\Users\niche\proyectos\bob\backend"
+# Relativo al script y no absoluto: el repo se mudo de proyectos/bob a
+# proyectos/marea (2026-10-14) y la ruta no debe volver a estar en dos lugares.
+$backend = Split-Path -Parent $PSScriptRoot
 $uv = "C:\Users\niche\AppData\Local\Programs\Python\Python314\Scripts\uv.exe"
 $logDir = Join-Path $backend "logs"
 $log = Join-Path $logDir "panel_daily.log"

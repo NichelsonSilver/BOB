@@ -454,3 +454,19 @@ M6 cerrada por decisión de Nichelson, con M6.0 a M6.6 y M6.8 completas. Queda
 fuera la **M6.7**: el renombre interno del paquete `bob`, el directorio, la
 DB, la tarea `BOB_panel_forward_diario`, `model_version` y `service`. Espera al
 corte de la 10-bis y requiere su propia decisión.
+
+### M6.7 parcial (2026-10-14)
+
+Decisión de Nichelson: el proyecto se llama MAREA en todos lados y BOB queda
+como su módulo cripto. Se renombraron tres cosas:
+
+- el repo de GitHub, de `NichelsonSilver/BOB` a `NichelsonSilver/MAREA`
+  (GitHub redirige la URL vieja);
+- el directorio, de `proyectos/BOB` a `proyectos/MAREA`, con
+  `proyectos/mover_a_marea.ps1`;
+- el proyecto Python, con `name = "marea"` en `pyproject.toml`.
+
+Los `.ps1` de las tareas ya no llevan rutas absolutas. No se tocaron el
+paquete `bob`, `bob.db`, el nombre de la tarea, `model_version` ni `service`.
+Todo eso es código o identidad de la corrida forward, que sigue sin cambios
+hasta el interino de las 90 fechas (regla 12).

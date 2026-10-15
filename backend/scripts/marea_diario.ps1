@@ -20,7 +20,8 @@
 $ErrorActionPreference = "Continue"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$backend = "C:\Users\niche\proyectos\bob\backend"
+# Relativo al script, igual que panel_daily.ps1.
+$backend = Split-Path -Parent $PSScriptRoot
 $uv = "C:\Users\niche\AppData\Local\Programs\Python\Python314\Scripts\uv.exe"
 $logDir = Join-Path $backend "logs"
 $log = Join-Path $logDir "marea_diario.log"

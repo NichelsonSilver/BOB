@@ -91,7 +91,7 @@ se considera legítimo de antemano, no un fracaso.
 | cosa | decisión | por qué |
 |---|---|---|
 | Nombre del producto, docs, README, título del dashboard | **MAREA** | Es lo que cambió |
-| Paquete Python `bob`, directorio `proyectos/bob`, DB | **No se tocan** hasta el corte de la Fase 10-bis | La tarea programada `BOB_panel_forward_diario` corre `bob.paper.panel_forward` desde una ruta absoluta. Renombrar rompe la corrida de 180 días, y cambiar su código a mitad de muestra la invalida. |
+| Paquete Python `bob`, directorio `proyectos/bob`, DB | **No se tocan** hasta el corte de la Fase 10-bis | La tarea programada `BOB_panel_forward_diario` corre `bob.paper.panel_forward` desde una ruta absoluta. Renombrar rompe la corrida de 180 días, y cambiar su código a mitad de muestra la invalida. **Actualización 2026-10-14:** el directorio y el repo pasan a `MAREA`. Las tareas leen su ruta del script, así que la mudanza no toca la corrida. Paquete y DB siguen igual (ver `M6_ALCANCE.md`, M6.7 parcial). |
 | Código macro nuevo | **Paquete hermano `marea`** en el mismo backend | Separa lo nuevo sin mover lo validado; reutiliza `bob.models.validation` y `bob.models.metrics` por import. |
 
 `bob` queda como **nombre del módulo cripto** dentro de MAREA, que es además lo
