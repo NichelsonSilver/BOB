@@ -1,7 +1,7 @@
 [project]
-name = "bob"
+name = "marea"
 version = "0.1.0"
-description = "BOB — Asistente de decisión para trading intradía (Binance perps)"
+description = "MAREA - analista de liquidez global; BOB es su modulo cripto"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
