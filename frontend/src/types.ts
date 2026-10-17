@@ -893,6 +893,71 @@ export type StrengthReport = {
   method: { measure: string; class: string; reference: string; missing: string };
 };
 
+/** MAREA — crecimiento por industria (`marea.industries`, M7). Descriptivo, no es flujo. */
+export type IndustrySector = {
+  ticker: string;
+  sector: string;
+  label: string;
+  caveat: string;
+  ret_window: number | null;
+  rel_window: number | null;
+} & Record<string, number | null | string>;
+
+export type IndustryPoint = { day: string } & Record<string, number | null | string>;
+
+export type IndustryEquity = {
+  as_of: string;
+  age_days: number;
+  stale: boolean;
+  window_weeks: number;
+  window_from: string;
+  table_weeks: number[];
+  benchmark: string;
+  benchmark_window: number | null;
+  benchmark_by_weeks: Record<string, number | null>;
+  excluded: string[];
+  missing: string[];
+  sectors: IndustrySector[];
+  series: IndustryPoint[];
+};
+
+export type DefiCategory = {
+  category: string;
+  other: boolean;
+  members: number | null;
+  tvl: number;
+  share: number | null;
+  protocols: number;
+  unmatched_month: number;
+  growth_1d: number | null;
+  growth_7d: number | null;
+  growth_30d: number | null;
+};
+
+export type IndustryDefi = {
+  as_of: string;
+  age_days: number;
+  stale: boolean;
+  captured_at: string;
+  snapshots: number;
+  first_snapshot: string;
+  categories_total: number;
+  tvl_sum: number;
+  categories: DefiCategory[];
+  history: IndustryPoint[];
+};
+
+export type IndustriesReport = {
+  evidence: string;
+  equity: IndustryEquity | null;
+  equity_error: string | null;
+  defi: IndustryDefi | null;
+  method: Record<
+    "equity_growth" | "equity_relative" | "defi_tvl" | "defi_growth" | "defi_double_count" | "not_flow",
+    string
+  >;
+};
+
 /** Veredicto de la M3, leído del artefacto: lo que va donde iría un pronóstico. */
 export type RankingVerdict = {
   artifact: string;

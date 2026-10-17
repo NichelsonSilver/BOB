@@ -19,6 +19,7 @@ import type {
   GateResponse,
   HealthResponse,
   HistoryResponse,
+  IndustriesReport,
   LabExperiments,
   LatestResponse,
   LiquidityReport,
@@ -125,6 +126,10 @@ export const api = {
   /** MAREA: fuerza relativa por clase. Descriptiva: no es flujo ni pronóstico. */
   strength: (weeks: number, lang?: Lang) =>
     request<StrengthReport>(`/api/macro/strength${query({ weeks, lang })}`),
+
+  /** MAREA: crecimiento por industria (sectores de EE.UU. y DeFi). Descriptivo: no es flujo. */
+  industries: (weeks: number, lang?: Lang) =>
+    request<IndustriesReport>(`/api/macro/industries${query({ weeks, lang })}`),
 
   /** MAREA: veredicto del gate M3, leído del artefacto versionado. */
   rankingVerdict: (lang?: Lang) =>

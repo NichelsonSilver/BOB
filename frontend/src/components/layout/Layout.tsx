@@ -29,6 +29,7 @@ const TOP: Item[] = [
   { to: "/", label: ["Home", "Inicio"] },
   { to: "/liquidez", label: ["Liquidity", "Liquidez"] },
   { to: "/flujos", label: ["Flows", "Flujos"] },
+  { to: "/industrias", label: ["Industries", "Industrias"] },
 ];
 
 const GROUPS: Group[] = [
