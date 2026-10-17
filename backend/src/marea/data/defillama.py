@@ -128,6 +128,20 @@ class DefiLlamaClient:
             raise DefiLlamaError("historicalChainTvl vino vacío")
         return out
 
+    def protocols(self) -> list[dict[str, Any]]:
+        """Listado vigente de protocolos con categoría y TVL (M7).
+
+        `/categories` es de pago desde 2026; este listado es gratis y trae, por
+        protocolo, el TVL de ahora y el de hace 1, 7 y 30 días. No tiene
+        historia más larga: la historia por categoría se construye guardando
+        una foto por corrida (`marea.data.ingest_industries`).
+        """
+        body = self._get(f"{API_URL}/lite/protocols2")
+        rows = body.get("protocols") if isinstance(body, dict) else None
+        if not rows:
+            raise DefiLlamaError("lite/protocols2 vino sin protocolos")
+        return list(rows)
+
     def dex_volume(self, today: date) -> list[tuple[date, float]]:
         """Volumen diario de todos los DEX en USD, cerrado al día anterior a `today`."""
         body = self._get(

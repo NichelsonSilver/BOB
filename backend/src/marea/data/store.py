@@ -18,6 +18,7 @@ from typing import Any
 from marea.data.binance_funding import FundingPoint
 from marea.data.cftc import CotRow
 from marea.data.tiingo import DailyBar
+from marea.defi_categories import CategoryTvl
 from marea.options import OptionsSnapshot
 from marea.pit import Period
 
@@ -132,6 +133,24 @@ CREATE TABLE IF NOT EXISTS wiki_views (
     day     TEXT NOT NULL,
     views   INTEGER NOT NULL,
     PRIMARY KEY (article, day)
+);
+-- TVL de DeFi por categoria (M7): una foto por dia UTC. DefiLlama no da
+-- historia gratis por categoria, asi que la historia es la suma de las fotos.
+-- Correr dos veces el mismo dia reemplaza la foto de ese dia.
+CREATE TABLE IF NOT EXISTS defi_category (
+    captured_on         TEXT NOT NULL,  -- dia UTC de la corrida
+    captured_at         TEXT NOT NULL,  -- instante UTC exacto
+    category            TEXT NOT NULL,
+    tvl                 REAL NOT NULL,
+    protocols           INTEGER NOT NULL,
+    now_day             REAL NOT NULL,
+    prev_day            REAL NOT NULL,
+    now_week            REAL NOT NULL,
+    prev_week           REAL NOT NULL,
+    now_month           REAL NOT NULL,
+    prev_month          REAL NOT NULL,
+    tvl_unmatched_month REAL NOT NULL,
+    PRIMARY KEY (captured_on, category)
 );
 CREATE TABLE IF NOT EXISTS liquidity_report (
     as_of          TEXT PRIMARY KEY,  -- fecha "conocido al"
@@ -474,3 +493,56 @@ def load_wiki(conn: sqlite3.Connection, article: str) -> list[tuple[date, int]]:
         "SELECT day, views FROM wiki_views WHERE article = ? ORDER BY day", (article,)
     )
     return [(date.fromisoformat(d), int(v)) for d, v in rows]
+
+
+_DEFI_FIELDS = (
+    "category, tvl, protocols, now_day, prev_day, now_week, prev_week, "
+    "now_month, prev_month, tvl_unmatched_month"
+)
+
+
+def save_defi_categories(
+    conn: sqlite3.Connection, captured_at: datetime, rows: Iterable[CategoryTvl]
+) -> int:
+    """Guarda la foto del día UTC de `captured_at`, reemplazando la anterior del mismo día."""
+    day = captured_at.astimezone(UTC).date().isoformat()
+    at = captured_at.astimezone(UTC).isoformat(timespec="seconds")
+    data = [
+        (
+            day,
+            at,
+            r.category,
+            r.tvl,
+            r.protocols,
+            r.now_day,
+            r.prev_day,
+            r.now_week,
+            r.prev_week,
+            r.now_month,
+            r.prev_month,
+            r.tvl_unmatched_month,
+        )
+        for r in rows
+    ]
+    with conn:
+        conn.execute("DELETE FROM defi_category WHERE captured_on = ?", (day,))
+        conn.executemany(
+            "INSERT INTO defi_category (captured_on, captured_at, "
+            f"{_DEFI_FIELDS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            data,
+        )
+    return len(data)
+
+
+def load_defi_categories(conn: sqlite3.Connection) -> dict[date, tuple[str, list[CategoryTvl]]]:
+    """Todas las fotos: día UTC → (instante de captura, categorías por TVL)."""
+    out: dict[date, tuple[str, list[CategoryTvl]]] = {}
+    rows = conn.execute(
+        f"SELECT captured_on, captured_at, {_DEFI_FIELDS} FROM defi_category "
+        "ORDER BY captured_on, tvl DESC"
+    )
+    for day, at, cat, tvl, n, *rest in rows:
+        d = date.fromisoformat(day)
+        row = CategoryTvl(cat, float(tvl), int(n), *(float(v) for v in rest))
+        out.setdefault(d, (at, []))[1].append(row)
+    return out

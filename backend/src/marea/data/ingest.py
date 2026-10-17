@@ -10,8 +10,11 @@
     uv run python -m marea.data.ingest funding           # funding BTC y ETH (Binance)
     uv run python -m marea.data.ingest options           # foto de opciones (Deribit)
     uv run python -m marea.data.ingest atencion          # TVL, DEX y Wikipedia (narrativa)
-    uv run python -m marea.data.ingest diario            # options + stable + funding + atencion
-    uv run python -m marea.data.ingest todo              # las ocho, en orden
+    uv run python -m marea.data.ingest industrias        # TVL de DeFi por categoría (M7)
+    uv run python -m marea.data.ingest diario            # options, stable, funding, atencion, industrias
+    uv run python -m marea.data.ingest todo              # las nueve, en orden
+
+`etf` incluye los 11 ETFs sectoriales de la M7 (`SECTOR_ETFS`).
 
 Incremental: si FRED no actualizó la serie desde la última corrida
 (`last_updated` igual) no se pide nada. Si sí, se piden solo las vintages desde
@@ -39,6 +42,7 @@ from marea.data import (
     ingest_cot,
     ingest_etf,
     ingest_funding,
+    ingest_industries,
     ingest_options,
     ingest_stable,
     store,
@@ -54,6 +58,8 @@ from marea.data.catalog import (
     ETF_BY_TICKER,
     ETFS,
     FRED_SERIES,
+    SECTOR_BY_TICKER,
+    SECTOR_ETFS,
     STABLE_BY_ID,
     STABLE_SERIES,
 )
@@ -175,8 +181,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("funding", help="funding de perpetuos BTC y ETH (Binance)")
     sub.add_parser("options", help="foto del libro de opciones (Deribit)")
     sub.add_parser("atencion", help="TVL DeFi, volumen DEX y vistas de Wikipedia")
+    sub.add_parser("industrias", help="TVL de DeFi por categoría (foto diaria)")
     sub.add_parser("diario", help="lo que no se recupera después: options, stable, funding")
-    sub.add_parser("todo", help="las ocho fuentes, con sus catálogos completos")
+    sub.add_parser("todo", help="las nueve fuentes, con sus catálogos completos")
     args = parser.parse_args(argv)
 
     if args.source == "todo":
@@ -191,6 +198,8 @@ def main(argv: list[str] | None = None) -> int:
         return _main_options()
     if args.source == "atencion":
         return _main_attention()
+    if args.source == "industrias":
+        return _main_industries()
     if args.source == "diario":
         return _main_daily(parser)
     if args.source == "etf":
@@ -229,6 +238,7 @@ def _main_daily(parser: argparse.ArgumentParser) -> int:
             ("DefiLlama", lambda: _main_stable(parser, None)),
             ("Binance funding", _main_funding),
             ("Atención", _main_attention),
+            ("Industrias DeFi", _main_industries),
         ],
         "resumen diario",
     )
@@ -261,6 +271,18 @@ def _main_attention() -> int:
     return 1 if any(st.startswith("error") for st in statuses) else 0
 
 
+def _main_industries() -> int:
+    client = DefiLlamaClient()
+    conn = store.connect(DB_PATH)
+    try:
+        report = ingest_industries.run(client, conn, datetime.now(UTC))
+    finally:
+        client.close()
+        conn.close()
+    ingest_industries.print_report(report, client.requests_made)
+    return 1 if report.status.startswith("error") else 0
+
+
 def _main_options() -> int:
     client = DeribitClient()
     conn = store.connect(DB_PATH)
@@ -274,7 +296,7 @@ def _main_options() -> int:
 
 
 def _main_all(parser: argparse.ArgumentParser) -> int:
-    """Corre las ocho fuentes. Una que falle (sin key, sin red) no frena a las otras."""
+    """Corre las nueve fuentes. Una que falle (sin key, sin red) no frena a las otras."""
     steps: list[tuple[str, Callable[[], int]]] = [
         ("FRED", lambda: _main_fred(parser, None, full=False)),
         ("Tiingo", lambda: _main_etf(parser, None)),
@@ -284,6 +306,7 @@ def _main_all(parser: argparse.ArgumentParser) -> int:
         ("Binance funding", _main_funding),
         ("Deribit", _main_options),
         ("Atención", _main_attention),
+        ("Industrias DeFi", _main_industries),
     ]
     failed: list[str] = []
     for name, step in steps:
@@ -328,8 +351,8 @@ def _main_fred(parser: argparse.ArgumentParser, requested: list[str] | None, ful
 
 
 def _main_etf(parser: argparse.ArgumentParser, requested: list[str] | None) -> int:
-    tickers = requested or [e.ticker for e in ETFS]
-    unknown = [t for t in tickers if t not in ETF_BY_TICKER]
+    tickers = requested or [e.ticker for e in ETFS] + [s.ticker for s in SECTOR_ETFS]
+    unknown = [t for t in tickers if t not in ETF_BY_TICKER and t not in SECTOR_BY_TICKER]
     if unknown:
         parser.error(f"fuera del catálogo: {', '.join(unknown)} (ver marea.data.catalog)")
     key = MareaSettings().api_tiingo

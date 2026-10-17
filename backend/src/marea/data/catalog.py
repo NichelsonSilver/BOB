@@ -193,6 +193,43 @@ ETF_BY_TICKER: dict[str, Etf] = {e.ticker: e for e in ETFS}
 
 
 @dataclass(frozen=True)
+class SectorEtf:
+    ticker: str
+    #: Clave estable del sector (GICS); la etiqueta visible sale de `marea.industries`.
+    sector: str
+    why: str
+    caveat: str = ""
+
+
+#: Los 11 Select Sector SPDR (Tiingo), uno por sector GICS del S&P 500 (M7).
+#: Van APARTE de `ETFS` a propósito: el universo de la M3, de la fuerza
+#: relativa por clase y del brief queda intacto. Juntos particionan el S&P 500,
+#: así que la referencia natural de cada sector es SPY y no una mediana.
+SECTOR_ETFS: tuple[SectorEtf, ...] = (
+    SectorEtf("XLK", "tecnologia", "Tecnología de la información"),
+    SectorEtf("XLF", "financiero", "Financiero"),
+    SectorEtf("XLV", "salud", "Salud"),
+    SectorEtf("XLY", "consumo_discrecional", "Consumo discrecional"),
+    SectorEtf(
+        "XLC",
+        "comunicaciones",
+        "Servicios de comunicación",
+        caveat="desde 2018-06; antes Google y Meta estaban en XLK y XLY",
+    ),
+    SectorEtf("XLI", "industrial", "Industrial"),
+    SectorEtf("XLP", "consumo_basico", "Consumo básico"),
+    SectorEtf("XLE", "energia", "Energía"),
+    SectorEtf("XLU", "utilities", "Servicios básicos (utilities)"),
+    SectorEtf(
+        "XLRE", "inmobiliario", "Inmobiliario", caveat="desde 2015-10; antes estaba dentro de XLF"
+    ),
+    SectorEtf("XLB", "materiales", "Materiales"),
+)
+
+SECTOR_BY_TICKER: dict[str, SectorEtf] = {s.ticker: s for s in SECTOR_ETFS}
+
+
+@dataclass(frozen=True)
 class CotMarket:
     code: str
     report: Literal["tff", "disagg"]

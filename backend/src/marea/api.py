@@ -18,7 +18,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
-from marea import brief, i18n, narrative, panorama, strength
+from marea import brief, i18n, industries, narrative, panorama, strength
 from marea.config import DB_PATH
 from marea.data import store
 from marea.power_run import ARTIFACTS
@@ -94,6 +94,44 @@ async def class_strength(
     rep["age_days"] = age
     rep["stale"] = age > 4  # un fin de semana largo son 3-4 días sin sesión
     return i18n.strength(rep, lang)
+
+
+def _industries(path: Path, weeks: int) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    conn = store.connect(path)
+    try:
+        return industries.from_db(conn, weeks)
+    finally:
+        conn.close()
+
+
+@router.get("/macro/industries")
+async def industry_growth(
+    weeks: int = Query(26), lang: Literal["es", "en"] = Query("es")
+) -> dict[str, Any]:
+    """Crecimiento por industria: sectores de EE.UU. y categorías DeFi (M7).
+
+    Cada mitad puede venir en `null` sin tirar la otra: los sectores dependen
+    de Tiingo y DeFi de las fotos diarias de DefiLlama.
+    """
+    if weeks not in industries.CHART_WEEKS:
+        raise HTTPException(
+            status_code=422, detail=f"weeks debe ser uno de {industries.CHART_WEEKS}"
+        )
+    rep = await asyncio.to_thread(_industries, _db_path(), weeks)
+    if rep is None:
+        raise HTTPException(status_code=404, detail="no hay base de MAREA")
+    today = datetime.now(UTC).date()
+    if rep["equity"] is not None:
+        age = (today - date.fromisoformat(rep["equity"]["as_of"])).days
+        rep["equity"]["age_days"] = age
+        rep["equity"]["stale"] = age > 4  # mismo criterio que /macro/strength
+    if rep["defi"] is not None:
+        age = (today - date.fromisoformat(rep["defi"]["as_of"])).days
+        rep["defi"]["age_days"] = age
+        rep["defi"]["stale"] = age > 1  # foto diaria: un día sin correr ya es hueco
+    return i18n.industries(rep, lang)
 
 
 def _artifacts_dir() -> Path:

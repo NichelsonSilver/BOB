@@ -120,6 +120,49 @@ STRENGTH_METHOD_EN: dict[str, str] = {
     "missing": "an ETF with no return on some date in the window is left out, not filled in",
 }
 
+#: Sectores de la M7 (`marea.industries`), por su clave estable.
+SECTORS_EN: dict[str, str] = {
+    "tecnologia": "Technology",
+    "financiero": "Financials",
+    "salud": "Health care",
+    "consumo_discrecional": "Consumer discretionary",
+    "comunicaciones": "Communication services",
+    "industrial": "Industrials",
+    "consumo_basico": "Consumer staples",
+    "energia": "Energy",
+    "utilities": "Utilities",
+    "inmobiliario": "Real estate",
+    "materiales": "Materials",
+}
+
+#: Caveats de los ETFs sectoriales, por ticker.
+SECTOR_CAVEATS_EN: dict[str, str] = {
+    "XLC": "since 2018-06; before that Google and Meta sat in XLK and XLY",
+    "XLRE": "since 2015-10; before that it was inside XLF",
+}
+
+INDUSTRIES_METHOD_EN: dict[str, str] = {
+    "equity_growth": (
+        "total return of the sector ETF over the window: approximates the growth of the "
+        "sector's market value, without counting share issuance or buybacks"
+    ),
+    "equity_relative": "sector return minus SPY's (S&P 500) over the same window",
+    "defi_tvl": "DefiLlama TVL summed by category; CEXs and uncategorized protocols left out",
+    "defi_growth": (
+        "today's TVL against 1, 7 or 30 days ago, only over protocols that have both values"
+    ),
+    "defi_double_count": (
+        "the sum of categories double counts: a liquid staking token deposited in lending "
+        "counts in both"
+    ),
+    "not_flow": (
+        "this is not money flow: a rising price grows the sector or the TVL without a single "
+        "dollar coming in"
+    ),
+}
+
+INDUSTRIES_EVIDENCE_EN = "measured (descriptive: past, not a forecast; not money flow)"
+
 #: Lectura del veredicto M3 (`ranking.py`), por su texto exacto.
 READING_EN: dict[str, str] = {
     "no hay orden detectable a esta potencia": "no detectable ranking at this power",
@@ -194,4 +237,25 @@ def ranking_verdict(v: dict[str, Any], lang: str) -> dict[str, Any]:
     sign = v.get("ic_by_spy_sign")
     if isinstance(sign, dict):
         out["ic_by_spy_sign"] = {SPY_SIGN_EN.get(k, k): s for k, s in sign.items()}
+    return out
+
+
+def industries(rep: dict[str, Any], lang: str) -> dict[str, Any]:
+    if lang != "en":
+        return rep
+    out = copy.deepcopy(rep)
+    out["evidence"] = INDUSTRIES_EVIDENCE_EN
+    eq = out.get("equity")
+    if isinstance(eq, dict):
+        for s in eq.get("sectors", []):
+            s["label"] = SECTORS_EN.get(s.get("sector", ""), s.get("label"))
+            if s.get("caveat"):
+                s["caveat"] = SECTOR_CAVEATS_EN.get(s.get("ticker", ""), s["caveat"])
+    df = out.get("defi")
+    if isinstance(df, dict):
+        for c in df.get("categories", []):
+            if c.get("other"):
+                c["category"] = "Other"
+    if isinstance(out.get("method"), dict):
+        out["method"] = {**out["method"], **INDUSTRIES_METHOD_EN}
     return out
